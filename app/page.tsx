@@ -423,15 +423,6 @@ export default function Page() {
             </section>
 
             <section className="section-block quest-list-section">
-              <div className="section-title">
-                <div>
-                  <span className="eyebrow">FRIDAY, 01 NOV</span>
-                  <h2>Checklist hari ini</h2>
-                </div>
-                <span className="completion">
-                  {completed}/{tasks.length}
-                </span>
-              </div>
               <div className="task-list">
                 {tasks.map((task) => (
                   <QuestCard
