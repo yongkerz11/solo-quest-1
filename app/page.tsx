@@ -63,8 +63,8 @@ interface UserProfile {
 interface WorkoutSet {
   id: string
   setNumber: number
-  reps: number
-  weight?: number
+  reps: number | string
+  weight?: number | string
   completed: boolean
 }
 
@@ -1327,8 +1327,8 @@ export default function Page() {
         const nextComp = !s.completed
         if (nextComp) {
           justCompleted = true
-          recordedWeight = s.weight ?? 0
-          recordedReps = s.reps ?? 10
+          recordedWeight = Number(s.weight) || 0
+          recordedReps = Number(s.reps) || 10
           recordedSetNum = s.setNumber
         }
         return { ...s, completed: nextComp }
@@ -1404,8 +1404,8 @@ export default function Page() {
         const exIdx = hist.findIndex((h) => h.date === todayLabel)
         const histEntry = {
           date: todayLabel,
-          weight: completedSet.weight ?? 0,
-          reps: completedSet.reps ?? 10,
+          weight: Number(completedSet.weight) || 0,
+          reps: Number(completedSet.reps) || 10,
           setNumber: completedSet.setNumber,
         }
         if (exIdx !== -1) {
@@ -1451,7 +1451,7 @@ export default function Page() {
     exerciseId: string,
     setId: string,
     field: 'reps' | 'weight',
-    val: number
+    val: number | string
   ) => {
     const targetQuest =
       type === 'personal'
@@ -1728,8 +1728,8 @@ export default function Page() {
         const exIdx = prevHist.findIndex((h) => h.date === todayLabel)
         const histEntry: WorkoutExerciseHistory = {
           date: todayLabel,
-          weight: lastCompleted.weight ?? 0,
-          reps: lastCompleted.reps ?? 10,
+          weight: Number(lastCompleted.weight) || 0,
+          reps: Number(lastCompleted.reps) || 10,
           setNumber: lastCompleted.setNumber,
           timestamp: Date.now(),
         }
@@ -3716,8 +3716,8 @@ export default function Page() {
                   const workingSet = activeExercise.sets[activeExercise.sets.length - 1] || activeExercise.sets[0]
                   const displaySet = latestCompletedSet || workingSet
 
-                  const latestWeight = displaySet ? (displaySet.weight ?? 0) : 0
-                  const latestReps = displaySet ? (displaySet.reps ?? 10) : 10
+                  const latestWeight = displaySet ? (Number(displaySet.weight) || 0) : 0
+                  const latestReps = displaySet ? (Number(displaySet.reps) || 10) : 10
                   const latestSetNum = displaySet ? displaySet.setNumber : 1
                   const todayDateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
                   const fullDateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -4263,17 +4263,32 @@ export default function Page() {
                             type="number"
                             min={0}
                             step={1}
-                            value={set.weight ?? 0}
-                            onChange={(e) =>
+                            value={set.weight !== undefined && set.weight !== null ? set.weight : ''}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const raw = e.target.value
                               handleUpdateSetField(
                                 currentWorkoutQuest.id,
                                 activeWorkoutQuest.type,
                                 activeExercise.id,
                                 set.id,
                                 'weight',
-                                parseFloat(e.target.value) || 0
+                                raw === '' ? '' : Number(raw)
                               )
-                            }
+                            }}
+                            onBlur={(e) => {
+                              if (e.target.value === '' || isNaN(Number(e.target.value))) {
+                                handleUpdateSetField(
+                                  currentWorkoutQuest.id,
+                                  activeWorkoutQuest.type,
+                                  activeExercise.id,
+                                  set.id,
+                                  'weight',
+                                  0
+                                )
+                              }
+                            }}
+                            placeholder="0"
                             style={{
                               width: '100%',
                               maxWidth: '64px',
@@ -4295,17 +4310,32 @@ export default function Page() {
                             type="number"
                             min={1}
                             step={1}
-                            value={set.reps}
-                            onChange={(e) =>
+                            value={set.reps !== undefined && set.reps !== null ? set.reps : ''}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const raw = e.target.value
                               handleUpdateSetField(
                                 currentWorkoutQuest.id,
                                 activeWorkoutQuest.type,
                                 activeExercise.id,
                                 set.id,
                                 'reps',
-                                parseInt(e.target.value, 10) || 0
+                                raw === '' ? '' : Number(raw)
                               )
-                            }
+                            }}
+                            onBlur={(e) => {
+                              if (e.target.value === '' || isNaN(Number(e.target.value)) || Number(e.target.value) <= 0) {
+                                handleUpdateSetField(
+                                  currentWorkoutQuest.id,
+                                  activeWorkoutQuest.type,
+                                  activeExercise.id,
+                                  set.id,
+                                  'reps',
+                                  10
+                                )
+                              }
+                            }}
+                            placeholder="10"
                             style={{
                               width: '100%',
                               maxWidth: '64px',
