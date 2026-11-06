@@ -149,3 +149,4 @@ CREATE POLICY "Clan members can complete quests" ON public.clan_quest_completion
   );
 CREATE POLICY "Users can uncheck own completion" ON public.clan_quest_completions FOR DELETE
   USING (auth.uid() = user_id);
+
