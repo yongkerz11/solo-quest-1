@@ -1023,6 +1023,7 @@ export default function Page() {
   const [restTimerActive, setRestTimerActive] = useState<boolean>(false)
   const [showFloatingTimer, setShowFloatingTimer] = useState<boolean>(false)
   const [restDurationPreset, setRestDurationPreset] = useState<number>(60)
+  const [restTimerExerciseInfo, setRestTimerExerciseInfo] = useState<string>('')
   const [isAddingExercise, setIsAddingExercise] = useState(false)
   const [newExerciseName, setNewExerciseName] = useState('')
   const [newExerciseRest, setNewExerciseRest] = useState<number>(60)
@@ -1307,8 +1308,9 @@ export default function Page() {
       setRestSecondsLeft(restTime)
       setRestDurationPreset(restTime)
       setRestTimerActive(true)
+      const targetEx = currentExs.find((e) => e.id === exerciseId)
+      setRestTimerExerciseInfo(targetEx ? `${targetEx.name} • Istirahat` : 'Waktu Istirahat')
       setShowFloatingTimer(true)
-      showToast(`Set selesai! Istirahat ${restTime}s dimulai ⏳`)
     }
   }
 
@@ -1362,15 +1364,17 @@ export default function Page() {
       setRestSecondsLeft(restTime)
       setRestDurationPreset(restTime)
       setRestTimerActive(true)
+      setRestTimerExerciseInfo(
+        completedAfter === totalSets
+          ? `${exName} (${completedAfter}/${totalSets}) Selesai`
+          : `${exName} (Set ${completedAfter}/${totalSets})`
+      )
       setShowFloatingTimer(true)
-      if (completedAfter === totalSets) {
-        showToast(`🔥 Semua set (${completedAfter}/${totalSets}) "${exName}" selesai! Istirahat ${restTime}s dimulai ⏳`)
-      } else {
-        showToast(`⚡ Set ${completedAfter}/${totalSets} "${exName}" selesai! Istirahat ${restTime}s dimulai ⏳`)
-      }
+      // Disatukan langsung ke widget timer di atas, tidak memunculkan notif kedua
     } else {
       setRestTimerActive(false)
       setShowFloatingTimer(false)
+      setRestTimerExerciseInfo('')
       showToast(`Set "${exName}" direset kembali ke 0/${totalSets}.`)
     }
   }
@@ -1556,6 +1560,7 @@ export default function Page() {
     setActiveExerciseId(null)
     setRestTimerActive(false)
     setShowFloatingTimer(false)
+    setRestTimerExerciseInfo('')
     showToast('🎉 Sesi Workout Selesai! Quest Gym berhasil diselesaikan!')
   }
 
@@ -2477,7 +2482,7 @@ export default function Page() {
       <div
         style={{
           position: 'fixed',
-          top: '18px',
+          top: '26px',
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 9998,
@@ -2500,8 +2505,8 @@ export default function Page() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-          {/* SISI KIRI: ICON + TIMER COUNTDOWN */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+          {/* SISI KIRI: ICON + TIMER COUNTDOWN + CONTEXT INFO */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0, flex: 1 }}>
             <div
               style={{
                 width: '32px',
@@ -2518,19 +2523,24 @@ export default function Page() {
             >
               <Timer size={16} />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div
                 style={{
                   fontSize: '9px',
                   fontWeight: 800,
-                  letterSpacing: '0.12em',
+                  letterSpacing: '0.08em',
                   color: restTimerActive ? '#d8b4fe' : '#fde047',
                   textTransform: 'uppercase',
-                  lineHeight: 1,
+                  lineHeight: 1.1,
                   marginBottom: '3px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '165px',
                 }}
+                title={restTimerExerciseInfo || (restTimerActive ? 'WAKTU ISTIRAHAT' : 'ISTIRAHAT DIJEDA')}
               >
-                {restTimerActive ? '⏳ WAKTU ISTIRAHAT' : '⏸️ ISTIRAHAT DIJEDA'}
+                {restTimerExerciseInfo || (restTimerActive ? '⏳ WAKTU ISTIRAHAT' : '⏸️ ISTIRAHAT DIJEDA')}
               </div>
               <div
                 style={{
@@ -2631,8 +2641,8 @@ export default function Page() {
               onClick={() => {
                 setRestTimerActive(false)
                 setShowFloatingTimer(false)
+                setRestTimerExerciseInfo('')
                 setRestSecondsLeft(restDurationPreset)
-                showToast('Waktu istirahat dilewati. Siap latihan!')
               }}
               style={{
                 width: '28px',
@@ -3524,6 +3534,7 @@ export default function Page() {
                         setActiveExerciseId(null)
                         setRestTimerActive(false)
                         setShowFloatingTimer(false)
+                        setRestTimerExerciseInfo('')
                         setOpenExerciseDropdownId(null)
                       }}
                       style={{
