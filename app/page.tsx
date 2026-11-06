@@ -277,10 +277,68 @@ const INITIAL_CLAN_QUESTS: ClanQuest[] = [
 ]
 
 // ============================================================================
+// HELLOHABIT CONSISTENCY HEATMAP HELPERS (2026 IN-REVIEW)
+// ============================================================================
+
+const HABIT_PALETTES = [
+  { color: '#60a5fa', glow: 'rgba(96, 165, 250, 0.45)', name: 'Sky' },
+  { color: '#facc15', glow: 'rgba(250, 204, 21, 0.45)', name: 'Amber' },
+  { color: '#fb7185', glow: 'rgba(251, 113, 133, 0.45)', name: 'Rose' },
+  { color: '#2dd4bf', glow: 'rgba(45, 212, 191, 0.45)', name: 'Teal' },
+  { color: '#818cf8', glow: 'rgba(129, 140, 248, 0.45)', name: 'Indigo' },
+  { color: '#c084fc', glow: 'rgba(192, 132, 252, 0.45)', name: 'Purple' },
+  { color: '#fb923c', glow: 'rgba(251, 146, 60, 0.45)', name: 'Coral' },
+  { color: '#34d399', glow: 'rgba(52, 211, 153, 0.45)', name: 'Emerald' },
+]
+
+function getHabitYearGrid(seedId: string, basePct: number, isDoneToday?: boolean) {
+  const TOTAL_WEEKS = 42
+  const TOTAL_DAYS = TOTAL_WEEKS * 7 // 294 days
+  const CURRENT_DAY = 265 // Fixed current point in year
+
+  let completed = 0
+  const cells: ('active' | 'inactive' | 'future')[] = []
+
+  for (let day = 0; day < TOTAL_DAYS; day++) {
+    if (day > CURRENT_DAY) {
+      cells.push('future')
+    } else if (day === CURRENT_DAY && isDoneToday !== undefined) {
+      if (isDoneToday) {
+        cells.push('active')
+        completed++
+      } else {
+        cells.push('inactive')
+      }
+    } else {
+      let h = 0
+      const s = `${seedId}-${day}`
+      for (let i = 0; i < s.length; i++) {
+        h = (h << 5) - h + s.charCodeAt(i)
+        h |= 0
+      }
+      const score = Math.abs(h % 100)
+      const isActive = score < basePct
+      if (isActive) {
+        cells.push('active')
+        completed++
+      } else {
+        cells.push('inactive')
+      }
+    }
+  }
+
+  const elapsed = CURRENT_DAY + 1
+  const pct = Math.round((completed / elapsed) * 100)
+  return { cells, pct }
+}
+
+// ============================================================================
 // REUSABLE QUEST CARD
 // ============================================================================
 
 function QuestCard({
+  questId,
+  colorIndex = 0,
   title,
   meta,
   icon,
@@ -299,6 +357,8 @@ function QuestCard({
   onEdit,
   onDelete,
 }: {
+  questId?: string
+  colorIndex?: number
   title: string
   meta: string
   icon: string
@@ -318,6 +378,7 @@ function QuestCard({
   onDelete?: () => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isConsistencyOpen, setIsConsistencyOpen] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const openedTimestampRef = useRef(0)
   const closedTimestampRef = useRef(0)
@@ -416,11 +477,8 @@ function QuestCard({
       closeMenu()
       return
     }
-    if (isGym) {
-      // Untuk kategori gym, klik card sementara tidak melakukan apa-apa (masuk ke halaman workout khusus lewat tombol Start)
-      return
-    }
-    if (!disabled) onToggle()
+    // Saat quest card ditekan, buka/tutup dropdown konsistensi untuk quest tersebut
+    setIsConsistencyOpen((prev) => !prev)
   }
 
   return (
@@ -434,9 +492,10 @@ function QuestCard({
         className={`task-row ${done ? 'completed' : ''}`}
         style={{
           opacity: disabled ? 0.55 : 1,
-          cursor: disabled ? 'not-allowed' : isGym ? 'default' : 'pointer',
+          cursor: disabled ? 'not-allowed' : 'pointer',
           userSelect: 'none',
           WebkitUserSelect: 'none',
+          borderColor: isConsistencyOpen ? 'rgba(139, 92, 246, 0.55)' : undefined,
         }}
         onClick={handleCardClick}
         onPointerDown={handleStartHold}
@@ -573,6 +632,103 @@ function QuestCard({
           )}
         </div>
       </div>
+
+      {/* DROPDOWN KONSISTENSI QUEST (MUNCUL SAAT QUEST DITEKAN) */}
+      {isConsistencyOpen && (() => {
+        const paletteIdx = colorIndex !== undefined ? colorIndex % HABIT_PALETTES.length : 0
+        const colorObj = HABIT_PALETTES[paletteIdx]
+        const baseRates = [94, 86, 78, 74, 71, 68, 65]
+        const baseRate = baseRates[paletteIdx % baseRates.length]
+        const { cells, pct } = getHabitYearGrid(questId || title, baseRate, done)
+        const scheduleText =
+          schedule && schedule.length > 0
+            ? schedule.includes('Everyday')
+              ? 'Everyday'
+              : schedule.join(', ')
+            : 'Everyday'
+
+        return (
+          <div
+            style={{
+              marginTop: '6px',
+              marginBottom: '4px',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: '#0b0a12',
+              border: '1px solid #26203a',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.55)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header: Nama Quest - Jadwal & Persentase Konsistensi */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                marginBottom: '7px',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: '#f3f1ff',
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  paddingRight: '12px',
+                }}
+              >
+                {title}{' '}
+                <span style={{ fontSize: '11.5px', color: '#827896', fontWeight: 400 }}>
+                  - {scheduleText}
+                </span>
+              </div>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  color: '#f3f1ff',
+                  fontVariantNumeric: 'tabular-nums',
+                  flexShrink: 0,
+                }}
+              >
+                {pct}%
+              </div>
+            </div>
+
+            {/* Heatmap Grid (42 columns x 7 rows, 100% width) */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(42, 1fr)',
+                gridTemplateRows: 'repeat(7, 1fr)',
+                gridAutoFlow: 'column',
+                gap: '2px',
+                width: '100%',
+                overflow: 'hidden',
+              }}
+            >
+              {cells.map((status, cIdx) => (
+                <div
+                  key={cIdx}
+                  style={{
+                    aspectRatio: '1 / 1',
+                    borderRadius: '1.3px',
+                    background:
+                      status === 'active'
+                        ? colorObj.color
+                        : status === 'inactive'
+                        ? '#262430'
+                        : '#16151e',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* POPUP DROPDOWN MENU (BERADA DI LUAR .task-row AGAR TIDAK MEMICU HOLD BERULANG) */}
       {isMenuOpen && (
@@ -771,60 +927,13 @@ function QuestCard({
 }
 
 // ============================================================================
-// HELLOHABIT CONSISTENCY HEATMAP HELPERS (2026 IN-REVIEW)
-// ============================================================================
-
-const HABIT_PALETTES = [
-  { color: '#60a5fa', glow: 'rgba(96, 165, 250, 0.45)', name: 'Sky' },
-  { color: '#facc15', glow: 'rgba(250, 204, 21, 0.45)', name: 'Amber' },
-  { color: '#fb7185', glow: 'rgba(251, 113, 133, 0.45)', name: 'Rose' },
-  { color: '#2dd4bf', glow: 'rgba(45, 212, 191, 0.45)', name: 'Teal' },
-  { color: '#818cf8', glow: 'rgba(129, 140, 248, 0.45)', name: 'Indigo' },
-  { color: '#c084fc', glow: 'rgba(192, 132, 252, 0.45)', name: 'Purple' },
-  { color: '#fb923c', glow: 'rgba(251, 146, 60, 0.45)', name: 'Coral' },
-  { color: '#34d399', glow: 'rgba(52, 211, 153, 0.45)', name: 'Emerald' },
-]
-
-function getHabitYearGrid(seedId: string, basePct: number) {
-  const TOTAL_WEEKS = 42
-  const TOTAL_DAYS = TOTAL_WEEKS * 7 // 294 days
-  const CURRENT_DAY = 265 // Fixed current point in year
-
-  let completed = 0
-  const cells: ('active' | 'inactive' | 'future')[] = []
-
-  for (let day = 0; day < TOTAL_DAYS; day++) {
-    if (day > CURRENT_DAY) {
-      cells.push('future')
-    } else {
-      let h = 0
-      const s = `${seedId}-${day}`
-      for (let i = 0; i < s.length; i++) {
-        h = (h << 5) - h + s.charCodeAt(i)
-        h |= 0
-      }
-      const score = Math.abs(h % 100)
-      const isActive = score < basePct
-      if (isActive) {
-        cells.push('active')
-        completed++
-      } else {
-        cells.push('inactive')
-      }
-    }
-  }
-
-  const elapsed = CURRENT_DAY + 1
-  const pct = Math.round((completed / elapsed) * 100)
-  return { cells, pct }
-}
-
 // MAIN PAGE COMPONENT
 // ============================================================================
 
 export default function Page() {
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<'home' | 'calendar' | 'clan' | 'rank' | 'profile'>('home')
+  const [questScheduleTab, setQuestScheduleTab] = useState<'today' | 'upcoming'>('today')
 
   // Multi-user & Community State
   const [users, setUsers] = useState<UserProfile[]>(INITIAL_USERS)
@@ -1100,10 +1209,21 @@ export default function Page() {
     }
   }, [users, currentUserId, personalTasks, clans, clanMembers, clanQuests, mounted])
 
-  // Derived Current User Data
+  // Derived Current User Data & Today / Upcoming Schedule Helpers
+  const DAY_CODES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+  const todayDayCode = DAY_CODES[new Date().getDay()]
+  const isQuestForToday = (schedule?: string[]) => {
+    if (!schedule || schedule.length === 0) return true
+    if (schedule.includes('Everyday')) return true
+    return schedule.includes(todayDayCode)
+  }
+
   const currentUser = users.find((u) => u.id === currentUserId) || users[0]
   const userPersonalTasks = personalTasks.filter((t) => t.userId === currentUser.id)
+  const todayPersonalTasks = userPersonalTasks.filter((t) => isQuestForToday(t.schedule))
+  const upcomingPersonalTasks = userPersonalTasks.filter((t) => !isQuestForToday(t.schedule))
   const completedPersonalCount = userPersonalTasks.filter((t) => t.done).length
+  const completedTodayPersonalCount = todayPersonalTasks.filter((t) => t.done).length
   const userJoinedMemberships = clanMembers.filter((cm) => cm.userId === currentUser.id)
   const userJoinedClanIds = userJoinedMemberships.map((cm) => cm.clanId)
   const userJoinedClanQuests = clanQuests.filter((cq) => userJoinedClanIds.includes(cq.clanId))
@@ -1550,6 +1670,8 @@ export default function Page() {
       setPersonalTasks((curr) => [...curr, newTask])
       showToast('Quest pribadi baru ditambahkan!')
     }
+    const scheduledForToday = isQuestForToday(questDays)
+    setQuestScheduleTab(scheduledForToday ? 'today' : 'upcoming')
     setIsPersonalModalOpen(false)
   }
 
@@ -3869,14 +3991,101 @@ export default function Page() {
                   <h2>Quest Pribadi ({currentUser.username})</h2>
                 </div>
                 <span className="completion">
-                  {completedPersonalCount}/{userPersonalTasks.length}
+                  {completedTodayPersonalCount}/{todayPersonalTasks.length}
                 </span>
               </div>
 
-              {/* Banner Reward List Quest Personal */}
-              {userPersonalTasks.length > 0 && (() => {
-                const totalPersonalListXp = userPersonalTasks.reduce((sum, t) => sum + t.xp, 0)
-                const isAllDone = userPersonalTasks.length > 0 && completedPersonalCount === userPersonalTasks.length
+              {/* TAB SWITCHER: TODAY & UPCOMING */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '6px',
+                  padding: '4px',
+                  borderRadius: '11px',
+                  background: '#0e0b18',
+                  border: '1px solid #261f3d',
+                  marginBottom: '12px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setQuestScheduleTab('today')}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    border: questScheduleTab === 'today' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
+                    background:
+                      questScheduleTab === 'today'
+                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
+                        : 'transparent',
+                    color: questScheduleTab === 'today' ? '#f3f1ff' : '#827896',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>Today</span>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      padding: '1px 6px',
+                      borderRadius: '999px',
+                      background: questScheduleTab === 'today' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
+                      color: questScheduleTab === 'today' ? '#e9d5ff' : '#827896',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {todayPersonalTasks.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuestScheduleTab('upcoming')}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    border: questScheduleTab === 'upcoming' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
+                    background:
+                      questScheduleTab === 'upcoming'
+                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
+                        : 'transparent',
+                    color: questScheduleTab === 'upcoming' ? '#f3f1ff' : '#827896',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>Upcoming</span>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      padding: '1px 6px',
+                      borderRadius: '999px',
+                      background: questScheduleTab === 'upcoming' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
+                      color: questScheduleTab === 'upcoming' ? '#e9d5ff' : '#827896',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {upcomingPersonalTasks.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Banner Reward List Quest Personal (Khusus Tab Today) */}
+              {questScheduleTab === 'today' && todayPersonalTasks.length > 0 && (() => {
+                const totalPersonalListXp = todayPersonalTasks.reduce((sum, t) => sum + t.xp, 0)
+                const isAllDone = todayPersonalTasks.length > 0 && completedTodayPersonalCount === todayPersonalTasks.length
 
                 return (
                   <div
@@ -3912,8 +4121,8 @@ export default function Page() {
                       </div>
                       <div style={{ fontSize: '10px', color: '#8e84a2', marginTop: '2px' }}>
                         {isAllDone
-                          ? `Seluruh (${completedPersonalCount}/${userPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
-                          : `Selesaikan semua (${completedPersonalCount}/${userPersonalTasks.length}) quest untuk mendapatkan XP`}
+                          ? `Seluruh (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
+                          : `Selesaikan semua (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest untuk mendapatkan XP`}
                       </div>
                     </div>
                     <div
@@ -3935,21 +4144,45 @@ export default function Page() {
               })()}
 
               <div className="task-list">
-                {userPersonalTasks.map((task) => (
-                  <QuestCard
-                    key={task.id}
-                    title={task.title}
-                    meta={task.category}
-                    icon={task.icon}
-                    done={task.done}
-                    canManage={true}
-                    isGym={task.category.toLowerCase() === 'gym'}
-                    onOpenWorkout={() => setActiveWorkoutQuest({ type: 'personal', id: task.id })}
-                    onToggle={() => handleTogglePersonal(task.id)}
-                    onEdit={() => openEditPersonalModal(task)}
-                    onDelete={() => handleDeletePersonal(task.id)}
-                  />
-                ))}
+                {(questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).length === 0 ? (
+                  <div
+                    style={{
+                      padding: '18px 14px',
+                      borderRadius: '12px',
+                      background: '#0e0c16',
+                      border: '1px dashed #28213a',
+                      textAlign: 'center',
+                      fontSize: '11.5px',
+                      color: '#7c738f',
+                    }}
+                  >
+                    {questScheduleTab === 'today'
+                      ? `Tidak ada quest untuk hari ini (${todayDayCode}). Cek tab Upcoming atau tambah quest baru.`
+                      : `Tidak ada quest di jadwal Upcoming. Quest yang dipilih untuk hari selain hari ini (${todayDayCode}) akan tampil di sini.`}
+                  </div>
+                ) : (
+                  (questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).map((task) => {
+                    const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
+                    return (
+                      <QuestCard
+                        key={task.id}
+                        questId={task.id}
+                        colorIndex={globalIdx >= 0 ? globalIdx : 0}
+                        title={task.title}
+                        meta={task.category}
+                        icon={task.icon}
+                        done={task.done}
+                        schedule={task.schedule}
+                        canManage={true}
+                        isGym={task.category.toLowerCase() === 'gym'}
+                        onOpenWorkout={() => setActiveWorkoutQuest({ type: 'personal', id: task.id })}
+                        onToggle={() => handleTogglePersonal(task.id)}
+                        onEdit={() => openEditPersonalModal(task)}
+                        onDelete={() => handleDeletePersonal(task.id)}
+                      />
+                    )
+                  })
+                )}
               </div>
               <button className="add-task" onClick={openAddPersonalModal}>
                 <Plus size={17} /> Tambah quest pribadi
@@ -3967,21 +4200,115 @@ export default function Page() {
               <div>
                 <p className="eyebrow">MY QUEST • {currentUser.username.toUpperCase()}</p>
                 <h1>Daily checklist</h1>
-                <p className="quest-date">Jumat, 01 November 2024</p>
+                <p className="quest-date">
+                  {new Date().toLocaleDateString('id-ID', {
+                    weekday: 'long',
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </p>
               </div>
               <div className="quest-count">
                 <span>DONE</span>
                 <strong>
-                  {completedPersonalCount}/{userPersonalTasks.length}
+                  {completedTodayPersonalCount}/{todayPersonalTasks.length}
                 </strong>
               </div>
             </section>
 
             <section className="section-block quest-list-section">
-              {/* Banner Reward List Quest Personal */}
-              {userPersonalTasks.length > 0 && (() => {
-                const totalPersonalListXp = userPersonalTasks.reduce((sum, t) => sum + t.xp, 0)
-                const isAllDone = userPersonalTasks.length > 0 && completedPersonalCount === userPersonalTasks.length
+              {/* TAB SWITCHER: TODAY & UPCOMING */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '6px',
+                  padding: '4px',
+                  borderRadius: '11px',
+                  background: '#0e0b18',
+                  border: '1px solid #261f3d',
+                  marginBottom: '12px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setQuestScheduleTab('today')}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    border: questScheduleTab === 'today' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
+                    background:
+                      questScheduleTab === 'today'
+                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
+                        : 'transparent',
+                    color: questScheduleTab === 'today' ? '#f3f1ff' : '#827896',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>Today</span>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      padding: '1px 6px',
+                      borderRadius: '999px',
+                      background: questScheduleTab === 'today' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
+                      color: questScheduleTab === 'today' ? '#e9d5ff' : '#827896',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {todayPersonalTasks.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuestScheduleTab('upcoming')}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    border: questScheduleTab === 'upcoming' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
+                    background:
+                      questScheduleTab === 'upcoming'
+                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
+                        : 'transparent',
+                    color: questScheduleTab === 'upcoming' ? '#f3f1ff' : '#827896',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>Upcoming</span>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      padding: '1px 6px',
+                      borderRadius: '999px',
+                      background: questScheduleTab === 'upcoming' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
+                      color: questScheduleTab === 'upcoming' ? '#e9d5ff' : '#827896',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {upcomingPersonalTasks.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Banner Reward List Quest Personal (Khusus Tab Today) */}
+              {questScheduleTab === 'today' && todayPersonalTasks.length > 0 && (() => {
+                const totalPersonalListXp = todayPersonalTasks.reduce((sum, t) => sum + t.xp, 0)
+                const isAllDone = todayPersonalTasks.length > 0 && completedTodayPersonalCount === todayPersonalTasks.length
 
                 return (
                   <div
@@ -4017,8 +4344,8 @@ export default function Page() {
                       </div>
                       <div style={{ fontSize: '10px', color: '#8e84a2', marginTop: '2px' }}>
                         {isAllDone
-                          ? `Seluruh (${completedPersonalCount}/${userPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
-                          : `Selesaikan semua (${completedPersonalCount}/${userPersonalTasks.length}) quest untuk mendapatkan XP`}
+                          ? `Seluruh (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
+                          : `Selesaikan semua (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest untuk mendapatkan XP`}
                       </div>
                     </div>
                     <div
@@ -4040,21 +4367,45 @@ export default function Page() {
               })()}
 
               <div className="task-list">
-                {userPersonalTasks.map((task) => (
-                  <QuestCard
-                    key={task.id}
-                    title={task.title}
-                    meta={task.category}
-                    icon={task.icon}
-                    done={task.done}
-                    canManage={true}
-                    isGym={task.category.toLowerCase() === 'gym'}
-                    onOpenWorkout={() => setActiveWorkoutQuest({ type: 'personal', id: task.id })}
-                    onToggle={() => handleTogglePersonal(task.id)}
-                    onEdit={() => openEditPersonalModal(task)}
-                    onDelete={() => handleDeletePersonal(task.id)}
-                  />
-                ))}
+                {(questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).length === 0 ? (
+                  <div
+                    style={{
+                      padding: '18px 14px',
+                      borderRadius: '12px',
+                      background: '#0e0c16',
+                      border: '1px dashed #28213a',
+                      textAlign: 'center',
+                      fontSize: '11.5px',
+                      color: '#7c738f',
+                    }}
+                  >
+                    {questScheduleTab === 'today'
+                      ? `Tidak ada quest untuk hari ini (${todayDayCode}). Cek tab Upcoming atau tambah quest baru.`
+                      : `Tidak ada quest di jadwal Upcoming. Quest yang dipilih untuk hari selain hari ini (${todayDayCode}) akan tampil di sini.`}
+                  </div>
+                ) : (
+                  (questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).map((task) => {
+                    const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
+                    return (
+                      <QuestCard
+                        key={task.id}
+                        questId={task.id}
+                        colorIndex={globalIdx >= 0 ? globalIdx : 0}
+                        title={task.title}
+                        meta={task.category}
+                        icon={task.icon}
+                        done={task.done}
+                        schedule={task.schedule}
+                        canManage={true}
+                        isGym={task.category.toLowerCase() === 'gym'}
+                        onOpenWorkout={() => setActiveWorkoutQuest({ type: 'personal', id: task.id })}
+                        onToggle={() => handleTogglePersonal(task.id)}
+                        onEdit={() => openEditPersonalModal(task)}
+                        onDelete={() => handleDeletePersonal(task.id)}
+                      />
+                    )
+                  })
+                )}
               </div>
               <button className="add-task" onClick={openAddPersonalModal}>
                 <Plus size={17} /> Tambah quest baru
@@ -5592,11 +5943,13 @@ export default function Page() {
                             Belum ada Quest di Clan ini.
                           </div>
                         ) : (
-                          selectedClanQuests.map((cq) => {
+                          selectedClanQuests.map((cq, cIdx) => {
                             const isDoneByMe = cq.completedByUserIds.includes(currentUser.id)
                             return (
                               <QuestCard
                                 key={cq.id}
+                                questId={cq.id}
+                                colorIndex={cIdx}
                                 title={cq.title}
                                 meta={cq.category}
                                 icon={cq.icon}
