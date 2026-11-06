@@ -3033,7 +3033,7 @@ export default function Page() {
           <div
             style={{
               position: 'fixed',
-              top: activeWorkoutQuest && showFloatingTimer ? '86px' : '18px',
+              top: activeWorkoutQuest && showFloatingTimer ? '104px' : '26px',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 9999,
@@ -3041,18 +3041,20 @@ export default function Page() {
               maxWidth: '390px',
               padding: '11px 16px',
               borderRadius: '14px',
-              background: 'rgba(24, 15, 46, 0.94)',
-              backdropFilter: 'blur(14px)',
-              WebkitBackdropFilter: 'blur(14px)',
-              border: '1px solid rgba(168, 85, 247, 0.6)',
-              boxShadow: '0 12px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(139, 92, 246, 0.35)',
+              background: 'rgba(24, 15, 46, 0.96)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(168, 85, 247, 0.65)',
+              boxShadow: '0 14px 36px rgba(0, 0, 0, 0.85), 0 0 22px rgba(139, 92, 246, 0.35)',
               color: '#f3f1ff',
               fontSize: '11.5px',
               fontWeight: 600,
+              lineHeight: 1.45,
               textAlign: 'center',
               pointerEvents: 'none',
               letterSpacing: '0.01em',
-              transition: 'top 0.2s ease',
+              transition: 'top 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease',
+              animation: 'fadeIn 0.2s ease-out',
             }}
           >
             {statusMessage}
