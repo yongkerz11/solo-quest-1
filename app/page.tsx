@@ -416,8 +416,8 @@ function QuestCard({
       closeMenu()
       return
     }
-    if (isGym && onOpenWorkout) {
-      onOpenWorkout()
+    if (isGym) {
+      // Untuk kategori gym, klik card sementara tidak melakukan apa-apa (masuk ke halaman workout khusus lewat tombol Start)
       return
     }
     if (!disabled) onToggle()
@@ -434,7 +434,7 @@ function QuestCard({
         className={`task-row ${done ? 'completed' : ''}`}
         style={{
           opacity: disabled ? 0.55 : 1,
-          cursor: disabled ? 'not-allowed' : 'pointer',
+          cursor: disabled ? 'not-allowed' : isGym ? 'default' : 'pointer',
           userSelect: 'none',
           WebkitUserSelect: 'none',
         }}
@@ -492,37 +492,43 @@ function QuestCard({
           </strong>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
             <small>{meta}</small>
-            {isGym && onOpenWorkout && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onOpenWorkout()
-                }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: 'rgba(56, 189, 248, 0.14)',
-                  border: '1px solid rgba(56, 189, 248, 0.35)',
-                  color: '#38bdf8',
-                  fontSize: '9px',
-                  fontWeight: 700,
-                  padding: '1px 6px',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s',
-                }}
-              >
-                <Dumbbell size={10} />
-                <span>Workout →</span>
-              </button>
-            )}
           </div>
         </span>
 
-        {/* Right side: XP badge + subtle 3-dots if options exist */}
+        {/* Right side: START button (Gym) + XP badge + subtle 3-dots if options exist */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          {isGym && onOpenWorkout && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenWorkout()
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 10px',
+                borderRadius: '8px',
+                fontSize: '11px',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+                background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+                border: '1px solid rgba(168, 85, 247, 0.6)',
+                color: '#ffffff',
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(124, 58, 237, 0.35)',
+                transition: 'all 0.15s ease',
+              }}
+              title="Mulai Workout"
+              aria-label="Mulai Workout"
+              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.15)')}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = 'brightness(1.0)')}
+            >
+              <Play size={10} fill="#ffffff" />
+              <span>Start</span>
+            </button>
+          )}
           {badgeText ? (
             <span className="task-xp">{badgeText}</span>
           ) : done ? (
