@@ -3811,21 +3811,22 @@ export default function Page() {
                         background: 'linear-gradient(145deg, #130f24 0%, #0d0a18 100%)',
                         border: '1px solid #281f3d',
                         borderRadius: '16px',
-                        padding: '14px 14px 10px',
+                        padding: '12px 14px 10px',
                         marginBottom: '16px',
                         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
                       }}
                     >
-                      {/* STATS HEADER: BEBAN TERAKHIR & DETAIL SET */}
+                      {/* STATS HEADER: TO THE POINT */}
                       <div
                         style={{
                           display: 'flex',
                           alignItems: 'flex-start',
                           justifyContent: 'space-between',
-                          gap: '10px',
-                          marginBottom: '10px',
+                          gap: '12px',
+                          marginBottom: '8px',
                         }}
                       >
+                        {/* KIRI: BEBAN TERKINI */}
                         <div>
                           <div
                             style={{
@@ -3837,12 +3838,13 @@ export default function Page() {
                               display: 'flex',
                               alignItems: 'center',
                               gap: '4px',
+                              whiteSpace: 'nowrap',
                             }}
                           >
                             <TrendingUp size={11} color="#c084fc" />
-                            <span>TRACKING BEBAN (REAL-TIME)</span>
+                            <span>BEBAN</span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '2px' }}>
                             <span
                               style={{
                                 fontSize: '24px',
@@ -3855,51 +3857,36 @@ export default function Page() {
                               {latestWeight}{' '}
                               <span style={{ fontSize: '13px', fontWeight: 700, color: '#c084fc' }}>KG</span>
                             </span>
-                            {isMultiPoints ? (
-                              <span
-                                style={{
-                                  fontSize: '10px',
-                                  fontWeight: 800,
-                                  color: diffFromPrev >= 0 ? '#4ade80' : '#f87171',
-                                  background: diffFromPrev >= 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                  padding: '2px 6px',
-                                  borderRadius: '6px',
-                                  lineHeight: 1,
-                                }}
-                              >
-                                {diffFromPrev > 0 ? `+${diffFromPrev.toFixed(1)} kg` : diffFromPrev < 0 ? `${diffFromPrev.toFixed(1)} kg` : 'Tetap (0 kg)'}
-                              </span>
-                            ) : (
+                            {isMultiPoints && diffFromPrev !== 0 && (
                               <span
                                 style={{
                                   fontSize: '9.5px',
                                   fontWeight: 800,
-                                  color: '#c084fc',
-                                  background: 'rgba(192, 132, 252, 0.12)',
-                                  border: '1px solid rgba(192, 132, 252, 0.25)',
-                                  padding: '2px 6px',
-                                  borderRadius: '6px',
+                                  color: diffFromPrev > 0 ? '#4ade80' : '#f87171',
+                                  background: diffFromPrev > 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                  padding: '2px 5px',
+                                  borderRadius: '5px',
                                   lineHeight: 1,
                                 }}
                               >
-                                Real-Time
+                                {diffFromPrev > 0 ? `+${diffFromPrev.toFixed(1)} kg` : `${diffFromPrev.toFixed(1)} kg`}
                               </span>
                             )}
                           </div>
                         </div>
 
-                        {/* INFO SET TERAKHIR & TANGGAL */}
+                        {/* KANAN: SET TERAKHIR & TANGGAL */}
                         <div style={{ textAlign: 'right' }}>
                           <div
                             style={{
                               fontSize: '8.5px',
                               fontWeight: 700,
                               color: '#8e84a2',
-                              letterSpacing: '0.04em',
+                              letterSpacing: '0.06em',
                               textTransform: 'uppercase',
                             }}
                           >
-                            SET & BEBAN TERAKHIR
+                            TERAKHIR
                           </div>
                           <div
                             style={{
@@ -3908,20 +3895,22 @@ export default function Page() {
                               color: '#f3f1ff',
                               marginTop: '2px',
                               lineHeight: 1.2,
+                              whiteSpace: 'nowrap',
                             }}
                           >
-                            Set #{latestSetNum} • {latestReps} Reps ({latestWeight} kg)
+                            Set #{latestSetNum} • {latestReps} Reps
                           </div>
                           <div
                             style={{
                               fontSize: '9.5px',
                               fontWeight: 600,
                               color: '#a78bfa',
-                              marginTop: '3px',
+                              marginTop: '2px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'flex-end',
                               gap: '3px',
+                              whiteSpace: 'nowrap',
                             }}
                           >
                             <CalendarDays size={10} color="#c084fc" />
@@ -3930,7 +3919,7 @@ export default function Page() {
                         </div>
                       </div>
 
-                      {/* INDIKATOR SCROLL JIKA DATA LEBIH DARI 4 */}
+                      {/* INDIKATOR SCROLL JIKA DATA BANYAK */}
                       {pointsCount > 4 && (
                         <div
                           style={{
@@ -3944,7 +3933,7 @@ export default function Page() {
                             fontWeight: 600,
                           }}
                         >
-                          <span>↔ Geser grafik untuk melihat riwayat lengkap</span>
+                          <span>↔ Scroll</span>
                         </div>
                       )}
 
@@ -4079,93 +4068,70 @@ export default function Page() {
                         </svg>
                       </div>
 
-                      {/* SINGLE POINT HELPER NOTE */}
-                      {!isMultiPoints && (
-                        <div
-                          style={{
-                            fontSize: '9px',
-                            color: '#9e8fc5',
-                            marginTop: '6px',
-                            textAlign: 'center',
-                            background: 'rgba(124, 58, 237, 0.08)',
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            border: '1px dashed rgba(168, 85, 247, 0.25)',
-                          }}
-                        >
-                          📍 Sesi pertama real-time. Grafik garis akan tersambung seiring kamu menyelesaikan sesi latihan!
-                        </div>
-                      )}
-
-                      {/* QUICK ACTION: CATAT BEBAN HARI INI & KELOLA RIWAYAT */}
+                      {/* ACTIONS: TO THE POINT */}
                       <div
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
+                          justifyContent: 'flex-end',
+                          gap: '6px',
                           marginTop: '8px',
                           padding: '0 2px',
                         }}
                       >
-                        <span style={{ fontSize: '9px', color: '#7c7390', flex: 1 }}>
-                          💡 Beban otomatis tersimpan setiap menyelesaikan set
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <button
-                            type="button"
-                            onClick={() => setIsHistoryManagerOpen(true)}
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.05)',
-                              border: '1px solid rgba(255, 255, 255, 0.12)',
-                              borderRadius: '7px',
-                              color: '#c4b5fd',
-                              fontSize: '9.5px',
-                              fontWeight: 700,
-                              padding: '3px 8px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              transition: 'all 0.15s ease',
-                            }}
-                            title="Buka pengelola riwayat beban"
-                          >
-                            <Settings size={10} />
-                            <span>Riwayat</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleLogExerciseProgress(
-                                currentWorkoutQuest.id,
-                                activeWorkoutQuest.type,
-                                activeExercise.id,
-                                latestWeight,
-                                latestReps,
-                                latestSetNum
-                              )
-                            }}
-                            style={{
-                              background: 'rgba(168, 85, 247, 0.15)',
-                              border: '1px solid rgba(168, 85, 247, 0.4)',
-                              borderRadius: '7px',
-                              color: '#e9d5ff',
-                              fontSize: '9.5px',
-                              fontWeight: 700,
-                              padding: '3px 8px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              transition: 'all 0.15s ease',
-                            }}
-                            title="Simpan beban saat ini ke riwayat progres"
-                          >
-                            <Plus size={10} />
-                            <span>Catat Sesi Ini</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsHistoryManagerOpen(true)}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            borderRadius: '7px',
+                            color: '#c4b5fd',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            padding: '4px 10px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s ease',
+                          }}
+                          title="Buka pengelola riwayat beban"
+                        >
+                          <Settings size={10} />
+                          <span>Riwayat</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleLogExerciseProgress(
+                              currentWorkoutQuest.id,
+                              activeWorkoutQuest.type,
+                              activeExercise.id,
+                              latestWeight,
+                              latestReps,
+                              latestSetNum
+                            )
+                          }}
+                          style={{
+                            background: 'rgba(168, 85, 247, 0.15)',
+                            border: '1px solid rgba(168, 85, 247, 0.4)',
+                            borderRadius: '7px',
+                            color: '#e9d5ff',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            padding: '4px 10px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s ease',
+                          }}
+                          title="Simpan beban saat ini ke riwayat progres"
+                        >
+                          <Plus size={10} />
+                          <span>Catat Sesi</span>
+                        </button>
                       </div>
                     </div>
                   )
