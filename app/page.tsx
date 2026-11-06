@@ -73,6 +73,7 @@ interface WorkoutExerciseHistory {
   weight: number
   reps?: number
   setNumber?: number
+  timestamp?: number
 }
 
 interface WorkoutExercise {
@@ -1042,6 +1043,11 @@ export default function Page() {
   const [isTimerSettingOpen, setIsTimerSettingOpen] = useState<boolean>(false)
   const [customTimerSeconds, setCustomTimerSeconds] = useState<number>(60)
   const [applyTimerToAllExercises, setApplyTimerToAllExercises] = useState<boolean>(false)
+  const [isHistoryManagerOpen, setIsHistoryManagerOpen] = useState<boolean>(false)
+  const [customHistDate, setCustomHistDate] = useState<string>('')
+  const [customHistWeight, setCustomHistWeight] = useState<string>('')
+  const [customHistReps, setCustomHistReps] = useState<string>('10')
+  const chartScrollRef = useRef<HTMLDivElement>(null)
 
   const playTimerBeep = () => {
     try {
@@ -1263,6 +1269,20 @@ export default function Page() {
   const activeExercise = activeExerciseId
     ? workoutQuestExercises.find((ex) => ex.id === activeExerciseId) || null
     : null
+
+  useEffect(() => {
+    if (activeExerciseId && chartScrollRef.current) {
+      const timer = setTimeout(() => {
+        if (chartScrollRef.current) {
+          chartScrollRef.current.scrollTo({
+            left: chartScrollRef.current.scrollWidth,
+            behavior: 'smooth',
+          })
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [activeExerciseId, activeExercise?.history?.length])
 
   const handleUpdateWorkoutExercises = (
     questId: string,
@@ -1566,7 +1586,7 @@ export default function Page() {
     showToast(`Gerakan diperbarui: "${newName.trim()}"`)
   }
 
-  // LOG PROGRES BEBAN KE RIWAYAT TANGGAL
+  // LOG PROGRES BEBAN KE RIWAYAT TANGGAL (REAL-TIME)
   const handleLogExerciseProgress = (
     questId: string,
     type: 'personal' | 'clan',
@@ -1588,14 +1608,83 @@ export default function Page() {
       const prev = ex.history && ex.history.length > 0 ? [...ex.history] : []
       const existingIdx = prev.findIndex((h) => h.date === todayLabel)
       if (existingIdx !== -1) {
-        prev[existingIdx] = { date: todayLabel, weight, reps, setNumber: setsCount }
+        prev[existingIdx] = { date: todayLabel, weight, reps, setNumber: setsCount, timestamp: Date.now() }
       } else {
-        prev.push({ date: todayLabel, weight, reps, setNumber: setsCount })
+        prev.push({ date: todayLabel, weight, reps, setNumber: setsCount, timestamp: Date.now() })
       }
       return { ...ex, history: prev }
     })
     handleUpdateWorkoutExercises(questId, type, updatedExs)
     showToast(`Beban ${weight}kg (${todayLabel}) berhasil dicatat ke riwayat!`)
+  }
+
+  // TAMBAH RIWAYAT SESI MANUAL / TANGGAL LAIN
+  const handleAddCustomExerciseHistory = (
+    questId: string,
+    type: 'personal' | 'clan',
+    exerciseId: string,
+    dateStr: string,
+    weight: number,
+    reps: number = 10,
+    setNum: number = 1
+  ) => {
+    if (!dateStr.trim() || weight <= 0) {
+      showToast('Harap isi tanggal dan beban angka kg yang valid!')
+      return
+    }
+    const targetQuest =
+      type === 'personal'
+        ? personalTasks.find((t) => t.id === questId)
+        : clanQuests.find((cq) => cq.id === questId)
+    if (!targetQuest) return
+
+    const currentExs = targetQuest.workoutExercises ?? []
+    const cleanDate = dateStr.trim()
+    const updatedExs = currentExs.map((ex) => {
+      if (ex.id !== exerciseId) return ex
+      const prev = ex.history && ex.history.length > 0 ? [...ex.history] : []
+      const existingIdx = prev.findIndex((h) => h.date.toLowerCase() === cleanDate.toLowerCase())
+      const entry: WorkoutExerciseHistory = {
+        date: cleanDate,
+        weight: Number(weight),
+        reps: Number(reps) || 10,
+        setNumber: Number(setNum) || 1,
+        timestamp: Date.now(),
+      }
+      if (existingIdx !== -1) {
+        prev[existingIdx] = entry
+      } else {
+        prev.push(entry)
+      }
+      return { ...ex, history: prev }
+    })
+    handleUpdateWorkoutExercises(questId, type, updatedExs)
+    showToast(`Sesi ${cleanDate} (${weight}kg) berhasil ditambahkan ke riwayat!`)
+    setCustomHistDate('')
+    setCustomHistWeight('')
+  }
+
+  // HAPUS RIWAYAT SESI
+  const handleDeleteExerciseHistory = (
+    questId: string,
+    type: 'personal' | 'clan',
+    exerciseId: string,
+    historyIdx: number
+  ) => {
+    const targetQuest =
+      type === 'personal'
+        ? personalTasks.find((t) => t.id === questId)
+        : clanQuests.find((cq) => cq.id === questId)
+    if (!targetQuest) return
+
+    const currentExs = targetQuest.workoutExercises ?? []
+    const updatedExs = currentExs.map((ex) => {
+      if (ex.id !== exerciseId || !ex.history) return ex
+      const filtered = ex.history.filter((_, idx) => idx !== historyIdx)
+      return { ...ex, history: filtered }
+    })
+    handleUpdateWorkoutExercises(questId, type, updatedExs)
+    showToast('Catatan riwayat beban dihapus.')
   }
 
   // DELETE GERAKAN
@@ -1623,6 +1712,37 @@ export default function Page() {
   }
 
   const handleCompleteWorkout = (questId: string, type: 'personal' | 'clan') => {
+    // Sinkronkan seluruh beban gerakan yang set-nya selesai ke riwayat real-time hari ini
+    const targetQuest =
+      type === 'personal'
+        ? personalTasks.find((t) => t.id === questId)
+        : clanQuests.find((cq) => cq.id === questId)
+
+    if (targetQuest && targetQuest.workoutExercises) {
+      const todayLabel = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+      const updatedExercises = targetQuest.workoutExercises.map((ex) => {
+        const completedSets = ex.sets.filter((s) => s.completed)
+        if (completedSets.length === 0) return ex
+        const lastCompleted = completedSets[completedSets.length - 1]
+        const prevHist = ex.history ? [...ex.history] : []
+        const exIdx = prevHist.findIndex((h) => h.date === todayLabel)
+        const histEntry: WorkoutExerciseHistory = {
+          date: todayLabel,
+          weight: lastCompleted.weight ?? 0,
+          reps: lastCompleted.reps ?? 10,
+          setNumber: lastCompleted.setNumber,
+          timestamp: Date.now(),
+        }
+        if (exIdx !== -1) {
+          prevHist[exIdx] = histEntry
+        } else {
+          prevHist.push(histEntry)
+        }
+        return { ...ex, history: prevHist }
+      })
+      handleUpdateWorkoutExercises(questId, type, updatedExercises)
+    }
+
     if (type === 'personal') {
       const target = personalTasks.find((t) => t.id === questId)
       if (target && !target.done) {
@@ -1638,7 +1758,7 @@ export default function Page() {
     setActiveExerciseId(null)
     setRestTimerActive(false)
     setShowFloatingTimer(false)
-    showToast('🎉 Sesi Workout Selesai! Quest Gym berhasil diselesaikan!')
+    showToast('🎉 Sesi Workout Selesai! Riwayat beban berhasil diperbarui!')
   }
 
   // ============================================================================
@@ -2935,6 +3055,250 @@ export default function Page() {
     )
   }
 
+  // MODAL KELOLA RIWAYAT BEBAN (REAL-TIME MANAGEMENT & SCROLL TEST)
+  const renderHistoryManagerModal = () => {
+    if (!isHistoryManagerOpen || !activeExercise || !currentWorkoutQuest || !activeWorkoutQuest) return null
+
+    return (
+      <div
+        className="modal-overlay"
+        onClick={() => setIsHistoryManagerOpen(false)}
+        style={{ zIndex: 10000 }}
+      >
+        <div
+          className="modal-content"
+          style={{ maxWidth: '400px', maxHeight: '88vh', overflowY: 'auto' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="modal-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <TrendingUp size={16} color="#c084fc" />
+              <h3 style={{ textTransform: 'uppercase', fontSize: '13px' }}>
+                Riwayat Beban: {activeExercise.name}
+              </h3>
+            </div>
+            <button
+              type="button"
+              className="modal-close"
+              onClick={() => setIsHistoryManagerOpen(false)}
+              aria-label="Tutup"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* FORM TAMBAH SESI MANUAL / BACKFILL TANGGAL LAIN */}
+          <div
+            style={{
+              background: '#0a0814',
+              border: '1px solid #281f3d',
+              borderRadius: '12px',
+              padding: '12px',
+              marginBottom: '16px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '10px',
+                fontWeight: 800,
+                color: '#a855f7',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <Plus size={11} />
+              <span>Tambah Sesi Manual / Tanggal Lain</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px' }}>
+              <div>
+                <label className="modal-label" style={{ fontSize: '9px', marginBottom: '4px' }}>TANGGAL</label>
+                <input
+                  type="text"
+                  className="modal-input"
+                  style={{ marginBottom: 0, padding: '7px 9px', fontSize: '11.5px' }}
+                  placeholder="Misal: 04 Nov"
+                  value={customHistDate}
+                  onChange={(e) => setCustomHistDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="modal-label" style={{ fontSize: '9px', marginBottom: '4px' }}>BEBAN (KG)</label>
+                <input
+                  type="number"
+                  className="modal-input"
+                  style={{ marginBottom: 0, padding: '7px 9px', fontSize: '11.5px' }}
+                  placeholder="25"
+                  value={customHistWeight}
+                  onChange={(e) => setCustomHistWeight(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="modal-label" style={{ fontSize: '9px', marginBottom: '4px' }}>REPS</label>
+                <input
+                  type="number"
+                  className="modal-input"
+                  style={{ marginBottom: 0, padding: '7px 9px', fontSize: '11.5px' }}
+                  placeholder="10"
+                  value={customHistReps}
+                  onChange={(e) => setCustomHistReps(e.target.value)}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const w = parseFloat(customHistWeight)
+                const r = parseInt(customHistReps) || 10
+                if (!customHistDate.trim() || isNaN(w) || w <= 0) {
+                  showToast('Harap masukkan tanggal (misal: 04 Nov) dan beban angka kg!')
+                  return
+                }
+                handleAddCustomExerciseHistory(
+                  currentWorkoutQuest.id,
+                  activeWorkoutQuest.type,
+                  activeExercise.id,
+                  customHistDate.trim(),
+                  w,
+                  r
+                )
+              }}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                marginTop: '10px',
+                padding: '7px 12px',
+                fontSize: '11px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
+              <Plus size={12} />
+              <span>Simpan ke Riwayat Progres</span>
+            </button>
+          </div>
+
+          {/* DAFTAR RIWAYAT TERCATAT */}
+          <div>
+            <div
+              style={{
+                fontSize: '10px',
+                fontWeight: 800,
+                color: '#8e84a2',
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span>Riwayat Real-Time Tersimpan ({(activeExercise.history || []).length})</span>
+              <span style={{ fontSize: '9px', color: '#7c7390' }}>Tampil di chart</span>
+            </div>
+
+            {(!activeExercise.history || activeExercise.history.length === 0) ? (
+              <div
+                style={{
+                  padding: '16px',
+                  textAlign: 'center',
+                  background: '#0d0a17',
+                  borderRadius: '10px',
+                  border: '1px dashed #282038',
+                  color: '#7f7495',
+                  fontSize: '11px',
+                  lineHeight: 1.5,
+                }}
+              >
+                Belum ada sesi riwayat yang disimpan secara manual. Beban sesi aktif hari ini otomatis tampil di chart!
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '6px' }}>
+                {activeExercise.history.map((hist, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      background: '#120e21',
+                      border: '1px solid #231b35',
+                      borderRadius: '9px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          color: '#c084fc',
+                          background: 'rgba(168, 85, 247, 0.12)',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        {hist.date}
+                      </span>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#f3f1ff' }}>
+                        {hist.weight} <span style={{ fontSize: '10px', color: '#a78bfa' }}>KG</span>
+                        {hist.reps && (
+                          <span style={{ fontSize: '10px', color: '#8e84a2', marginLeft: '6px' }}>
+                            • {hist.reps} Reps
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleDeleteExerciseHistory(
+                          currentWorkoutQuest.id,
+                          activeWorkoutQuest.type,
+                          activeExercise.id,
+                          idx
+                        )
+                      }}
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        color: '#f87171',
+                        borderRadius: '6px',
+                        padding: '4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title="Hapus sesi ini"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="modal-actions" style={{ marginTop: '16px' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ width: '100%' }}
+              onClick={() => setIsHistoryManagerOpen(false)}
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <main className="app-shell">
       <div className="phone-frame">
@@ -3109,6 +3473,9 @@ export default function Page() {
 
         {/* MODAL PENGATURAN DURASI ISTIRAHAT */}
         {renderTimerSettingModal()}
+
+        {/* MODAL KELOLA RIWAYAT BEBAN (REAL-TIME) */}
+        {renderHistoryManagerModal()}
 
         {/* FLOATING HEADS-UP NOTIFICATION (SEPERTI NOTIF HP, TIDAK MENGGESER KONTEN) */}
         {statusMessage && (
@@ -3341,7 +3708,7 @@ export default function Page() {
 
 
                 {/* ============================================================
-                    CHART PROGRES BEBAN & INFO SET TERAKHIR DENGAN TANGGAL
+                    CHART PROGRES BEBAN & INFO SET TERAKHIR (REAL-TIME & SCROLLABLE)
                    ============================================================ */}
                 {(() => {
                   const completedSets = activeExercise.sets.filter((s) => s.completed)
@@ -3355,20 +3722,19 @@ export default function Page() {
                   const todayDateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
                   const fullDateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
 
-                  // Riwayat sesi: gunakan riwayat tersimpan, atau sediakan baseline progres jika baru pertama kali
-                  const baselineProgression: WorkoutExerciseHistory[] = [
-                    { date: '26 Okt', weight: Math.max(5, Math.round(latestWeight * 0.75)), reps: 10, setNumber: 3 },
-                    { date: '29 Okt', weight: Math.max(7.5, Math.round(latestWeight * 0.82)), reps: 10, setNumber: 3 },
-                    { date: '01 Nov', weight: Math.max(10, Math.round(latestWeight * 0.9)), reps: 10, setNumber: 3 },
-                    { date: '03 Nov', weight: Math.max(10, Math.round(latestWeight * 0.95)), reps: 10, setNumber: 3 },
-                    { date: todayDateStr, weight: latestWeight, reps: latestReps, setNumber: latestSetNum },
-                  ]
+                  // REAL-TIME ONLY (NO DUMMY DATA)
+                  // Data hanya diambil dari riwayat nyata yang tercatat di activeExercise.history
+                  const savedHistory: WorkoutExerciseHistory[] =
+                    activeExercise.history && activeExercise.history.length > 0
+                      ? activeExercise.history
+                      : []
 
                   let historyList: WorkoutExerciseHistory[] = []
-                  if (activeExercise.history && activeExercise.history.length > 0) {
-                    historyList = [...activeExercise.history]
+                  if (savedHistory.length > 0) {
+                    historyList = [...savedHistory]
                     const todayIdx = historyList.findIndex((h) => h.date === todayDateStr)
                     if (todayIdx !== -1) {
+                      // Sinkronkan nilai sesi hari ini dengan beban kerja terbaru secara real-time
                       historyList[todayIdx] = {
                         ...historyList[todayIdx],
                         weight: latestWeight,
@@ -3376,6 +3742,7 @@ export default function Page() {
                         setNumber: latestSetNum,
                       }
                     } else {
+                      // Masukkan sesi aktif hari ini sebagai titik live terkini
                       historyList.push({
                         date: todayDateStr,
                         weight: latestWeight,
@@ -3384,19 +3751,32 @@ export default function Page() {
                       })
                     }
                   } else {
-                    historyList = baselineProgression
+                    // Jika belum pernah ada riwayat sebelumnya, hanya tampilkan 1 sesi live hari ini
+                    historyList = [
+                      {
+                        date: todayDateStr,
+                        weight: latestWeight,
+                        reps: latestReps,
+                        setNumber: latestSetNum,
+                      },
+                    ]
                   }
 
-                  const firstWeight = historyList[0]?.weight ?? latestWeight
-                  const diffWeight = latestWeight - firstWeight
+                  const pointsCount = historyList.length
+                  const isMultiPoints = pointsCount > 1
+                  const prevWeight = isMultiPoints ? historyList[pointsCount - 2].weight : latestWeight
+                  const diffFromPrev = latestWeight - prevWeight
 
-                  // SVG Dimensions & Coordinates
-                  const svgW = 340
-                  const svgH = 110
-                  const pLeft = 32
-                  const pRight = 24
+                  // Dimensi SVG & Horizontally Scrollable setup
+                  // Jika data lebih dari 4 sesi, per sesi mendapatkan 70px lebar dan container dapat di-scroll secara horizontal
+                  const pointSpacing = 72
+                  const baseW = 340
+                  const svgW = pointsCount > 4 ? Math.max(baseW, 64 + (pointsCount - 1) * pointSpacing) : baseW
+                  const svgH = 118
+                  const pLeft = pointsCount > 1 ? (pointsCount > 4 ? 36 : 32) : svgW / 2
+                  const pRight = pointsCount > 4 ? 36 : 32
                   const pTop = 22
-                  const pBottom = 24
+                  const pBottom = 26
                   const plotW = svgW - pLeft - pRight
                   const plotH = svgH - pTop - pBottom
 
@@ -3407,19 +3787,21 @@ export default function Page() {
                     minW = Math.max(0, minW - 5)
                     maxW = maxW + 5
                   } else {
-                    const margin = (maxW - minW) * 0.15 || 2
+                    const margin = Math.max(2, (maxW - minW) * 0.2)
                     minW = Math.max(0, minW - margin)
                     maxW = maxW + margin
                   }
 
                   const points = historyList.map((item, idx) => {
-                    const x = pLeft + (historyList.length > 1 ? (idx / (historyList.length - 1)) * plotW : plotW / 2)
+                    const x = pointsCount > 1 ? pLeft + (idx / (pointsCount - 1)) * plotW : svgW / 2
                     const y = pTop + plotH - ((item.weight - minW) / (maxW - minW)) * plotH
                     return { ...item, x, y }
                   })
 
-                  const lineD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-                  const areaD = points.length > 0
+                  const lineD = points.length > 1
+                    ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+                    : ''
+                  const areaD = points.length > 1
                     ? `${lineD} L ${points[points.length - 1].x.toFixed(1)} ${(pTop + plotH).toFixed(1)} L ${points[0].x.toFixed(1)} ${(pTop + plotH).toFixed(1)} Z`
                     : ''
 
@@ -3458,7 +3840,7 @@ export default function Page() {
                             }}
                           >
                             <TrendingUp size={11} color="#c084fc" />
-                            <span>TRACKING BEBAN</span>
+                            <span>TRACKING BEBAN (REAL-TIME)</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '3px' }}>
                             <span
@@ -3473,19 +3855,36 @@ export default function Page() {
                               {latestWeight}{' '}
                               <span style={{ fontSize: '13px', fontWeight: 700, color: '#c084fc' }}>KG</span>
                             </span>
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                fontWeight: 800,
-                                color: diffWeight >= 0 ? '#4ade80' : '#f87171',
-                                background: diffWeight >= 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                padding: '2px 6px',
-                                borderRadius: '6px',
-                                lineHeight: 1,
-                              }}
-                            >
-                              {diffWeight >= 0 ? `+${diffWeight.toFixed(1)} kg` : `${diffWeight.toFixed(1)} kg`}
-                            </span>
+                            {isMultiPoints ? (
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  color: diffFromPrev >= 0 ? '#4ade80' : '#f87171',
+                                  background: diffFromPrev >= 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                  padding: '2px 6px',
+                                  borderRadius: '6px',
+                                  lineHeight: 1,
+                                }}
+                              >
+                                {diffFromPrev > 0 ? `+${diffFromPrev.toFixed(1)} kg` : diffFromPrev < 0 ? `${diffFromPrev.toFixed(1)} kg` : 'Tetap (0 kg)'}
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  fontSize: '9.5px',
+                                  fontWeight: 800,
+                                  color: '#c084fc',
+                                  background: 'rgba(192, 132, 252, 0.12)',
+                                  border: '1px solid rgba(192, 132, 252, 0.25)',
+                                  padding: '2px 6px',
+                                  borderRadius: '6px',
+                                  lineHeight: 1,
+                                }}
+                              >
+                                Real-Time
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -3531,19 +3930,47 @@ export default function Page() {
                         </div>
                       </div>
 
-                      {/* GRAFIK / CHART PROGRESS (SVG) */}
+                      {/* INDIKATOR SCROLL JIKA DATA LEBIH DARI 4 */}
+                      {pointsCount > 4 && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            gap: '4px',
+                            marginBottom: '4px',
+                            fontSize: '9px',
+                            color: '#a78bfa',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>↔ Geser grafik untuk melihat riwayat lengkap</span>
+                        </div>
+                      )}
+
+                      {/* GRAFIK / CHART PROGRESS (SVG HORIZONTALLY SCROLLABLE) */}
                       <div
+                        ref={chartScrollRef}
+                        className="custom-scrollbar"
                         style={{
-                          background: 'rgba(9, 7, 16, 0.65)',
+                          background: 'rgba(9, 7, 16, 0.75)',
                           borderRadius: '12px',
                           border: '1px solid #1f1830',
                           padding: '6px 4px 4px',
                           position: 'relative',
+                          overflowX: 'auto',
+                          overflowY: 'hidden',
+                          WebkitOverflowScrolling: 'touch',
                         }}
                       >
                         <svg
                           viewBox={`0 0 ${svgW} ${svgH}`}
-                          style={{ width: '100%', height: 'auto', display: 'block' }}
+                          style={{
+                            width: pointsCount > 4 ? `${svgW}px` : '100%',
+                            minWidth: pointsCount > 4 ? `${svgW}px` : '100%',
+                            height: '118px',
+                            display: 'block',
+                          }}
                         >
                           <defs>
                             <linearGradient id="weightAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -3558,9 +3985,9 @@ export default function Page() {
                             return (
                               <line
                                 key={i}
-                                x1={pLeft}
+                                x1={pointsCount > 1 ? pLeft : 20}
                                 y1={yPos}
-                                x2={svgW - pRight}
+                                x2={pointsCount > 1 ? svgW - pRight : svgW - 20}
                                 y2={yPos}
                                 stroke="#1e1830"
                                 strokeDasharray="3 3"
@@ -3569,10 +3996,10 @@ export default function Page() {
                             )
                           })}
 
-                          {/* Area Fill */}
+                          {/* Area Fill jika multi-point */}
                           {areaD && <path d={areaD} fill="url(#weightAreaGrad)" />}
 
-                          {/* Line Chart */}
+                          {/* Line Chart jika multi-point */}
                           {lineD && (
                             <path
                               d={lineD}
@@ -3581,6 +4008,20 @@ export default function Page() {
                               fill="none"
                               strokeLinecap="round"
                               strokeLinejoin="round"
+                            />
+                          )}
+
+                          {/* Guide Line horizontal jika hanya 1 point */}
+                          {!isMultiPoints && points.length === 1 && (
+                            <line
+                              x1={24}
+                              y1={points[0].y}
+                              x2={svgW - 24}
+                              y2={points[0].y}
+                              stroke="#7c3aed"
+                              strokeDasharray="4 4"
+                              strokeWidth="1.2"
+                              opacity="0.5"
                             />
                           )}
 
@@ -3614,7 +4055,7 @@ export default function Page() {
                                   x={p.x}
                                   y={p.y - 7}
                                   textAnchor="middle"
-                                  fontSize="8.5"
+                                  fontSize="9"
                                   fontWeight="800"
                                   fill={isLatest ? '#fbbf24' : '#e9d5ff'}
                                 >
@@ -3626,7 +4067,7 @@ export default function Page() {
                                   x={p.x}
                                   y={svgH - 7}
                                   textAnchor="middle"
-                                  fontSize="8"
+                                  fontSize="8.5"
                                   fontWeight={isLatest ? '700' : '500'}
                                   fill={isLatest ? '#d8b4fe' : '#7c728e'}
                                 >
@@ -3638,50 +4079,93 @@ export default function Page() {
                         </svg>
                       </div>
 
-                      {/* QUICK ACTION: CATAT BEBAN HARI INI */}
+                      {/* SINGLE POINT HELPER NOTE */}
+                      {!isMultiPoints && (
+                        <div
+                          style={{
+                            fontSize: '9px',
+                            color: '#9e8fc5',
+                            marginTop: '6px',
+                            textAlign: 'center',
+                            background: 'rgba(124, 58, 237, 0.08)',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            border: '1px dashed rgba(168, 85, 247, 0.25)',
+                          }}
+                        >
+                          📍 Sesi pertama real-time. Grafik garis akan tersambung seiring kamu menyelesaikan sesi latihan!
+                        </div>
+                      )}
+
+                      {/* QUICK ACTION: CATAT BEBAN HARI INI & KELOLA RIWAYAT */}
                       <div
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
+                          gap: '8px',
                           marginTop: '8px',
                           padding: '0 2px',
                         }}
                       >
-                        <span style={{ fontSize: '9.5px', color: '#7c7390' }}>
+                        <span style={{ fontSize: '9px', color: '#7c7390', flex: 1 }}>
                           💡 Beban otomatis tersimpan setiap menyelesaikan set
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleLogExerciseProgress(
-                              currentWorkoutQuest.id,
-                              activeWorkoutQuest.type,
-                              activeExercise.id,
-                              latestWeight,
-                              latestReps,
-                              latestSetNum
-                            )
-                          }}
-                          style={{
-                            background: 'rgba(168, 85, 247, 0.12)',
-                            border: '1px solid rgba(168, 85, 247, 0.35)',
-                            borderRadius: '7px',
-                            color: '#d5beff',
-                            fontSize: '9.5px',
-                            fontWeight: 700,
-                            padding: '3px 8px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            transition: 'all 0.15s ease',
-                          }}
-                          title="Simpan beban saat ini ke riwayat progres"
-                        >
-                          <Plus size={10} />
-                          <span>Catat Sesi Ini</span>
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setIsHistoryManagerOpen(true)}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.12)',
+                              borderRadius: '7px',
+                              color: '#c4b5fd',
+                              fontSize: '9.5px',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.15s ease',
+                            }}
+                            title="Buka pengelola riwayat beban"
+                          >
+                            <Settings size={10} />
+                            <span>Riwayat</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleLogExerciseProgress(
+                                currentWorkoutQuest.id,
+                                activeWorkoutQuest.type,
+                                activeExercise.id,
+                                latestWeight,
+                                latestReps,
+                                latestSetNum
+                              )
+                            }}
+                            style={{
+                              background: 'rgba(168, 85, 247, 0.15)',
+                              border: '1px solid rgba(168, 85, 247, 0.4)',
+                              borderRadius: '7px',
+                              color: '#e9d5ff',
+                              fontSize: '9.5px',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.15s ease',
+                            }}
+                            title="Simpan beban saat ini ke riwayat progres"
+                          >
+                            <Plus size={10} />
+                            <span>Catat Sesi Ini</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )
