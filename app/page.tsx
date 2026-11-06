@@ -83,6 +83,7 @@ interface PersonalTask {
   icon: string
   done: boolean
   schedule?: string[]
+  completedDates?: string[]
   workoutExercises?: WorkoutExercise[]
 }
 
@@ -291,44 +292,35 @@ const HABIT_PALETTES = [
   { color: '#34d399', glow: 'rgba(52, 211, 153, 0.45)', name: 'Emerald' },
 ]
 
-function getHabitYearGrid(seedId: string, basePct: number, isDoneToday?: boolean) {
+function getHabitYearGrid(
+  seedId: string,
+  basePct: number = 0,
+  isDoneToday?: boolean,
+  completedDates?: string[]
+) {
   const TOTAL_WEEKS = 42
   const TOTAL_DAYS = TOTAL_WEEKS * 7 // 294 days
-  const CURRENT_DAY = 265 // Fixed current point in year
 
-  let completed = 0
+  const uniqueDates = new Set<string>(completedDates || [])
+  const todayIso = new Date().toISOString().slice(0, 10)
+  if (isDoneToday) {
+    uniqueDates.add(todayIso)
+  } else {
+    uniqueDates.delete(todayIso)
+  }
+
+  const completed = uniqueDates.size
   const cells: ('active' | 'inactive' | 'future')[] = []
 
   for (let day = 0; day < TOTAL_DAYS; day++) {
-    if (day > CURRENT_DAY) {
-      cells.push('future')
-    } else if (day === CURRENT_DAY && isDoneToday !== undefined) {
-      if (isDoneToday) {
-        cells.push('active')
-        completed++
-      } else {
-        cells.push('inactive')
-      }
+    if (day < completed) {
+      cells.push('active')
     } else {
-      let h = 0
-      const s = `${seedId}-${day}`
-      for (let i = 0; i < s.length; i++) {
-        h = (h << 5) - h + s.charCodeAt(i)
-        h |= 0
-      }
-      const score = Math.abs(h % 100)
-      const isActive = score < basePct
-      if (isActive) {
-        cells.push('active')
-        completed++
-      } else {
-        cells.push('inactive')
-      }
+      cells.push('inactive')
     }
   }
 
-  const elapsed = CURRENT_DAY + 1
-  const pct = Math.round((completed / elapsed) * 100)
+  const pct = completed === 0 ? 0 : Math.min(100, Math.max(1, Math.round((completed / TOTAL_DAYS) * 100)))
   return { cells, pct }
 }
 
@@ -343,6 +335,7 @@ function QuestCard({
   meta,
   icon,
   done,
+  completedDates,
   badgeText,
   isEvent,
   canManage,
@@ -363,6 +356,7 @@ function QuestCard({
   meta: string
   icon: string
   done: boolean
+  completedDates?: string[]
   badgeText?: string
   isEvent?: boolean
   canManage: boolean
@@ -637,9 +631,7 @@ function QuestCard({
       {isConsistencyOpen && (() => {
         const paletteIdx = colorIndex !== undefined ? colorIndex % HABIT_PALETTES.length : 0
         const colorObj = HABIT_PALETTES[paletteIdx]
-        const baseRates = [94, 86, 78, 74, 71, 68, 65]
-        const baseRate = baseRates[paletteIdx % baseRates.length]
-        const { cells, pct } = getHabitYearGrid(questId || title, baseRate, done)
+        const { cells, pct } = getHabitYearGrid(questId || title, 0, done, completedDates)
         const scheduleText =
           schedule && schedule.length > 0
             ? schedule.includes('Everyday')
@@ -1579,7 +1571,17 @@ export default function Page() {
     const userTasks = personalTasks.filter((t) => t.userId === currentUser.id)
     const wasAllDone = userTasks.length > 0 && userTasks.every((t) => t.done)
 
-    const nextTasks = personalTasks.map((t) => (t.id === taskId ? { ...t, done: nextDone } : t))
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const nextTasks = personalTasks.map((t) => {
+      if (t.id !== taskId) return t
+      const prevDates = new Set(t.completedDates || [])
+      if (nextDone) {
+        prevDates.add(todayIso)
+      } else {
+        prevDates.delete(todayIso)
+      }
+      return { ...t, done: nextDone, completedDates: Array.from(prevDates) }
+    })
     const nextUserTasks = nextTasks.filter((t) => t.userId === currentUser.id)
     const isAllDone = nextUserTasks.length > 0 && nextUserTasks.every((t) => t.done)
 
@@ -4172,6 +4174,7 @@ export default function Page() {
                         meta={task.category}
                         icon={task.icon}
                         done={task.done}
+                        completedDates={task.completedDates}
                         schedule={task.schedule}
                         canManage={true}
                         isGym={task.category.toLowerCase() === 'gym'}
@@ -4395,6 +4398,7 @@ export default function Page() {
                         meta={task.category}
                         icon={task.icon}
                         done={task.done}
+                        completedDates={task.completedDates}
                         schedule={task.schedule}
                         canManage={true}
                         isGym={task.category.toLowerCase() === 'gym'}
@@ -4832,8 +4836,8 @@ export default function Page() {
                       ) : (
                         selectedClanQuests.map((cq, index) => {
                           const colorObj = HABIT_PALETTES[(index + 3) % HABIT_PALETTES.length]
-                          const baseRate = [82, 75, 68, 62][index % 4]
-                          const { cells, pct } = getHabitYearGrid(cq.id, baseRate)
+                          const isCqDone = cq.completedByUserIds.includes(currentUser.id)
+                          const { cells, pct } = getHabitYearGrid(cq.id, 0, isCqDone)
                           const scheduleText = cq.schedule && cq.schedule.length > 0
                             ? (cq.schedule.includes('Everyday') ? 'Everyday' : cq.schedule.join(', '))
                             : (cq.questType === 'event' ? 'Event Khusus' : 'Everyday')
@@ -6775,8 +6779,7 @@ export default function Page() {
             >
               {userPersonalTasks.map((task, index) => {
                 const colorObj = HABIT_PALETTES[index % HABIT_PALETTES.length]
-                const baseRate = [86, 86, 74, 71, 66, 65, 62][index % 7]
-                const { cells, pct } = getHabitYearGrid(task.id, baseRate)
+                const { cells, pct } = getHabitYearGrid(task.id, 0, task.done, task.completedDates)
                 const scheduleText = task.schedule && task.schedule.length > 0
                   ? (task.schedule.includes('Everyday') ? 'Everyday' : task.schedule.join(', '))
                   : 'Everyday'
