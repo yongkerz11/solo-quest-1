@@ -6221,118 +6221,131 @@ export default function Page() {
                       onClick={() => setActiveTab('rank')}
                       title="Lihat Peringkat Hunter"
                     >
-                      <svg
-                        className="rank-hex-svg"
-                        viewBox="0 0 106 102"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <defs>
-                          <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
-                            <stop offset="0%" stopColor="#e9d5ff" />
-                            <stop offset="45%" stopColor="#9333ea" />
-                            <stop offset="100%" stopColor="#4c1d95" />
-                          </linearGradient>
-                          <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
-                            <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
-                            <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
-                            <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
-                          </radialGradient>
-                          <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
-                            <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
-                          </linearGradient>
-                        </defs>
+                      <div className="rank-hex-float">
+                        <svg
+                          className="rank-hex-svg"
+                          viewBox="0 0 106 102"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <defs>
+                            <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
+                              <stop offset="0%" stopColor="#e9d5ff" />
+                              <stop offset="45%" stopColor="#9333ea" />
+                              <stop offset="100%" stopColor="#4c1d95" />
+                            </linearGradient>
+                            <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
+                              <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
+                              <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
+                              <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
+                            </radialGradient>
+                            <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
+                              <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
+                            </linearGradient>
+                          </defs>
 
-                        {/* 1. Cincin Orbit Luar Berputar Halus */}
-                        <g className="rank-svg-orbit-cw">
-                          <circle
-                            cx="53"
-                            cy="51"
-                            r="47"
-                            stroke="rgba(168, 85, 247, 0.25)"
-                            strokeWidth="1"
-                            strokeDasharray="6 6"
+                          {/* 1. Cincin Orbit Luar Berputar Halus */}
+                          <g className="rank-svg-orbit-cw">
+                            <circle
+                              cx="53"
+                              cy="51"
+                              r="47"
+                              stroke="rgba(168, 85, 247, 0.25)"
+                              strokeWidth="1"
+                              strokeDasharray="6 6"
+                            />
+                            <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
+                            <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
+                          </g>
+
+                          {/* 2. Busur Energi Dalam Berputar Berlawanan */}
+                          <g className="rank-svg-orbit-ccw">
+                            <circle
+                              cx="53"
+                              cy="51"
+                              r="43"
+                              stroke="rgba(216, 180, 254, 0.35)"
+                              strokeWidth="1.2"
+                              strokeDasharray="24 66"
+                              strokeLinecap="round"
+                            />
+                          </g>
+
+                          {/* 3. Sayap Geometris Kiri & Kanan (Shadow Blades) */}
+                          <g className="rank-svg-wings">
+                            {/* Sayap Kiri */}
+                            <path
+                              d="M15 34 L3 25 L8 42 L15 46 Z"
+                              fill="url(#wingGrad)"
+                            />
+                            <path
+                              d="M15 50 L1 47 L7 60 L15 62 Z"
+                              fill="url(#wingGrad)"
+                              opacity="0.75"
+                            />
+                            {/* Sayap Kanan */}
+                            <path
+                              d="M91 34 L103 25 L98 42 L91 46 Z"
+                              fill="url(#wingGrad)"
+                            />
+                            <path
+                              d="M91 50 L105 47 L99 60 L91 62 Z"
+                              fill="url(#wingGrad)"
+                              opacity="0.75"
+                            />
+                          </g>
+
+                          {/* 4. Bingkai Perisai Heksagonal Utama */}
+                          <polygon
+                            points="53,8 90,28 90,74 53,94 16,74 16,28"
+                            fill="url(#hexCoreGrad)"
+                            stroke="url(#hexOuterGrad)"
+                            strokeWidth="2"
+                            strokeLinejoin="round"
                           />
-                          <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
-                          <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
-                        </g>
 
-                        {/* 2. Busur Energi Dalam Berputar Berlawanan */}
-                        <g className="rank-svg-orbit-ccw">
-                          <circle
-                            cx="53"
-                            cy="51"
-                            r="43"
-                            stroke="rgba(216, 180, 254, 0.35)"
-                            strokeWidth="1.2"
-                            strokeDasharray="24 66"
+                          {/* 5. Aliran Cahaya Laser Mengelilingi Garis Heksagon (Halo + Inti Tanpa CPU Filter) */}
+                          <polygon
+                            className="rank-svg-laser-glow"
+                            pathLength={100}
+                            points="53,8 90,28 90,74 53,94 16,74 16,28"
+                            fill="none"
+                            stroke="rgba(216, 180, 254, 0.42)"
+                            strokeWidth="5"
                             strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
-                        </g>
-
-                        {/* 3. Sayap Geometris Kiri & Kanan (Shadow Blades) */}
-                        <g className="rank-svg-wings">
-                          {/* Sayap Kiri */}
-                          <path
-                            d="M15 34 L3 25 L8 42 L15 46 Z"
-                            fill="url(#wingGrad)"
+                          <polygon
+                            className="rank-svg-laser-border"
+                            pathLength={100}
+                            points="53,8 90,28 90,74 53,94 16,74 16,28"
+                            fill="none"
+                            stroke="#f3e8ff"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
-                          <path
-                            d="M15 50 L1 47 L7 60 L15 62 Z"
-                            fill="url(#wingGrad)"
-                            opacity="0.75"
+
+                          {/* 6. Garis Dalam Heksagon Presisi */}
+                          <polygon
+                            points="53,13 85,31 85,71 53,89 21,71 21,31"
+                            fill="none"
+                            stroke="rgba(192, 132, 252, 0.28)"
+                            strokeWidth="1"
                           />
-                          {/* Sayap Kanan */}
-                          <path
-                            d="M91 34 L103 25 L98 42 L91 46 Z"
-                            fill="url(#wingGrad)"
-                          />
-                          <path
-                            d="M91 50 L105 47 L99 60 L91 62 Z"
-                            fill="url(#wingGrad)"
-                            opacity="0.75"
-                          />
-                        </g>
 
-                        {/* 4. Bingkai Perisai Heksagonal Utama */}
-                        <polygon
-                          points="53,8 90,28 90,74 53,94 16,74 16,28"
-                          fill="url(#hexCoreGrad)"
-                          stroke="url(#hexOuterGrad)"
-                          strokeWidth="2"
-                          strokeLinejoin="round"
-                        />
+                          {/* 7. Ornamen Berlian Puncak & Bawah */}
+                          <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
+                          <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
+                        </svg>
 
-                        {/* 5. Aliran Cahaya Laser Mengelilingi Garis Heksagon */}
-                        <polygon
-                          className="rank-svg-laser-border"
-                          points="53,8 90,28 90,74 53,94 16,74 16,28"
-                          fill="none"
-                          stroke="#f3e8ff"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-
-                        {/* 6. Garis Dalam Heksagon Presisi */}
-                        <polygon
-                          points="53,13 85,31 85,71 53,89 21,71 21,31"
-                          fill="none"
-                          stroke="rgba(192, 132, 252, 0.28)"
-                          strokeWidth="1"
-                        />
-
-                        {/* 7. Ornamen Berlian Puncak & Bawah */}
-                        <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
-                        <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
-                      </svg>
-
-                      {/* Teks Rank di Tengah Perisai Heksagon */}
-                      <div className="rank-hex-content">
-                        <span className="rank-hex-label">RANK</span>
-                        <strong className="rank-hex-letter">{currentRank}</strong>
-                        <span className="rank-hex-sub">HUNTER</span>
+                        {/* Teks Rank di Tengah Perisai Heksagon */}
+                        <div className="rank-hex-content">
+                          <span className="rank-hex-label">RANK</span>
+                          <strong className="rank-hex-letter">{currentRank}</strong>
+                          <span className="rank-hex-sub">HUNTER</span>
+                        </div>
                       </div>
                     </div>
                   </div>
