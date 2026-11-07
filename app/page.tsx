@@ -4968,19 +4968,7 @@ export default function Page() {
             <section className="section-block">
               <div className="section-title">
                 <div>
-                  <span className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    PERSONAL QUEST
-                    {cloudSyncStatus === 'synced' && (
-                      <span style={{ color: '#a78bfa', fontSize: '9px', fontWeight: 600, background: '#1e1438', border: '1px solid #4a2f77', borderRadius: '6px', padding: '1px 5px' }}>
-                        ☁️ CLOUD
-                      </span>
-                    )}
-                    {cloudSyncStatus === 'syncing' && (
-                      <span style={{ color: '#fbbf24', fontSize: '9px', fontWeight: 600, background: '#241a08', border: '1px solid #78350f', borderRadius: '6px', padding: '1px 5px' }}>
-                        ⏳ SYNCING...
-                      </span>
-                    )}
-                  </span>
+                  <span className="eyebrow">PERSONAL QUEST</span>
                   <h2>Quest Pribadi ({currentUser.username})</h2>
                 </div>
                 <span className="completion">
@@ -5192,19 +5180,7 @@ export default function Page() {
           <>
             <section className="quest-heading">
               <div>
-                <p className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  MY QUEST • {currentUser.username.toUpperCase()}
-                  {cloudSyncStatus === 'synced' && (
-                    <span style={{ color: '#a78bfa', fontSize: '9px', fontWeight: 600, background: '#1e1438', border: '1px solid #4a2f77', borderRadius: '6px', padding: '1px 5px' }}>
-                      ☁️ CLOUD
-                    </span>
-                  )}
-                  {cloudSyncStatus === 'syncing' && (
-                    <span style={{ color: '#fbbf24', fontSize: '9px', fontWeight: 600, background: '#241a08', border: '1px solid #78350f', borderRadius: '6px', padding: '1px 5px' }}>
-                      ⏳ SYNCING...
-                    </span>
-                  )}
-                </p>
+                <p className="eyebrow">MY QUEST • {currentUser.username.toUpperCase()}</p>
                 <h1>Daily checklist</h1>
                 <p className="quest-date">
                   {new Date().toLocaleDateString('id-ID', {

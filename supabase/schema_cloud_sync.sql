@@ -56,3 +56,4 @@ CREATE POLICY "Allow public all on profiles" ON public.profiles
   TO anon, authenticated
   USING (true)
   WITH CHECK (true);
+
