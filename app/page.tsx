@@ -6186,6 +6186,21 @@ export default function Page() {
                  ================================================================ */
               <>
                 <section className="hero-card-unified">
+                  {/* 4 Sudut Bingkai Sistem RPG (HUD Corner Brackets) */}
+                  <span className="hud-corner tl" />
+                  <span className="hud-corner tr" />
+                  <span className="hud-corner bl" />
+                  <span className="hud-corner br" />
+
+                  {/* Efek Partikel Mana Melayang (Floating Mana Sparks) */}
+                  <div className="hero-mana-particles">
+                    <span className="mana-spark s1" />
+                    <span className="mana-spark s2" />
+                    <span className="mana-spark s3" />
+                    <span className="mana-spark s4" />
+                    <span className="mana-spark s5" />
+                  </div>
+
                   <div className="hero-top-row">
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="hunter-status-pill">
@@ -6204,24 +6219,60 @@ export default function Page() {
                             />
                             {currentUser.xp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
                           </span>
-                          <span style={{ color: '#d8b4fe', fontWeight: 700 }}>{levelProgress}%</span>
+                          <span style={{ color: '#e9d5ff', fontWeight: 800 }}>{levelProgress}%</span>
                         </div>
                         <div className="hero-xp-track">
                           <span
                             className="hero-xp-fill"
-                            style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 5, levelProgress)}%` }}
+                            style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 6, levelProgress)}%` }}
                           />
                         </div>
                       </div>
                     </div>
 
+                    {/* ROYAL ANIMATED GAME RANK CREST (ISTIMEWA DENGAN ROTATING MAGIC RING & CONIC NEON BORDER) */}
                     <div
-                      className="rank-badge"
+                      className="rank-emblem-showcase"
                       onClick={() => setActiveTab('rank')}
                       title="Lihat Peringkat Hunter"
                     >
-                      <span>RANK</span>
-                      <strong>{currentRank}</strong>
+                      {/* Cincin Orbit Luar & Dalam yang Berputar Berlawanan Arah */}
+                      <span className="rank-orbit-outer" />
+                      <span className="rank-orbit-inner" />
+
+                      {/* Mahkota Kecil di Puncak Perisai Rank */}
+                      <span className="rank-crown-top">
+                        <Crown size={9} color="#fbbf24" />
+                        <span>RANK</span>
+                      </span>
+
+                      {/* 4 Permata Sudut Berkilau */}
+                      <span className="rank-corner-gem g-tl" />
+                      <span className="rank-corner-gem g-tr" />
+                      <span className="rank-corner-gem g-bl" />
+                      <span className="rank-corner-gem g-br" />
+
+                      {/* Perisai Utama dengan Border Conic Neon Berputar */}
+                      <div className="rank-crest-shell">
+                        <div className="rank-crest-core">
+                          <strong className="rank-crest-letter">{currentRank}</strong>
+                        </div>
+                      </div>
+
+                      {/* Pita Gelar Rank di Bawah Perisai */}
+                      <span className="rank-tier-ribbon">
+                        {currentRank === 'S'
+                          ? '★ MONARCH ★'
+                          : currentRank === 'A'
+                          ? '★ MASTER ★'
+                          : currentRank === 'B'
+                          ? '★ KNIGHT ★'
+                          : currentRank === 'C'
+                          ? '★ ELITE ★'
+                          : currentRank === 'D'
+                          ? '★ IRON ★'
+                          : '★ AWAKENED ★'}
+                      </span>
                     </div>
                   </div>
 
