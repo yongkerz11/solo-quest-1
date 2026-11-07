@@ -47,6 +47,14 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import {
+  fetchCloudQuests,
+  saveCloudQuest,
+  deleteCloudQuest,
+  saveAllCloudQuests,
+  fetchCloudProfile,
+  saveCloudProfile,
+} from '@/lib/supabase-sync'
 
 // ============================================================================
 // TYPES & DATA MODELS
@@ -951,6 +959,7 @@ export default function Page() {
   const [rankTab, setRankTab] = useState<'hunters' | 'clans'>('hunters')
   const [inviteCodeInput, setInviteCodeInput] = useState('')
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'offline'>('idle')
 
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
@@ -1244,6 +1253,55 @@ export default function Page() {
   const nextLevelXp = currentLevel * 100
   const levelProgress = Math.min(100, Math.round(((currentUser.xp % 100) / 100) * 100))
 
+  // Sinkronisasi otomatis dengan Supabase Cloud (Quest & Progres Beban)
+  const syncWithCloud = async (forcePushLocal = false) => {
+    if (!currentUser || !isSupabaseConfigured) return
+    setCloudSyncStatus('syncing')
+    try {
+      const [cloudQuests, cloudProfile] = await Promise.all([
+        fetchCloudQuests(currentUser.id, currentUser.username),
+        fetchCloudProfile(currentUser.id, currentUser.username),
+      ])
+
+      if (cloudProfile) {
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === currentUser.id
+              ? { ...u, xp: Math.max(u.xp, cloudProfile.xp), streak: Math.max(u.streak, cloudProfile.streak) }
+              : u
+          )
+        )
+      } else if (currentUser) {
+        saveCloudProfile(currentUser)
+      }
+
+      if (cloudQuests && cloudQuests.length > 0 && !forcePushLocal) {
+        setPersonalTasks((prev) => {
+          const otherTasks = prev.filter(
+            (t) => t.userId !== currentUser.id && (!currentUser.username || !t.id.includes(currentUser.username))
+          )
+          return [...otherTasks, ...cloudQuests]
+        })
+        setCloudSyncStatus('synced')
+      } else {
+        const localTasks = personalTasks.filter((t) => t.userId === currentUser.id)
+        if (localTasks.length > 0) {
+          await saveAllCloudQuests(localTasks, currentUser.username)
+        }
+        setCloudSyncStatus('synced')
+      }
+    } catch (e) {
+      console.warn('Supabase sync notice:', e)
+      setCloudSyncStatus('offline')
+    }
+  }
+
+  useEffect(() => {
+    if (mounted && currentUser) {
+      syncWithCloud()
+    }
+  }, [mounted, currentUser?.id, currentUser?.username])
+
   const currentWorkoutQuest = activeWorkoutQuest
     ? activeWorkoutQuest.type === 'personal'
       ? personalTasks.find((t) => t.id === activeWorkoutQuest.id)
@@ -1293,6 +1351,10 @@ export default function Page() {
       setPersonalTasks((curr) =>
         curr.map((t) => (t.id === questId ? { ...t, workoutExercises: newExercises } : t))
       )
+      const target = personalTasks.find((t) => t.id === questId)
+      if (target) {
+        saveCloudQuest({ ...target, workoutExercises: newExercises }, currentUser.username)
+      }
     } else {
       setClanQuests((curr) =>
         curr.map((cq) => (cq.id === questId ? { ...cq, workoutExercises: newExercises } : cq))
@@ -1804,17 +1866,24 @@ export default function Page() {
     }
 
     setPersonalTasks(nextTasks)
+    const updatedTask = nextTasks.find((t) => t.id === taskId)
+    if (updatedTask) {
+      saveCloudQuest(updatedTask, currentUser.username)
+    }
     if (xpDelta !== 0) {
+      const nextXp = Math.max(0, currentUser.xp + xpDelta)
       setUsers((curr) =>
         curr.map((u) =>
-          u.id === currentUser.id ? { ...u, xp: Math.max(0, u.xp + xpDelta) } : u
+          u.id === currentUser.id ? { ...u, xp: nextXp } : u
         )
       )
+      saveCloudProfile({ ...currentUser, xp: nextXp })
     }
   }
 
   const handleDeletePersonal = (taskId: string) => {
     setPersonalTasks((curr) => curr.filter((t) => t.id !== taskId))
+    deleteCloudQuest(taskId)
     showToast('Quest pribadi dihapus.')
   }
 
@@ -1843,21 +1912,19 @@ export default function Page() {
     const isGym = catObj.name.toLowerCase() === 'gym'
 
     if (editingPersonalTask) {
+      const updatedTask: PersonalTask = {
+        ...editingPersonalTask,
+        title: questTitle.trim(),
+        category: catObj.name,
+        xp: questXp,
+        icon: catObj.icon,
+        schedule: questDays,
+        workoutExercises: isGym ? (editingPersonalTask.workoutExercises ?? []) : undefined,
+      }
       setPersonalTasks((curr) =>
-        curr.map((t) =>
-          t.id === editingPersonalTask.id
-            ? {
-                ...t,
-                title: questTitle.trim(),
-                category: catObj.name,
-                xp: questXp,
-                icon: catObj.icon,
-                schedule: questDays,
-                workoutExercises: isGym ? (t.workoutExercises ?? []) : undefined,
-              }
-            : t
-        )
+        curr.map((t) => (t.id === editingPersonalTask.id ? updatedTask : t))
       )
+      saveCloudQuest(updatedTask, currentUser.username)
       showToast('Quest pribadi berhasil diperbarui!')
     } else {
       const newTask: PersonalTask = {
@@ -1872,6 +1939,7 @@ export default function Page() {
         workoutExercises: isGym ? [] : undefined,
       }
       setPersonalTasks((curr) => [...curr, newTask])
+      saveCloudQuest(newTask, currentUser.username)
       showToast('Quest pribadi baru ditambahkan!')
     }
     const scheduledForToday = isQuestForToday(questDays)
@@ -4900,7 +4968,19 @@ export default function Page() {
             <section className="section-block">
               <div className="section-title">
                 <div>
-                  <span className="eyebrow">PERSONAL QUEST</span>
+                  <span className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    PERSONAL QUEST
+                    {cloudSyncStatus === 'synced' && (
+                      <span style={{ color: '#a78bfa', fontSize: '9px', fontWeight: 600, background: '#1e1438', border: '1px solid #4a2f77', borderRadius: '6px', padding: '1px 5px' }}>
+                        ☁️ CLOUD
+                      </span>
+                    )}
+                    {cloudSyncStatus === 'syncing' && (
+                      <span style={{ color: '#fbbf24', fontSize: '9px', fontWeight: 600, background: '#241a08', border: '1px solid #78350f', borderRadius: '6px', padding: '1px 5px' }}>
+                        ⏳ SYNCING...
+                      </span>
+                    )}
+                  </span>
                   <h2>Quest Pribadi ({currentUser.username})</h2>
                 </div>
                 <span className="completion">
@@ -5112,7 +5192,19 @@ export default function Page() {
           <>
             <section className="quest-heading">
               <div>
-                <p className="eyebrow">MY QUEST • {currentUser.username.toUpperCase()}</p>
+                <p className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  MY QUEST • {currentUser.username.toUpperCase()}
+                  {cloudSyncStatus === 'synced' && (
+                    <span style={{ color: '#a78bfa', fontSize: '9px', fontWeight: 600, background: '#1e1438', border: '1px solid #4a2f77', borderRadius: '6px', padding: '1px 5px' }}>
+                      ☁️ CLOUD
+                    </span>
+                  )}
+                  {cloudSyncStatus === 'syncing' && (
+                    <span style={{ color: '#fbbf24', fontSize: '9px', fontWeight: 600, background: '#241a08', border: '1px solid #78350f', borderRadius: '6px', padding: '1px 5px' }}>
+                      ⏳ SYNCING...
+                    </span>
+                  )}
+                </p>
                 <h1>Daily checklist</h1>
                 <p className="quest-date">
                   {new Date().toLocaleDateString('id-ID', {
