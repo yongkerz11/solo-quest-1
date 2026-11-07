@@ -5436,140 +5436,141 @@ export default function Page() {
               </div>
             ) : (
               /* ================================================================
-                 BERANDA UTAMA: UNIFIED HERO BENTO CARD + HISTORY QUEST PREVIEW
+                 BERANDA UTAMA: RPG CREST HERO + COMPACT 7-DAY BAR + 2-COL BENTO + HISTORY QUEST
                  ================================================================ */
               <>
-                <section className="hero-card-unified">
-                  <div className="hero-top-row">
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="hunter-status-pill">
-                        <span className="hunter-status-dot" />
-                        CURRENT LEVEL
-                      </div>
-                      <h1 className="hero-level-number">Level {currentLevel}</h1>
-
-                      <div className="hero-progress-inline">
-                        <div className="hero-progress-meta">
-                          <span>
-                            <Zap
-                              size={11}
-                              fill="currentColor"
-                              style={{ display: 'inline', color: '#c084fc', marginRight: '4px', verticalAlign: '-1px' }}
-                            />
-                            {currentUser.xp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
-                          </span>
-                          <span style={{ color: '#d8b4fe', fontWeight: 700 }}>{levelProgress}%</span>
-                        </div>
-                        <div className="hero-xp-track">
-                          <span
-                            className="hero-xp-fill"
-                            style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 5, levelProgress)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className="rank-badge"
-                      onClick={() => setActiveTab('rank')}
-                      title="Lihat Peringkat Hunter"
-                    >
+                {/* ROW 1: RPG CREST HERO CARD */}
+                <section className="hero-crest-card">
+                  {/* Left: Prominent Rank Crest + Overlapping Level Tag */}
+                  <div
+                    className="hero-crest-wrap"
+                    onClick={() => setActiveTab('rank')}
+                    title="Lihat Peringkat Hunter"
+                  >
+                    <div className="hero-crest-box">
                       <span>RANK</span>
                       <strong>{currentRank}</strong>
                     </div>
+                    <div className="hero-lvl-tag">LVL {currentLevel}</div>
                   </div>
 
-                  {/* Integrated 3-Column Bento Stats Dock */}
-                  <div className="hero-stats-dock">
-                    <div className="hero-dock-item">
-                      <div
-                        className="hero-dock-icon"
+                  {/* Right: Hunter Progress & Inline Metric Pills */}
+                  <div className="hero-crest-body">
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        marginBottom: '6px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                        <span className="hunter-status-dot" />
+                        <strong
+                          style={{
+                            fontSize: '15px',
+                            fontWeight: 800,
+                            color: '#f5f2ff',
+                            letterSpacing: '-0.02em',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          Hunter {currentUser.username}
+                        </strong>
+                      </div>
+                      <span
                         style={{
-                          background: 'rgba(255, 157, 97, 0.14)',
-                          border: '1px solid rgba(255, 157, 97, 0.3)',
-                          color: '#ff9d61',
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          color: '#d8b4fe',
+                          flexShrink: 0,
                         }}
                       >
-                        <Flame size={14} />
-                      </div>
-                      <div>
-                        <strong>{currentUser.streak} Hari</strong>
-                        <span>Streak</span>
-                      </div>
+                        <Zap
+                          size={10}
+                          fill="currentColor"
+                          style={{ display: 'inline', color: '#c084fc', marginRight: '3px', verticalAlign: '-1px' }}
+                        />
+                        {currentUser.xp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
+                      </span>
                     </div>
 
-                    <div
-                      className="hero-dock-item clickable"
-                      onClick={() => setIsHistoryPageOpen(true)}
-                      title="Buka History Quest"
-                    >
-                      <div
-                        className="hero-dock-icon"
-                        style={{
-                          background: 'rgba(74, 222, 128, 0.14)',
-                          border: '1px solid rgba(74, 222, 128, 0.3)',
-                          color: '#4ade80',
-                        }}
-                      >
-                        <Activity size={14} />
-                      </div>
-                      <div>
-                        <strong>{userHistoryItems.length} Sesi</strong>
-                        <span>History</span>
-                      </div>
+                    <div className="hero-xp-track">
+                      <span
+                        className="hero-xp-fill"
+                        style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 6, levelProgress)}%` }}
+                      />
                     </div>
 
-                    <div
-                      className="hero-dock-item clickable"
-                      onClick={() => setActiveTab('clan')}
-                      title="Buka Komunitas Clan"
-                    >
-                      <div
-                        className="hero-dock-icon"
-                        style={{
-                          background: 'rgba(168, 85, 247, 0.16)',
-                          border: '1px solid rgba(168, 85, 247, 0.34)',
-                          color: '#c084fc',
-                        }}
-                      >
-                        <Shield size={14} />
+                    {/* Sleek Inline Metric Pills */}
+                    <div className="hero-Inline-pills">
+                      <div className="hero-mini-pill">
+                        <Flame size={11} color="#ff9d61" />
+                        <span>{currentUser.streak} Hari</span>
                       </div>
-                      <div>
-                        <strong>{userJoinedClanIds.length} Clan</strong>
-                        <span>Komunitas</span>
+
+                      <div
+                        className="hero-mini-pill clickable"
+                        onClick={() => setIsHistoryPageOpen(true)}
+                        title="Total beban terangkat di History"
+                      >
+                        <Dumbbell size={11} color="#4ade80" />
+                        <span>{totalLiftedVolume.toLocaleString('id-ID')} kg Vol</span>
+                      </div>
+
+                      <div
+                        className="hero-mini-pill clickable"
+                        onClick={() => setActiveTab('clan')}
+                        title="Komunitas Clan diikuti"
+                      >
+                        <Shield size={11} color="#c084fc" />
+                        <span>{userJoinedClanIds.length} Clan</span>
                       </div>
                     </div>
                   </div>
                 </section>
 
-                {/* SECTION 1: JADWAL & KONSISTENSI MINGGU INI (INTERACTIVE 7-DAY STRIP) */}
+                {/* ROW 2: COMPACT 7-DAY CONSISTENCY STRIP */}
                 <section className="weekly-strip-card">
                   <div
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      marginBottom: '12px',
+                      marginBottom: '9px',
                     }}
                   >
-                    <div>
-                      <span className="eyebrow">WEEKLY SCHEDULE</span>
-                      <h2 style={{ fontSize: '15.5px', fontWeight: 800, margin: '2px 0 0', color: '#f5f2ff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CalendarDays size={12} color="#c084fc" />
+                      <strong style={{ fontSize: '12px', fontWeight: 800, color: '#f3f1ff' }}>
                         Jadwal Minggu Ini
-                      </h2>
+                      </strong>
                     </div>
                     <button
                       type="button"
-                      className="show-more-btn"
                       onClick={() => setIsConsistencyModalOpen(true)}
-                      title="Lihat Konsistensi Tahunan"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 9px',
+                        borderRadius: '99px',
+                        background: 'rgba(124, 58, 237, 0.16)',
+                        border: '1px solid rgba(168, 85, 247, 0.32)',
+                        color: '#d8b4fe',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
                     >
-                      <BarChart2 size={12} />
+                      <BarChart2 size={11} />
                       <span>Heatmap</span>
                     </button>
                   </div>
 
-                  {/* 7-Day Interactive Strip (Sen - Min) */}
                   <div className="week-days-grid">
                     {currentWeekDays.map((day) => {
                       const isSelected = day.code === activeScheduleDayCode
@@ -5592,269 +5593,272 @@ export default function Page() {
                       )
                     })}
                   </div>
+                </section>
 
-                  {/* Preview Quest pada Hari yang Dipilih */}
+                {/* ROW 3: 2-COLUMN ASYMMETRIC BENTO GRID (LEFT: ACTIVE WORKOUT / RIGHT: TOP PR SPOTLIGHT) */}
+                <section className="home-bento-grid">
+                  {/* LEFT BENTO: Selected Day's Scheduled Quest + Quick Start */}
+                  <div className="bento-card-left">
+                    <div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: '9.5px',
+                            fontWeight: 800,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            color: '#c4b5fd',
+                          }}
+                        >
+                          {activeScheduleDayObj.fullName}
+                          {activeScheduleDayObj.isToday ? ' • HARI INI' : ''}
+                        </span>
+                        <span
+                          style={{
+                            width: '7px',
+                            height: '7px',
+                            borderRadius: '50%',
+                            background:
+                              activeScheduleDayObj.scheduledTasks.length > 0 ? '#a855f7' : '#3a3154',
+                            boxShadow:
+                              activeScheduleDayObj.scheduledTasks.length > 0
+                                ? '0 0 8px #a855f7'
+                                : 'none',
+                          }}
+                        />
+                      </div>
+
+                      {activeScheduleDayObj.scheduledTasks.length > 0 ? (
+                        (() => {
+                          const primaryTask = activeScheduleDayObj.scheduledTasks[0]
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                              <div
+                                style={{
+                                  width: '36px',
+                                  height: '36px',
+                                  borderRadius: '11px',
+                                  background: 'rgba(124, 58, 237, 0.2)',
+                                  border: '1px solid rgba(168, 85, 247, 0.38)',
+                                  display: 'grid',
+                                  placeItems: 'center',
+                                  fontSize: '17px',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {primaryTask.icon}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <strong
+                                  style={{
+                                    display: 'block',
+                                    fontSize: '13.5px',
+                                    fontWeight: 800,
+                                    color: '#f5f2ff',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                  }}
+                                >
+                                  {primaryTask.title}
+                                </strong>
+                                <span style={{ fontSize: '10px', color: '#9a90b0' }}>
+                                  {primaryTask.category} • +{primaryTask.xp} XP
+                                  {activeScheduleDayObj.scheduledTasks.length > 1
+                                    ? ` (+${activeScheduleDayObj.scheduledTasks.length - 1})`
+                                    : ''}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })()
+                      ) : (
+                        <div>
+                          <strong style={{ display: 'block', fontSize: '13px', color: '#d8cfe8' }}>
+                            Rest Day
+                          </strong>
+                          <span style={{ fontSize: '10px', color: '#7e7494' }}>
+                            Tidak ada jadwal di hari {activeScheduleDayObj.fullName}.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {activeScheduleDayObj.scheduledTasks.length > 0 ? (
+                      (() => {
+                        const primaryTask = activeScheduleDayObj.scheduledTasks[0]
+                        const isGym = primaryTask.category.toLowerCase() === 'gym'
+                        return isGym ? (
+                          <button
+                            type="button"
+                            onClick={() => setActiveWorkoutQuest({ type: 'personal', id: primaryTask.id })}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              borderRadius: '11px',
+                              background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                              border: '1px solid rgba(192, 132, 252, 0.55)',
+                              boxShadow: '0 6px 16px rgba(124, 58, 237, 0.35)',
+                              color: '#ffffff',
+                              fontSize: '11px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <Play size={11} fill="currentColor" />
+                            <span>Start Workout</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePersonal(primaryTask.id)}
+                            style={{
+                              width: '100%',
+                              padding: '7px 12px',
+                              borderRadius: '11px',
+                              background: primaryTask.done
+                                ? 'rgba(74, 222, 128, 0.16)'
+                                : 'rgba(168, 85, 247, 0.2)',
+                              border: primaryTask.done
+                                ? '1px solid rgba(74, 222, 128, 0.45)'
+                                : '1px solid rgba(168, 85, 247, 0.4)',
+                              color: primaryTask.done ? '#4ade80' : '#e9d5ff',
+                              fontSize: '11px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {primaryTask.done ? 'Selesai ✓' : 'Selesaikan Quest'}
+                          </button>
+                        )
+                      })()
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('calendar')}
+                        style={{
+                          width: '100%',
+                          padding: '7px 10px',
+                          borderRadius: '11px',
+                          background: 'rgba(139, 92, 246, 0.12)',
+                          border: '1px dashed rgba(168, 85, 247, 0.35)',
+                          color: '#c4b5fd',
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        + Atur Jadwal Quest
+                      </button>
+                    )}
+                  </div>
+
+                  {/* RIGHT BENTO: Top PR & Progression Chart Shortcut */}
                   <div
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: '13px',
-                      background: 'rgba(10, 8, 19, 0.72)',
-                      border: '1px solid rgba(139, 92, 246, 0.18)',
+                    className="bento-card-right"
+                    onClick={() => {
+                      if (topPrRecord) {
+                        setActiveWorkoutQuest({ type: 'personal', id: topPrRecord.questId })
+                        setActiveExerciseId(topPrRecord.exerciseId)
+                      } else {
+                        setActiveTab('calendar')
+                      }
                     }}
+                    title={
+                      topPrRecord
+                        ? `Klik untuk lihat grafik progres ${topPrRecord.name}`
+                        : 'Mulai latihan untuk mencatat Rekor PR'
+                    }
                   >
+                    <div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: '6px',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: '9.5px',
+                            fontWeight: 800,
+                            letterSpacing: '0.08em',
+                            color: '#fbbf24',
+                          }}
+                        >
+                          🏆 REKOR PR
+                        </span>
+                        <TrendingUp size={13} color="#fbbf24" />
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                        <strong
+                          style={{
+                            fontSize: '21px',
+                            fontWeight: 900,
+                            color: '#ffffff',
+                            letterSpacing: '-0.03em',
+                            lineHeight: 1.1,
+                          }}
+                        >
+                          {topPrRecord ? `${topPrRecord.maxWeight} kg` : '0 kg'}
+                        </strong>
+                        {topPrRecord && (
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: '#fbbf24' }}>
+                            ×{topPrRecord.bestReps}
+                          </span>
+                        )}
+                      </div>
+
+                      <span
+                        style={{
+                          display: 'block',
+                          marginTop: '3px',
+                          fontSize: '10.5px',
+                          fontWeight: 600,
+                          color: '#b6accb',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {topPrRecord ? topPrRecord.name : 'Belum ada PR'}
+                      </span>
+                    </div>
+
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        marginBottom: activeScheduleDayObj.scheduledTasks.length > 0 ? '8px' : '0',
+                        paddingTop: '7px',
+                        borderTop: '1px solid rgba(251, 191, 36, 0.16)',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        color: '#fde68a',
                       }}
                     >
-                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#c4b5fd' }}>
-                        {activeScheduleDayObj.fullName}
-                        {activeScheduleDayObj.isToday ? ' (Hari Ini)' : ''}
-                      </span>
-                      <span style={{ fontSize: '10px', color: '#8a80a0' }}>
-                        {activeScheduleDayObj.scheduledTasks.length > 0
-                          ? `${activeScheduleDayObj.scheduledTasks.length} Quest Terjadwal`
-                          : 'Rest Day / Kosong'}
-                      </span>
+                      <span>{topPrRecord ? 'Lihat Grafik' : 'Catat Beban'}</span>
+                      <ChevronRight size={12} />
                     </div>
-
-                    {activeScheduleDayObj.scheduledTasks.length > 0 && (
-                      <div style={{ display: 'grid', gap: '6px' }}>
-                        {activeScheduleDayObj.scheduledTasks.slice(0, 2).map((task) => {
-                          const isGym = task.category.toLowerCase() === 'gym'
-                          return (
-                            <div
-                              key={task.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '8px',
-                                padding: '7px 9px',
-                                borderRadius: '10px',
-                                background: 'rgba(24, 18, 42, 0.85)',
-                                border: '1px solid rgba(168, 85, 247, 0.22)',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                <span style={{ fontSize: '15px' }}>{task.icon}</span>
-                                <div style={{ minWidth: 0 }}>
-                                  <strong
-                                    style={{
-                                      display: 'block',
-                                      fontSize: '12px',
-                                      color: '#f3f1ff',
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                    }}
-                                  >
-                                    {task.title}
-                                  </strong>
-                                  <span style={{ fontSize: '9.5px', color: '#8e84a2' }}>
-                                    {task.category} • +{task.xp} XP
-                                  </span>
-                                </div>
-                              </div>
-
-                              {isGym ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveWorkoutQuest({ type: 'personal', id: task.id })}
-                                  style={{
-                                    padding: '5px 11px',
-                                    borderRadius: '8px',
-                                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                    border: '1px solid rgba(168, 85, 247, 0.5)',
-                                    color: '#ffffff',
-                                    fontSize: '10.5px',
-                                    fontWeight: 800,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <Play size={10} fill="currentColor" />
-                                  <span>Start</span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleTogglePersonal(task.id)}
-                                  style={{
-                                    padding: '4px 9px',
-                                    borderRadius: '8px',
-                                    background: task.done ? 'rgba(74, 222, 128, 0.16)' : 'rgba(168, 85, 247, 0.15)',
-                                    border: task.done ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.35)',
-                                    color: task.done ? '#4ade80' : '#d8b4fe',
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  {task.done ? 'Selesai ✓' : 'Tandai'}
-                                </button>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
                   </div>
                 </section>
 
-                {/* SECTION 2: REKOR BEBAN & PERSONAL RECORDS (PR) */}
-                <section className="section-block" style={{ marginBottom: '22px' }}>
+                {/* ROW 4: HISTORY QUEST DENGAN SHOW MORE */}
+                <section className="section-block" style={{ marginBottom: '8px' }}>
                   <div className="section-title" style={{ marginBottom: '10px' }}>
-                    <div>
-                      <span className="eyebrow">STRENGTH METRICS</span>
-                      <h2>Rekor & Volume Beban</h2>
-                    </div>
-                    {userExerciseRecords.length > 0 && (
-                      <span className="completion">{userExerciseRecords.length} Gerakan</span>
-                    )}
-                  </div>
-
-                  <div className="pr-stats-grid">
-                    <div className="pr-stat-box">
-                      <div
-                        style={{
-                          width: '34px',
-                          height: '34px',
-                          borderRadius: '10px',
-                          background: 'rgba(168, 85, 247, 0.16)',
-                          border: '1px solid rgba(168, 85, 247, 0.35)',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: '#c084fc',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Dumbbell size={16} />
-                      </div>
-                      <div>
-                        <strong style={{ display: 'block', fontSize: '15px', fontWeight: 800, color: '#f5f2ff' }}>
-                          {totalLiftedVolume.toLocaleString('id-ID')} kg
-                        </strong>
-                        <span style={{ fontSize: '10px', color: '#8c82a3' }}>Total Volume</span>
-                      </div>
-                    </div>
-
-                    <div className="pr-stat-box">
-                      <div
-                        style={{
-                          width: '34px',
-                          height: '34px',
-                          borderRadius: '10px',
-                          background: 'rgba(251, 191, 36, 0.14)',
-                          border: '1px solid rgba(251, 191, 36, 0.32)',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: '#fbbf24',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <TrendingUp size={16} />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <strong style={{ display: 'block', fontSize: '15px', fontWeight: 800, color: '#fbbf24' }}>
-                          {topPrRecord ? `${topPrRecord.maxWeight} kg` : '0 kg'}
-                        </strong>
-                        <span
-                          style={{
-                            display: 'block',
-                            fontSize: '10px',
-                            color: '#8c82a3',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {topPrRecord ? `PR: ${topPrRecord.name}` : 'Rekor Beban'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Daftar Gerakan & Shortcut ke Grafik Beban */}
-                  {userExerciseRecords.length > 0 && (
-                    <div style={{ display: 'grid', gap: '7px' }}>
-                      {userExerciseRecords.slice(0, 3).map((rec) => (
-                        <div
-                          key={rec.exerciseId}
-                          className="pr-exercise-row"
-                          onClick={() => {
-                            setActiveWorkoutQuest({ type: 'personal', id: rec.questId })
-                            setActiveExerciseId(rec.exerciseId)
-                          }}
-                          title="Klik untuk melihat grafik progres beban"
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                            <div
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '9px',
-                                background: 'rgba(124, 58, 237, 0.16)',
-                                border: '1px solid rgba(168, 85, 247, 0.3)',
-                                display: 'grid',
-                                placeItems: 'center',
-                                color: '#d8b4fe',
-                                flexShrink: 0,
-                              }}
-                            >
-                              <TrendingUp size={14} />
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <strong
-                                style={{
-                                  display: 'block',
-                                  fontSize: '12.5px',
-                                  color: '#f3f1ff',
-                                  fontWeight: 700,
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                }}
-                              >
-                                {rec.name}
-                              </strong>
-                              <span style={{ fontSize: '10px', color: '#8a80a0' }}>
-                                {rec.questTitle} • {rec.setsCount} Set ({rec.volume.toLocaleString('id-ID')} kg vol)
-                              </span>
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
-                            <span
-                              style={{
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                color: '#e9d5ff',
-                                background: 'rgba(124, 58, 237, 0.2)',
-                                border: '1px solid rgba(168, 85, 247, 0.35)',
-                                padding: '3px 8px',
-                                borderRadius: '8px',
-                              }}
-                            >
-                              {rec.maxWeight} kg × {rec.bestReps}
-                            </span>
-                            <ChevronRight size={14} color="#8c82a3" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-
-                {/* SECTION 3: HISTORY QUEST DENGAN SHOW MORE */}
-                <section className="section-block">
-                  <div className="section-title">
                     <div>
                       <span className="eyebrow">RECENT ACTIVITY</span>
                       <h2>History Quest</h2>
@@ -5873,7 +5877,7 @@ export default function Page() {
                     {userHistoryItems.length === 0 ? (
                       <div
                         style={{
-                          padding: '22px 16px',
+                          padding: '18px 14px',
                           borderRadius: '16px',
                           background: '#0e0c16',
                           border: '1px dashed #28213a',
@@ -5882,7 +5886,7 @@ export default function Page() {
                           color: '#827896',
                         }}
                       >
-                        <p style={{ margin: '0 0 10px' }}>Belum ada riwayat quest atau sesi workout yang tercatat.</p>
+                        <p style={{ margin: '0 0 8px' }}>Belum ada riwayat quest atau sesi workout yang tercatat.</p>
                         <button
                           type="button"
                           className="show-more-btn"
@@ -5893,7 +5897,7 @@ export default function Page() {
                         </button>
                       </div>
                     ) : (
-                      userHistoryItems.slice(0, 3).map((item) => {
+                      userHistoryItems.slice(0, 2).map((item) => {
                         const firstEx = item.exercises[0]
                         const summaryText =
                           item.isGym && firstEx
