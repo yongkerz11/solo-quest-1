@@ -1053,8 +1053,6 @@ export default function Page() {
   } | null>(null)
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
   const [openExerciseDropdownId, setOpenExerciseDropdownId] = useState<string | null>(null)
-  const [expandedExerciseConsistencyIds, setExpandedExerciseConsistencyIds] = useState<string[]>([])
-  const [expandedHomeQuestIds, setExpandedHomeQuestIds] = useState<string[]>([])
   const [restSecondsLeft, setRestSecondsLeft] = useState<number>(60)
   const [restTimerActive, setRestTimerActive] = useState<boolean>(false)
   const [showFloatingTimer, setShowFloatingTimer] = useState<boolean>(false)
@@ -2752,7 +2750,6 @@ export default function Page() {
     const totalSetsCount = exercise.sets.length
     const isExerciseDone = totalSetsCount > 0 && completedSetsCount === totalSetsCount
     const isEditingThis = editingExerciseId === exercise.id
-    const isExerciseConsistencyOpen = expandedExerciseConsistencyIds.includes(exercise.id)
     const matchedCatalogItem = GYM_EXERCISE_LIBRARY.find(
       (item) => item.name.toLowerCase() === exercise.name.trim().toLowerCase()
     )
@@ -2858,23 +2855,10 @@ export default function Page() {
             </div>
           </div>
         ) : (
-          <>
           <div
-            onClick={() => {
-              setOpenExerciseDropdownId(null)
-              setExpandedExerciseConsistencyIds((prev) =>
-                prev.includes(exercise.id)
-                  ? prev.filter((id) => id !== exercise.id)
-                  : [...prev, exercise.id]
-              )
-            }}
             style={{
               background: isExerciseDone ? 'rgba(34, 24, 56, 0.7)' : '#12101a',
-              border: isExerciseConsistencyOpen
-                ? '1px solid rgba(139, 92, 246, 0.55)'
-                : isExerciseDone
-                ? '1px solid #452c75'
-                : '1px solid #252130',
+              border: isExerciseDone ? '1px solid #452c75' : '1px solid #252130',
               borderRadius: '13px',
               padding: '12px',
               display: 'flex',
@@ -2883,14 +2867,15 @@ export default function Page() {
               gap: '10px',
               position: 'relative',
               opacity: isExerciseDone ? 0.88 : 1,
-              cursor: 'pointer',
-              userSelect: 'none',
-              WebkitUserSelect: 'none',
               transition: 'all 0.2s ease',
             }}
           >
-            {/* SISI KIRI: BADGE NOMOR/CHECK + NAMA + VISUAL BAR SET (KLIK UNTUK DROPDOWN KONSISTENSI) */}
+            {/* SISI KIRI: BADGE NOMOR/CHECK + NAMA + VISUAL BAR SET */}
             <div
+              onClick={() => {
+                setOpenExerciseDropdownId(null)
+                setActiveExerciseId(exercise.id)
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -3168,154 +3153,6 @@ export default function Page() {
               </button>
             </div>
           </div>
-
-          {/* DROPDOWN KONSISTENSI GERAKAN (MUNCUL SAAT KARTU GERAKAN DITEKAN) */}
-          {isExerciseConsistencyOpen && (() => {
-            const paletteIdx = Math.max(0, exIndex) % HABIT_PALETTES.length
-            const colorObj = HABIT_PALETTES[paletteIdx]
-            const questCompletedDates =
-              'completedDates' in currentWorkoutQuest && Array.isArray(currentWorkoutQuest.completedDates)
-                ? currentWorkoutQuest.completedDates
-                : []
-            const histDates = (exercise.history || []).map((h) => h.date)
-            const mergedDates = Array.from(new Set([...questCompletedDates, ...histDates]))
-            const { cells, pct } = getHabitYearGrid(
-              `${currentWorkoutQuest.id}-${exercise.id}`,
-              0,
-              isExerciseDone,
-              mergedDates
-            )
-            const questSchedule =
-              'schedule' in currentWorkoutQuest && Array.isArray(currentWorkoutQuest.schedule)
-                ? currentWorkoutQuest.schedule
-                : []
-            const scheduleText =
-              questSchedule.length > 0
-                ? questSchedule.includes('Everyday')
-                  ? 'Everyday'
-                  : questSchedule.join(', ')
-                : 'Everyday'
-
-            return (
-              <div
-                style={{
-                  marginTop: '6px',
-                  marginBottom: '4px',
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  background: '#0b0a12',
-                  border: '1px solid #26203a',
-                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.55)',
-                  animation: 'fadeIn 0.15s ease-out',
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Header: Nama Gerakan - Jadwal & Persentase Konsistensi */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                    marginBottom: '7px',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      color: '#f3f1ff',
-                      whiteSpace: 'nowrap',
-                      textOverflow: 'ellipsis',
-                      overflow: 'hidden',
-                      paddingRight: '12px',
-                    }}
-                  >
-                    {exercise.name}{' '}
-                    <span style={{ fontSize: '11.5px', color: '#827896', fontWeight: 400 }}>
-                      - {scheduleText}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 800,
-                      color: '#f3f1ff',
-                      fontVariantNumeric: 'tabular-nums',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {pct}%
-                  </div>
-                </div>
-
-                {/* Heatmap Grid (42 columns x 7 rows, 100% width) */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(42, 1fr)',
-                    gridTemplateRows: 'repeat(7, 1fr)',
-                    gridAutoFlow: 'column',
-                    gap: '2px',
-                    width: '100%',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {cells.map((status, cIdx) => (
-                    <div
-                      key={cIdx}
-                      style={{
-                        aspectRatio: '1 / 1',
-                        borderRadius: '1.3px',
-                        background:
-                          status === 'active'
-                            ? colorObj.color
-                            : status === 'inactive'
-                            ? '#262430'
-                            : '#16151e',
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Shortcut ke Tabel Set & Grafik Progres Beban */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginTop: '9px',
-                    paddingTop: '8px',
-                    borderTop: '1px solid rgba(139, 92, 246, 0.14)',
-                  }}
-                >
-                  <span style={{ fontSize: '10px', color: '#8a80a0' }}>
-                    {completedSetsCount}/{totalSetsCount} Set selesai • Istirahat {exercise.restSeconds || 60}s
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveExerciseId(exercise.id)}
-                    style={{
-                      background: 'rgba(168, 85, 247, 0.14)',
-                      border: '1px solid rgba(168, 85, 247, 0.35)',
-                      borderRadius: '7px',
-                      padding: '3px 9px',
-                      color: '#d8b4fe',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <span>Atur Set &amp; Beban</span>
-                    <ChevronRight size={11} />
-                  </button>
-                </div>
-              </div>
-            )
-          })()}
-          </>
         )}
       </div>
     )
@@ -6659,203 +6496,84 @@ export default function Page() {
                       <div style={{ display: 'grid', gap: '6px' }}>
                         {activeScheduleDayObj.scheduledTasks.slice(0, 3).map((task) => {
                           const isGym = task.category.toLowerCase() === 'gym'
-                          const isHomeConsistencyOpen = expandedHomeQuestIds.includes(task.id)
-                          const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
                           return (
-                            <div key={task.id}>
-                              <div
-                                onClick={() =>
-                                  setExpandedHomeQuestIds((prev) =>
-                                    prev.includes(task.id)
-                                      ? prev.filter((id) => id !== task.id)
-                                      : [...prev, task.id]
-                                  )
-                                }
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '8px',
-                                  padding: '7px 9px',
-                                  borderRadius: '10px',
-                                  background: 'rgba(24, 18, 42, 0.85)',
-                                  border: isHomeConsistencyOpen
-                                    ? '1px solid rgba(168, 85, 247, 0.55)'
-                                    : '1px solid rgba(168, 85, 247, 0.22)',
-                                  cursor: 'pointer',
-                                  userSelect: 'none',
-                                  WebkitUserSelect: 'none',
-                                  transition: 'border-color 0.15s ease',
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                  <span style={{ fontSize: '15px' }}>{task.icon}</span>
-                                  <div style={{ minWidth: 0 }}>
-                                    <strong
-                                      style={{
-                                        display: 'block',
-                                        fontSize: '12px',
-                                        color: '#f3f1ff',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                      }}
-                                    >
-                                      {task.title}
-                                    </strong>
-                                    <span style={{ fontSize: '9.5px', color: '#8e84a2' }}>
-                                      {task.category} • +{task.xp} XP
-                                    </span>
-                                  </div>
+                            <div
+                              key={task.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px',
+                                padding: '7px 9px',
+                                borderRadius: '10px',
+                                background: 'rgba(24, 18, 42, 0.85)',
+                                border: '1px solid rgba(168, 85, 247, 0.22)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                <span style={{ fontSize: '15px' }}>{task.icon}</span>
+                                <div style={{ minWidth: 0 }}>
+                                  <strong
+                                    style={{
+                                      display: 'block',
+                                      fontSize: '12px',
+                                      color: '#f3f1ff',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {task.title}
+                                  </strong>
+                                  <span style={{ fontSize: '9.5px', color: '#8e84a2' }}>
+                                    {task.category} • +{task.xp} XP
+                                  </span>
                                 </div>
-
-                                {isGym ? (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setWorkoutSubPage('overview')
-                                      setActiveWorkoutQuest({ type: 'personal', id: task.id })
-                                    }}
-                                    style={{
-                                      padding: '5px 11px',
-                                      borderRadius: '8px',
-                                      background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                      border: '1px solid rgba(168, 85, 247, 0.5)',
-                                      color: '#ffffff',
-                                      fontSize: '10.5px',
-                                      fontWeight: 800,
-                                      cursor: 'pointer',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      flexShrink: 0,
-                                    }}
-                                  >
-                                    <Play size={10} fill="currentColor" />
-                                    <span>Start</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleTogglePersonal(task.id)
-                                    }}
-                                    style={{
-                                      padding: '4px 9px',
-                                      borderRadius: '8px',
-                                      background: task.done ? 'rgba(74, 222, 128, 0.16)' : 'rgba(168, 85, 247, 0.15)',
-                                      border: task.done ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.35)',
-                                      color: task.done ? '#4ade80' : '#d8b4fe',
-                                      fontSize: '10px',
-                                      fontWeight: 700,
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    {task.done ? 'Selesai ✓' : 'Tandai'}
-                                  </button>
-                                )}
                               </div>
 
-                              {/* DROPDOWN KONSISTENSI QUEST DI BERANDA (MUNCUL SAAT QUEST DITEKAN) */}
-                              {isHomeConsistencyOpen && (() => {
-                                const paletteIdx = (globalIdx >= 0 ? globalIdx : 0) % HABIT_PALETTES.length
-                                const colorObj = HABIT_PALETTES[paletteIdx]
-                                const { cells, pct } = getHabitYearGrid(
-                                  task.id || task.title,
-                                  0,
-                                  task.done,
-                                  task.completedDates
-                                )
-                                const scheduleText =
-                                  task.schedule && task.schedule.length > 0
-                                    ? task.schedule.includes('Everyday')
-                                      ? 'Everyday'
-                                      : task.schedule.join(', ')
-                                    : 'Everyday'
-
-                                return (
-                                  <div
-                                    style={{
-                                      marginTop: '6px',
-                                      marginBottom: '2px',
-                                      padding: '12px 14px',
-                                      borderRadius: '12px',
-                                      background: '#0b0a12',
-                                      border: '1px solid #26203a',
-                                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.55)',
-                                      animation: 'fadeIn 0.15s ease-out',
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <div
-                                      style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'baseline',
-                                        marginBottom: '7px',
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          fontSize: '13px',
-                                          fontWeight: 700,
-                                          color: '#f3f1ff',
-                                          whiteSpace: 'nowrap',
-                                          textOverflow: 'ellipsis',
-                                          overflow: 'hidden',
-                                          paddingRight: '12px',
-                                        }}
-                                      >
-                                        {task.title}{' '}
-                                        <span style={{ fontSize: '11.5px', color: '#827896', fontWeight: 400 }}>
-                                          - {scheduleText}
-                                        </span>
-                                      </div>
-                                      <div
-                                        style={{
-                                          fontSize: '13px',
-                                          fontWeight: 800,
-                                          color: '#f3f1ff',
-                                          fontVariantNumeric: 'tabular-nums',
-                                          flexShrink: 0,
-                                        }}
-                                      >
-                                        {pct}%
-                                      </div>
-                                    </div>
-
-                                    <div
-                                      style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(42, 1fr)',
-                                        gridTemplateRows: 'repeat(7, 1fr)',
-                                        gridAutoFlow: 'column',
-                                        gap: '2px',
-                                        width: '100%',
-                                        overflow: 'hidden',
-                                      }}
-                                    >
-                                      {cells.map((status, cIdx) => (
-                                        <div
-                                          key={cIdx}
-                                          style={{
-                                            aspectRatio: '1 / 1',
-                                            borderRadius: '1.3px',
-                                            background:
-                                              status === 'active'
-                                                ? colorObj.color
-                                                : status === 'inactive'
-                                                ? '#262430'
-                                                : '#16151e',
-                                          }}
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-                                )
-                              })()}
+                              {isGym ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setWorkoutSubPage('overview')
+                                    setActiveWorkoutQuest({ type: 'personal', id: task.id })
+                                  }}
+                                  style={{
+                                    padding: '5px 11px',
+                                    borderRadius: '8px',
+                                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                    border: '1px solid rgba(168, 85, 247, 0.5)',
+                                    color: '#ffffff',
+                                    fontSize: '10.5px',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <Play size={10} fill="currentColor" />
+                                  <span>Start</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTogglePersonal(task.id)}
+                                  style={{
+                                    padding: '4px 9px',
+                                    borderRadius: '8px',
+                                    background: task.done ? 'rgba(74, 222, 128, 0.16)' : 'rgba(168, 85, 247, 0.15)',
+                                    border: task.done ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.35)',
+                                    color: task.done ? '#4ade80' : '#d8b4fe',
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  {task.done ? 'Selesai ✓' : 'Tandai'}
+                                </button>
+                              )}
                             </div>
                           )
                         })}
