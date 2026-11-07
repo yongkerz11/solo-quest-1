@@ -962,6 +962,7 @@ export default function Page() {
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'offline'>('idle')
   const [isHistoryPageOpen, setIsHistoryPageOpen] = useState<boolean>(false)
   const [historyFilter, setHistoryFilter] = useState<'all' | 'gym' | 'other'>('all')
+  const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
 
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
@@ -1376,6 +1377,107 @@ export default function Page() {
 
   const totalHistorySets = userHistoryItems.reduce((acc, item) => acc + item.totalSets, 0)
   const maxHistoryWeight = userHistoryItems.reduce((acc, item) => Math.max(acc, item.maxWeight), 0)
+
+  // Derive Personal Records (PR) & Total Volume dari semua gerakan latihan
+  const userExerciseRecords = (() => {
+    const records: Array<{
+      questId: string
+      questTitle: string
+      exerciseId: string
+      name: string
+      maxWeight: number
+      bestReps: number
+      setsCount: number
+      volume: number
+    }> = []
+
+    userPersonalTasks.forEach((task) => {
+      if (!task.workoutExercises) return
+      task.workoutExercises.forEach((ex) => {
+        const setWeights = ex.sets.map((s) => Number(s.weight) || 0)
+        const histWeights = (ex.history || []).map((h) => Number(h.weight) || 0)
+        const maxWeight = Math.max(0, ...setWeights, ...histWeights)
+        const bestSet = ex.sets.find((s) => (Number(s.weight) || 0) === maxWeight) || ex.sets[0]
+        const bestReps = Number(bestSet?.reps) || 10
+        const sessionVolume = ex.sets.reduce(
+          (sum, s) => sum + (Number(s.weight) || 0) * (Number(s.reps) || 0),
+          0
+        )
+        const sessionsCount = Math.max(1, ex.history?.length || 1)
+        records.push({
+          questId: task.id,
+          questTitle: task.title,
+          exerciseId: ex.id,
+          name: ex.name,
+          maxWeight,
+          bestReps,
+          setsCount: ex.sets.length,
+          volume: sessionVolume * sessionsCount,
+        })
+      })
+    })
+
+    return records.sort((a, b) => b.maxWeight - a.maxWeight)
+  })()
+
+  const totalLiftedVolume = userExerciseRecords.reduce((acc, r) => acc + r.volume, 0)
+  const topPrRecord = userExerciseRecords[0] || null
+
+  // Derive 7-Day Weekly Schedule & Activity Strip (Sen - Min)
+  const currentWeekDays = (() => {
+    const now = new Date()
+    const currentDayIdx = now.getDay() // 0 = Sun, 1 = Mon, ...
+    const diffToMonday = currentDayIdx === 0 ? -6 : 1 - currentDayIdx
+    const monday = new Date(now)
+    monday.setDate(now.getDate() + diffToMonday)
+
+    const order: Array<{ code: string; shortLabel: string; fullName: string }> = [
+      { code: 'Mon', shortLabel: 'Sen', fullName: 'Senin' },
+      { code: 'Tue', shortLabel: 'Sel', fullName: 'Selasa' },
+      { code: 'Wed', shortLabel: 'Rab', fullName: 'Rabu' },
+      { code: 'Thu', shortLabel: 'Kam', fullName: 'Kamis' },
+      { code: 'Fri', shortLabel: 'Jum', fullName: 'Jumat' },
+      { code: 'Sat', shortLabel: 'Sab', fullName: 'Sabtu' },
+      { code: 'Sun', shortLabel: 'Min', fullName: 'Minggu' },
+    ]
+
+    return order.map((item, idx) => {
+      const d = new Date(monday)
+      d.setDate(monday.getDate() + idx)
+      const isoDate = d.toISOString().slice(0, 10)
+      const dateNum = String(d.getDate()).padStart(2, '0')
+      const dateShortId = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+      const isToday = item.code === todayDayCode
+
+      const scheduledTasks = userPersonalTasks.filter((t) => {
+        if (!t.schedule || t.schedule.length === 0 || t.schedule.includes('Everyday')) return true
+        return t.schedule.includes(item.code)
+      })
+
+      const isDone = userPersonalTasks.some((t) => {
+        if (t.completedDates?.includes(isoDate)) return true
+        if (t.workoutExercises?.some((ex) => ex.history?.some((h) => h.date === dateShortId))) return true
+        return isToday && t.done
+      })
+
+      return {
+        ...item,
+        dateNum,
+        isoDate,
+        isToday,
+        scheduledTasks,
+        isDone,
+      }
+    })
+  })()
+
+  const activeScheduleDayCode =
+    selectedWeekDay ||
+    (todayPersonalTasks.length > 0
+      ? todayDayCode
+      : currentWeekDays.find((d) => d.scheduledTasks.length > 0)?.code || todayDayCode)
+  const activeScheduleDayObj =
+    currentWeekDays.find((d) => d.code === activeScheduleDayCode) || currentWeekDays[0]
 
   // Sinkronisasi otomatis dengan Supabase Cloud (Quest & Progres Beban)
   const syncWithCloud = async (forcePushLocal = false) => {
@@ -5440,7 +5542,317 @@ export default function Page() {
                   </div>
                 </section>
 
-                {/* SECTION HISTORY QUEST DENGAN SHOW MORE */}
+                {/* SECTION 1: JADWAL & KONSISTENSI MINGGU INI (INTERACTIVE 7-DAY STRIP) */}
+                <section className="weekly-strip-card">
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <div>
+                      <span className="eyebrow">WEEKLY SCHEDULE</span>
+                      <h2 style={{ fontSize: '15.5px', fontWeight: 800, margin: '2px 0 0', color: '#f5f2ff' }}>
+                        Jadwal Minggu Ini
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      className="show-more-btn"
+                      onClick={() => setIsConsistencyModalOpen(true)}
+                      title="Lihat Konsistensi Tahunan"
+                    >
+                      <BarChart2 size={12} />
+                      <span>Heatmap</span>
+                    </button>
+                  </div>
+
+                  {/* 7-Day Interactive Strip (Sen - Min) */}
+                  <div className="week-days-grid">
+                    {currentWeekDays.map((day) => {
+                      const isSelected = day.code === activeScheduleDayCode
+                      const hasScheduled = day.scheduledTasks.length > 0
+                      return (
+                        <button
+                          key={day.code}
+                          type="button"
+                          onClick={() => setSelectedWeekDay(day.code)}
+                          className={`week-day-pill ${isSelected ? 'selected' : ''} ${day.isToday ? 'today-ring' : ''}`}
+                        >
+                          <span className="week-day-name">{day.shortLabel}</span>
+                          <span className="week-day-num">{day.dateNum}</span>
+                          <span
+                            className={`week-day-dot ${
+                              day.isDone ? 'done' : hasScheduled ? 'scheduled' : ''
+                            }`}
+                          />
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Preview Quest pada Hari yang Dipilih */}
+                  <div
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '13px',
+                      background: 'rgba(10, 8, 19, 0.72)',
+                      border: '1px solid rgba(139, 92, 246, 0.18)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: activeScheduleDayObj.scheduledTasks.length > 0 ? '8px' : '0',
+                      }}
+                    >
+                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#c4b5fd' }}>
+                        {activeScheduleDayObj.fullName}
+                        {activeScheduleDayObj.isToday ? ' (Hari Ini)' : ''}
+                      </span>
+                      <span style={{ fontSize: '10px', color: '#8a80a0' }}>
+                        {activeScheduleDayObj.scheduledTasks.length > 0
+                          ? `${activeScheduleDayObj.scheduledTasks.length} Quest Terjadwal`
+                          : 'Rest Day / Kosong'}
+                      </span>
+                    </div>
+
+                    {activeScheduleDayObj.scheduledTasks.length > 0 && (
+                      <div style={{ display: 'grid', gap: '6px' }}>
+                        {activeScheduleDayObj.scheduledTasks.slice(0, 2).map((task) => {
+                          const isGym = task.category.toLowerCase() === 'gym'
+                          return (
+                            <div
+                              key={task.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px',
+                                padding: '7px 9px',
+                                borderRadius: '10px',
+                                background: 'rgba(24, 18, 42, 0.85)',
+                                border: '1px solid rgba(168, 85, 247, 0.22)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                <span style={{ fontSize: '15px' }}>{task.icon}</span>
+                                <div style={{ minWidth: 0 }}>
+                                  <strong
+                                    style={{
+                                      display: 'block',
+                                      fontSize: '12px',
+                                      color: '#f3f1ff',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {task.title}
+                                  </strong>
+                                  <span style={{ fontSize: '9.5px', color: '#8e84a2' }}>
+                                    {task.category} • +{task.xp} XP
+                                  </span>
+                                </div>
+                              </div>
+
+                              {isGym ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveWorkoutQuest({ type: 'personal', id: task.id })}
+                                  style={{
+                                    padding: '5px 11px',
+                                    borderRadius: '8px',
+                                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                    border: '1px solid rgba(168, 85, 247, 0.5)',
+                                    color: '#ffffff',
+                                    fontSize: '10.5px',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <Play size={10} fill="currentColor" />
+                                  <span>Start</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTogglePersonal(task.id)}
+                                  style={{
+                                    padding: '4px 9px',
+                                    borderRadius: '8px',
+                                    background: task.done ? 'rgba(74, 222, 128, 0.16)' : 'rgba(168, 85, 247, 0.15)',
+                                    border: task.done ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.35)',
+                                    color: task.done ? '#4ade80' : '#d8b4fe',
+                                    fontSize: '10px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  {task.done ? 'Selesai ✓' : 'Tandai'}
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {/* SECTION 2: REKOR BEBAN & PERSONAL RECORDS (PR) */}
+                <section className="section-block" style={{ marginBottom: '22px' }}>
+                  <div className="section-title" style={{ marginBottom: '10px' }}>
+                    <div>
+                      <span className="eyebrow">STRENGTH METRICS</span>
+                      <h2>Rekor & Volume Beban</h2>
+                    </div>
+                    {userExerciseRecords.length > 0 && (
+                      <span className="completion">{userExerciseRecords.length} Gerakan</span>
+                    )}
+                  </div>
+
+                  <div className="pr-stats-grid">
+                    <div className="pr-stat-box">
+                      <div
+                        style={{
+                          width: '34px',
+                          height: '34px',
+                          borderRadius: '10px',
+                          background: 'rgba(168, 85, 247, 0.16)',
+                          border: '1px solid rgba(168, 85, 247, 0.35)',
+                          display: 'grid',
+                          placeItems: 'center',
+                          color: '#c084fc',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Dumbbell size={16} />
+                      </div>
+                      <div>
+                        <strong style={{ display: 'block', fontSize: '15px', fontWeight: 800, color: '#f5f2ff' }}>
+                          {totalLiftedVolume.toLocaleString('id-ID')} kg
+                        </strong>
+                        <span style={{ fontSize: '10px', color: '#8c82a3' }}>Total Volume</span>
+                      </div>
+                    </div>
+
+                    <div className="pr-stat-box">
+                      <div
+                        style={{
+                          width: '34px',
+                          height: '34px',
+                          borderRadius: '10px',
+                          background: 'rgba(251, 191, 36, 0.14)',
+                          border: '1px solid rgba(251, 191, 36, 0.32)',
+                          display: 'grid',
+                          placeItems: 'center',
+                          color: '#fbbf24',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <TrendingUp size={16} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <strong style={{ display: 'block', fontSize: '15px', fontWeight: 800, color: '#fbbf24' }}>
+                          {topPrRecord ? `${topPrRecord.maxWeight} kg` : '0 kg'}
+                        </strong>
+                        <span
+                          style={{
+                            display: 'block',
+                            fontSize: '10px',
+                            color: '#8c82a3',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {topPrRecord ? `PR: ${topPrRecord.name}` : 'Rekor Beban'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Daftar Gerakan & Shortcut ke Grafik Beban */}
+                  {userExerciseRecords.length > 0 && (
+                    <div style={{ display: 'grid', gap: '7px' }}>
+                      {userExerciseRecords.slice(0, 3).map((rec) => (
+                        <div
+                          key={rec.exerciseId}
+                          className="pr-exercise-row"
+                          onClick={() => {
+                            setActiveWorkoutQuest({ type: 'personal', id: rec.questId })
+                            setActiveExerciseId(rec.exerciseId)
+                          }}
+                          title="Klik untuk melihat grafik progres beban"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                            <div
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '9px',
+                                background: 'rgba(124, 58, 237, 0.16)',
+                                border: '1px solid rgba(168, 85, 247, 0.3)',
+                                display: 'grid',
+                                placeItems: 'center',
+                                color: '#d8b4fe',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <TrendingUp size={14} />
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <strong
+                                style={{
+                                  display: 'block',
+                                  fontSize: '12.5px',
+                                  color: '#f3f1ff',
+                                  fontWeight: 700,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                              >
+                                {rec.name}
+                              </strong>
+                              <span style={{ fontSize: '10px', color: '#8a80a0' }}>
+                                {rec.questTitle} • {rec.setsCount} Set ({rec.volume.toLocaleString('id-ID')} kg vol)
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                color: '#e9d5ff',
+                                background: 'rgba(124, 58, 237, 0.2)',
+                                border: '1px solid rgba(168, 85, 247, 0.35)',
+                                padding: '3px 8px',
+                                borderRadius: '8px',
+                              }}
+                            >
+                              {rec.maxWeight} kg × {rec.bestReps}
+                            </span>
+                            <ChevronRight size={14} color="#8c82a3" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                {/* SECTION 3: HISTORY QUEST DENGAN SHOW MORE */}
                 <section className="section-block">
                   <div className="section-title">
                     <div>
