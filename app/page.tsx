@@ -1058,6 +1058,9 @@ export default function Page() {
   const [showFloatingTimer, setShowFloatingTimer] = useState<boolean>(false)
   const [restDurationPreset, setRestDurationPreset] = useState<number>(60)
   const [isAddingExercise, setIsAddingExercise] = useState(false)
+  const [workoutSubPage, setWorkoutSubPage] = useState<'overview' | 'library' | 'programs'>('overview')
+  const [replacingExerciseId, setReplacingExerciseId] = useState<string | null>(null)
+  const [isQuestProgramPageOpen, setIsQuestProgramPageOpen] = useState<boolean>(false)
   const [newExerciseName, setNewExerciseName] = useState('')
   const [newExerciseRest, setNewExerciseRest] = useState<number>(60)
   const [newExerciseSetsCount, setNewExerciseSetsCount] = useState<number>(3)
@@ -1907,6 +1910,7 @@ export default function Page() {
     const nextExercises = mode === 'append' ? [...existing, ...built] : built
     handleUpdateWorkoutExercises(currentWorkoutQuest.id, activeWorkoutQuest.type, nextExercises)
     setIsGymLibraryModalOpen(false)
+    setWorkoutSubPage('overview')
     showToast(
       `⚡ Referensi "${session.title}" (${built.length} gerakan) diterapkan! Kamu bebas mengubah/mengganti gerakan kapan saja.`
     )
@@ -1930,6 +1934,8 @@ export default function Page() {
     setPersonalTasks((curr) => [...curr, newTask])
     saveCloudQuest(newTask, currentUser.username)
     setIsGymLibraryModalOpen(false)
+    setIsQuestProgramPageOpen(false)
+    setWorkoutSubPage('overview')
     setActiveWorkoutQuest({ type: 'personal', id: newTask.id })
     showToast(
       `🔥 Quest "${session.questTitle}" berhasil dibuat dengan ${builtExercises.length} gerakan referensi! Semua bisa diedit bebas.`
@@ -1955,6 +1961,9 @@ export default function Page() {
     setPersonalTasks((curr) => [...curr, ...createdTasks])
     saveAllCloudQuests(createdTasks, currentUser.username)
     setIsGymLibraryModalOpen(false)
+    setIsQuestProgramPageOpen(false)
+    setWorkoutSubPage('overview')
+    setActiveWorkoutQuest(null)
     setActiveTab('calendar')
     showToast(
       `🎉 Program "${program.frequencyLabel}" (${createdTasks.length} sesi) ditambahkan ke My Quest! Kamu bebas mengubah jadwal & gerakan kapan saja.`
@@ -2744,9 +2753,6 @@ export default function Page() {
     const matchedCatalogItem = GYM_EXERCISE_LIBRARY.find(
       (item) => item.name.toLowerCase() === exercise.name.trim().toLowerCase()
     )
-    const editSuggestions = isEditingThis
-      ? searchGymExercises(editingExerciseName, editLibraryCategoryFilter).slice(0, 12)
-      : []
 
     return (
       <div key={exercise.id}>
@@ -2759,147 +2765,45 @@ export default function Page() {
               padding: '12px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div className="modal-label" style={{ marginBottom: 0, color: '#c4b5fd' }}>
                 EDIT / GANTI GERAKAN #{exIndex + 1}
               </div>
               <button
                 type="button"
-                onClick={() => setShowEditLibraryPicker(!showEditLibraryPicker)}
+                onClick={() => {
+                  setReplacingExerciseId(exercise.id)
+                  setEditingExerciseId(null)
+                  setWorkoutSubPage('library')
+                }}
                 style={{
-                  background: showEditLibraryPicker ? 'rgba(168, 85, 247, 0.25)' : 'rgba(168, 85, 247, 0.12)',
-                  border: '1px solid rgba(168, 85, 247, 0.4)',
-                  borderRadius: '99px',
+                  background: 'rgba(168, 85, 247, 0.16)',
+                  border: '1px solid rgba(168, 85, 247, 0.45)',
+                  borderRadius: '8px',
                   color: '#e9d5ff',
-                  fontSize: '9.5px',
+                  fontSize: '10px',
                   fontWeight: 700,
-                  padding: '2px 8px',
+                  padding: '4px 9px',
                   cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
                 }}
               >
-                {showEditLibraryPicker ? 'Tutup Library' : '🔍 Pilih dari Library'}
+                <Search size={11} color="#c084fc" />
+                <span>Pilih Pengganti di Halaman Library</span>
               </button>
             </div>
-            <div style={{ position: 'relative', marginBottom: '8px' }}>
+            <div style={{ position: 'relative', marginBottom: '10px' }}>
               <input
                 type="text"
                 value={editingExerciseName}
-                onChange={(e) => {
-                  setEditingExerciseName(e.target.value)
-                  if (!showEditLibraryPicker) setShowEditLibraryPicker(true)
-                }}
-                placeholder="Ketik nama gerakan atau cari kata kunci (cth: incline, dada, row)..."
+                onChange={(e) => setEditingExerciseName(e.target.value)}
+                placeholder="Ketik nama gerakan kustom..."
                 className="modal-input"
                 style={{ marginBottom: 0, padding: '8px 10px', fontSize: '12px' }}
               />
             </div>
-
-            {/* PENCARIAN & FILTER KATEGORI GERAKAN SAAT EDIT / GANTI */}
-            {showEditLibraryPicker && (
-              <div
-                style={{
-                  marginBottom: '10px',
-                  padding: '8px',
-                  borderRadius: '10px',
-                  background: '#0b0815',
-                  border: '1px solid #2b1f47',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '4px',
-                    overflowX: 'auto',
-                    paddingBottom: '6px',
-                    marginBottom: '6px',
-                  }}
-                >
-                  {GYM_MUSCLE_CATEGORIES.map((cat) => {
-                    const active = editLibraryCategoryFilter === cat.id
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setEditLibraryCategoryFilter(cat.id)}
-                        style={{
-                          padding: '3px 8px',
-                          borderRadius: '99px',
-                          fontSize: '9.5px',
-                          fontWeight: 700,
-                          whiteSpace: 'nowrap',
-                          cursor: 'pointer',
-                          background: active ? 'linear-gradient(135deg, #7c3aed, #9333ea)' : '#171228',
-                          border: active ? '1px solid #d8b4fe' : '1px solid #2b2240',
-                          color: active ? '#ffffff' : '#a79bc2',
-                        }}
-                      >
-                        {cat.icon} {cat.shortLabel}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <div
-                  style={{
-                    maxHeight: '145px',
-                    overflowY: 'auto',
-                    display: 'grid',
-                    gap: '4px',
-                  }}
-                >
-                  {editSuggestions.length === 0 ? (
-                    <div style={{ fontSize: '10.5px', color: '#7c728e', padding: '6px', textAlign: 'center' }}>
-                      Tidak ada gerakan yang cocok di kategori ini. Kamu tetap bisa menyimpan nama kustom di atas.
-                    </div>
-                  ) : (
-                    editSuggestions.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          setEditingExerciseName(item.name)
-                          setShowEditLibraryPicker(false)
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '6px 8px',
-                          borderRadius: '7px',
-                          background:
-                            editingExerciseName.toLowerCase() === item.name.toLowerCase()
-                              ? 'rgba(124, 58, 237, 0.28)'
-                              : '#141022',
-                          border:
-                            editingExerciseName.toLowerCase() === item.name.toLowerCase()
-                              ? '1px solid #a855f7'
-                              : '1px solid #231b38',
-                          color: '#f3f1ff',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                        }}
-                      >
-                        <span>{item.name}</span>
-                        <span
-                          style={{
-                            fontSize: '9px',
-                            padding: '1px 6px',
-                            borderRadius: '99px',
-                            background: 'rgba(168, 85, 247, 0.16)',
-                            color: '#d8b4fe',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {item.shortCategory}
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <span style={{ fontSize: '11px', color: '#8e84a2' }}>Waktu Istirahat:</span>
@@ -2926,10 +2830,7 @@ export default function Page() {
             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                onClick={() => {
-                  setEditingExerciseId(null)
-                  setShowEditLibraryPicker(false)
-                }}
+                onClick={() => setEditingExerciseId(null)}
                 className="btn-secondary"
                 style={{ padding: '5px 11px', fontSize: '11px' }}
               >
@@ -2945,7 +2846,6 @@ export default function Page() {
                     editingExerciseName,
                     editingExerciseRest
                   )
-                  setShowEditLibraryPicker(false)
                 }}
                 className="btn-primary"
                 style={{ padding: '5px 13px', fontSize: '11px' }}
@@ -5001,10 +4901,634 @@ export default function Page() {
                   <ArrowLeft size={14} /> Kembali ke Daftar Gerakan
                 </button>
               </div>
+            ) : workoutSubPage === 'library' ? (
+              /* ============================================================
+                 HALAMAN PENUH: LIBRARY GERAKAN GYM (TANPA POPUP & TANPA SCROLLBAR)
+                 ============================================================ */
+              (() => {
+                const matchedLibraryItems = searchGymExercises(newExerciseName, libraryCategoryFilter)
+                const replacingTarget = replacingExerciseId
+                  ? workoutQuestExercises.find((e) => e.id === replacingExerciseId)
+                  : null
+
+                return (
+                  <div style={{ animation: 'heroCardAppear 0.25s ease' }}>
+                    {/* HEADER HALAMAN LIBRARY */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                        marginBottom: '14px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setWorkoutSubPage('overview')
+                            setReplacingExerciseId(null)
+                            setNewExerciseName('')
+                          }}
+                          style={{
+                            background: '#171226',
+                            border: '1px solid #32254a',
+                            borderRadius: '10px',
+                            width: '34px',
+                            height: '34px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#d5beff',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                          title="Kembali ke Quest Workout"
+                        >
+                          <ArrowLeft size={16} />
+                        </button>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="eyebrow" style={{ color: '#9d76f3', fontSize: '9px' }}>
+                            {replacingTarget ? `GANTI GERAKAN: ${replacingTarget.name.toUpperCase()}` : 'EXERCISE CATALOG'}
+                          </div>
+                          <h2
+                            style={{
+                              fontSize: '18px',
+                              fontWeight: 800,
+                              color: '#ffffff',
+                              margin: '2px 0 0',
+                              letterSpacing: '-0.02em',
+                            }}
+                          >
+                            Library Gerakan Gym
+                          </h2>
+                        </div>
+                      </div>
+                      <span className="completion">{matchedLibraryItems.length} Gerakan</span>
+                    </div>
+
+                    {/* INPUT PENCARIAN KEYWORD & FUZZY */}
+                    <div style={{ position: 'relative', marginBottom: '10px' }}>
+                      <input
+                        type="text"
+                        value={newExerciseName}
+                        onChange={(e) => setNewExerciseName(e.target.value)}
+                        placeholder="Ketik gerakan atau otot (cth: bench, incline, dada, row, kaki)..."
+                        className="modal-input"
+                        style={{ marginBottom: 0, padding: '10px 34px 10px 12px', fontSize: '12.5px' }}
+                        autoFocus
+                      />
+                      {newExerciseName && (
+                        <button
+                          type="button"
+                          onClick={() => setNewExerciseName('')}
+                          style={{
+                            position: 'absolute',
+                            right: '10px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'transparent',
+                            border: 0,
+                            color: '#8e84a2',
+                            cursor: 'pointer',
+                          }}
+                          title="Bersihkan pencarian"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* FILTER KATEGORI OTOT (FLEX WRAP — TANPA HORIZONTAL SCROLLBAR) */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      {GYM_MUSCLE_CATEGORIES.map((cat) => {
+                        const isActive = libraryCategoryFilter === cat.id
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setLibraryCategoryFilter(cat.id)}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: '99px',
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              background: isActive
+                                ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
+                                : '#120e1f',
+                              border: isActive ? '1px solid #d8b4fe' : '1px solid #281f3d',
+                              color: isActive ? '#ffffff' : '#a79bc2',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            {cat.icon} {cat.shortLabel}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* PENGATURAN SET, REPS, ISTIRAHAT (UNTUK TAMBAH GERAKAN BARU) */}
+                    {!replacingTarget && (
+                      <div
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '13px',
+                          background: '#120e1e',
+                          border: '1px solid #2b2142',
+                          marginBottom: '12px',
+                        }}
+                      >
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '9.5px', color: '#9a8fb2', marginBottom: '4px', fontWeight: 700 }}>
+                              Jumlah Set
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={10}
+                              value={newExerciseSetsCount}
+                              onChange={(e) => setNewExerciseSetsCount(parseInt(e.target.value, 10) || 3)}
+                              style={{
+                                width: '100%',
+                                padding: '6px',
+                                background: '#0a0814',
+                                border: '1px solid #322549',
+                                borderRadius: '8px',
+                                color: '#f3f1ff',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '9.5px', color: '#9a8fb2', marginBottom: '4px', fontWeight: 700 }}>
+                              Target Reps
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={newExerciseReps}
+                              onChange={(e) => setNewExerciseReps(parseInt(e.target.value, 10) || 10)}
+                              style={{
+                                width: '100%',
+                                padding: '6px',
+                                background: '#0a0814',
+                                border: '1px solid #322549',
+                                borderRadius: '8px',
+                                color: '#f3f1ff',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '9.5px', color: '#9a8fb2', marginBottom: '4px', fontWeight: 700 }}>
+                              Istirahat (dtk)
+                            </label>
+                            <input
+                              type="number"
+                              min={10}
+                              step={5}
+                              value={newExerciseRest}
+                              onChange={(e) => setNewExerciseRest(parseInt(e.target.value, 10) || 60)}
+                              style={{
+                                width: '100%',
+                                padding: '6px',
+                                background: '#0a0814',
+                                border: '1px solid #322549',
+                                borderRadius: '8px',
+                                color: '#f3f1ff',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {newExerciseName.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleAddExercise(
+                                currentWorkoutQuest.id,
+                                activeWorkoutQuest.type,
+                                newExerciseName,
+                                newExerciseRest,
+                                newExerciseSetsCount,
+                                newExerciseReps
+                              )
+                              setNewExerciseName('')
+                              setWorkoutSubPage('overview')
+                            }}
+                            className="btn-primary"
+                            style={{
+                              width: '100%',
+                              marginTop: '10px',
+                              padding: '8px 12px',
+                              fontSize: '11.5px',
+                              fontWeight: 800,
+                            }}
+                          >
+                            + Simpan "{newExerciseName.trim()}" ke Quest Ini
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* DAFTAR LENGKAP GERAKAN (FULL PAGE LIST — TANPA INNER SCROLLBOX) */}
+                    <div style={{ display: 'grid', gap: '7px' }}>
+                      {matchedLibraryItems.length === 0 ? (
+                        <div
+                          style={{
+                            padding: '22px 14px',
+                            borderRadius: '14px',
+                            background: '#110e1d',
+                            border: '1px dashed #2d2246',
+                            textAlign: 'center',
+                            fontSize: '11.5px',
+                            color: '#9a8fb2',
+                          }}
+                        >
+                          Tidak ada gerakan yang persis di library untuk <strong>"{newExerciseName}"</strong>.
+                          {replacingTarget && newExerciseName.trim() && (
+                            <div style={{ marginTop: '10px' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleUpdateExercise(
+                                    currentWorkoutQuest.id,
+                                    activeWorkoutQuest.type,
+                                    replacingTarget.id,
+                                    newExerciseName.trim(),
+                                    replacingTarget.restSeconds || 60
+                                  )
+                                  setReplacingExerciseId(null)
+                                  setNewExerciseName('')
+                                  setWorkoutSubPage('overview')
+                                }}
+                                className="btn-primary"
+                                style={{ padding: '7px 14px', fontSize: '11px' }}
+                              >
+                                Ganti menjadi "{newExerciseName.trim()}"
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        matchedLibraryItems.map((item) => (
+                          <div
+                            key={item.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '10px',
+                              padding: '10px 12px',
+                              borderRadius: '12px',
+                              background: '#120f1e',
+                              border: '1px solid #261e3a',
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <strong style={{ fontSize: '12.5px', color: '#f3f1ff', fontWeight: 700 }}>
+                                  {item.name}
+                                </strong>
+                                <span
+                                  style={{
+                                    fontSize: '9px',
+                                    padding: '1px 7px',
+                                    borderRadius: '99px',
+                                    background: 'rgba(168, 85, 247, 0.15)',
+                                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                                    color: '#d8b4fe',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {item.category}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '10px', color: '#8a80a0', display: 'block', marginTop: '2px' }}>
+                                Rekomendasi: {item.targetNote || `${item.defaultSets} × ${item.defaultReps}`}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (replacingTarget) {
+                                  handleUpdateExercise(
+                                    currentWorkoutQuest.id,
+                                    activeWorkoutQuest.type,
+                                    replacingTarget.id,
+                                    item.name,
+                                    replacingTarget.restSeconds || 60
+                                  )
+                                  setReplacingExerciseId(null)
+                                  setNewExerciseName('')
+                                  setWorkoutSubPage('overview')
+                                } else {
+                                  handleAddExercise(
+                                    currentWorkoutQuest.id,
+                                    activeWorkoutQuest.type,
+                                    item.name,
+                                    newExerciseRest,
+                                    item.defaultSets,
+                                    item.defaultReps
+                                  )
+                                  setNewExerciseName('')
+                                  setWorkoutSubPage('overview')
+                                }
+                              }}
+                              style={{
+                                padding: '6px 11px',
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
+                                border: '1px solid #c084fc',
+                                color: '#ffffff',
+                                fontSize: '10.5px',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              <Plus size={11} />
+                              <span>{replacingTarget ? 'Ganti' : 'Pilih'}</span>
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )
+              })()
+            ) : workoutSubPage === 'programs' ? (
+              /* ============================================================
+                 HALAMAN PENUH: REFERENSI PROGRAM GYM (2X–6X SEMINGGU)
+                 ============================================================ */
+              (() => {
+                const activeProgram =
+                  GYM_PROGRAM_TEMPLATES.find((p) => p.id === selectedProgramId) || GYM_PROGRAM_TEMPLATES[0]
+
+                return (
+                  <div style={{ animation: 'heroCardAppear 0.25s ease' }}>
+                    {/* HEADER HALAMAN REFERENSI PROGRAM */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                        marginBottom: '14px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => setWorkoutSubPage('overview')}
+                          style={{
+                            background: '#171226',
+                            border: '1px solid #32254a',
+                            borderRadius: '10px',
+                            width: '34px',
+                            height: '34px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#d5beff',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                          title="Kembali ke Quest Workout"
+                        >
+                          <ArrowLeft size={16} />
+                        </button>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="eyebrow" style={{ color: '#9d76f3', fontSize: '9px' }}>
+                            WORKOUT TEMPLATES
+                          </div>
+                          <h2
+                            style={{
+                              fontSize: '18px',
+                              fontWeight: 800,
+                              color: '#ffffff',
+                              margin: '2px 0 0',
+                              letterSpacing: '-0.02em',
+                            }}
+                          >
+                            Referensi Program Latihan
+                          </h2>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplacingExerciseId(null)
+                          setWorkoutSubPage('library')
+                        }}
+                        className="show-more-btn"
+                      >
+                        <Search size={12} />
+                        <span>Library Gerakan</span>
+                      </button>
+                    </div>
+
+                    {/* PILIHAN FREKUENSI: 2x, 3x, 4x, 5x, 6x Seminggu (FLEX WRAP — TANPA SCROLLBAR) */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      {GYM_PROGRAM_TEMPLATES.map((prog) => {
+                        const isSel = prog.id === activeProgram.id
+                        return (
+                          <button
+                            key={prog.id}
+                            type="button"
+                            onClick={() => setSelectedProgramId(prog.id)}
+                            style={{
+                              padding: '6px 11px',
+                              borderRadius: '99px',
+                              fontSize: '10.5px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              background: isSel
+                                ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
+                                : '#141024',
+                              border: isSel ? '1px solid #d8b4fe' : '1px solid #2b2144',
+                              color: isSel ? '#ffffff' : '#b3a7cc',
+                            }}
+                          >
+                            {prog.frequencyLabel}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* BANNER INFO PROGRAM */}
+                    <div
+                      style={{
+                        padding: '13px',
+                        borderRadius: '14px',
+                        background: 'linear-gradient(135deg, rgba(44, 24, 92, 0.55), rgba(18, 13, 34, 0.9))',
+                        border: '1px solid rgba(168, 85, 247, 0.38)',
+                        marginBottom: '14px',
+                      }}
+                    >
+                      <strong style={{ display: 'block', fontSize: '14px', color: '#ffffff', fontWeight: 800 }}>
+                        {activeProgram.title}
+                      </strong>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#d8b4fe', marginTop: '2px' }}>
+                        {activeProgram.subtitle}
+                      </span>
+                      {activeProgram.note && (
+                        <p style={{ margin: '6px 0 0', fontSize: '10.5px', color: '#a89ec0', lineHeight: 1.4 }}>
+                          📌 {activeProgram.note}
+                        </p>
+                      )}
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          padding: '6px 9px',
+                          borderRadius: '8px',
+                          background: 'rgba(11, 8, 22, 0.65)',
+                          border: '1px solid rgba(168, 85, 247, 0.22)',
+                          fontSize: '10px',
+                          color: '#c4b5fd',
+                        }}
+                      >
+                        ✨ <strong>Bukan Permanen:</strong> Setelah menerapkan referensi ini, kamu bebas mengganti gerakan, menambah, atau menghapusnya kapan saja.
+                      </div>
+                    </div>
+
+                    {/* DAFTAR SESI DALAM PROGRAM */}
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {activeProgram.sessions.map((session) => (
+                        <div
+                          key={session.id}
+                          style={{
+                            padding: '12px',
+                            borderRadius: '14px',
+                            background: '#110e1d',
+                            border: '1px solid #2b2242',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '8px',
+                              marginBottom: '8px',
+                            }}
+                          >
+                            <div>
+                              <strong style={{ display: 'block', fontSize: '13px', color: '#f3f1ff', fontWeight: 800 }}>
+                                {session.title}
+                              </strong>
+                              <span style={{ fontSize: '10px', color: '#9388ac' }}>
+                                Rekomendasi: {session.dayLabel} • {session.exercises.length} Gerakan
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                onClick={() => handleApplySessionToCurrentWorkout(session, 'replace')}
+                                style={{
+                                  padding: '5px 10px',
+                                  borderRadius: '8px',
+                                  background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
+                                  border: '1px solid #c084fc',
+                                  color: '#ffffff',
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Pakai di Quest Ini
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleApplySessionToCurrentWorkout(session, 'append')}
+                                style={{
+                                  padding: '5px 8px',
+                                  borderRadius: '8px',
+                                  background: '#1d1532',
+                                  border: '1px solid #453075',
+                                  color: '#d8b4fe',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                + Gabung
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gap: '4px' }}>
+                            {session.exercises.map((ex, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '5px 8px',
+                                  borderRadius: '7px',
+                                  background: '#0a0813',
+                                  border: '1px solid #1e182e',
+                                  fontSize: '11px',
+                                }}
+                              >
+                                <span style={{ color: '#e2d9f3', fontWeight: 600 }}>
+                                  {idx + 1}. {ex.name}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    color: '#c4b5fd',
+                                    fontWeight: 700,
+                                    background: 'rgba(168, 85, 247, 0.12)',
+                                    padding: '1px 6px',
+                                    borderRadius: '6px',
+                                  }}
+                                >
+                                  {ex.note || `${ex.sets} × ${ex.reps}`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()
             ) : (
               /* ============================================================
                  HALAMAN UTAMA WORKOUT (LIST OF EXERCISES / OVERVIEW)
-                 Desain Solo Leveling Dark Amethyst + 3 Tombol Aksi Gerakan
                  ============================================================ */
               <div>
                 {/* HEADER WORKOUT */}
@@ -5023,6 +5547,8 @@ export default function Page() {
                       onClick={() => {
                         setActiveWorkoutQuest(null)
                         setActiveExerciseId(null)
+                        setWorkoutSubPage('overview')
+                        setReplacingExerciseId(null)
                         setRestTimerActive(false)
                         setShowFloatingTimer(false)
                         setOpenExerciseDropdownId(null)
@@ -5127,7 +5653,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* SECTION HEADER: PENDING (WAITING) + TOMBOL REFERENSI PROGRAM & TAMBAH GERAKAN */}
+                {/* SECTION HEADER: PENDING + TOMBOL HALAMAN REFERENSI PROGRAM & HALAMAN LIBRARY */}
                 <div
                   style={{
                     display: 'flex',
@@ -5143,10 +5669,7 @@ export default function Page() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <button
                       type="button"
-                      onClick={() => {
-                        setGymModalTab('programs')
-                        setIsGymLibraryModalOpen(true)
-                      }}
+                      onClick={() => setWorkoutSubPage('programs')}
                       style={{
                         height: '28px',
                         padding: '0 9px',
@@ -5162,7 +5685,7 @@ export default function Page() {
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
                       }}
-                      title="Pilih Referensi Program Default (2x–6x Seminggu) atau Katalog Gerakan"
+                      title="Buka Halaman Referensi Program (2x–6x Seminggu)"
                     >
                       <BookOpen size={11} color="#c084fc" />
                       <span>Referensi Program</span>
@@ -5195,57 +5718,59 @@ export default function Page() {
                         <Trash2 size={13} />
                       </button>
                     )}
-                    {!isAddingExercise && (
-                      <button
-                        type="button"
-                        onClick={() => setIsAddingExercise(true)}
-                        style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '8px',
-                          background: '#20153a',
-                          border: '1px solid #452e75',
-                          color: '#d5beff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                        }}
-                        title="Tambah Gerakan dari Library"
-                        aria-label="Tambah Gerakan Baru"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReplacingExerciseId(null)
+                        setWorkoutSubPage('library')
+                      }}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '8px',
+                        background: '#20153a',
+                        border: '1px solid #452e75',
+                        color: '#d5beff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Buka Halaman Library Gerakan"
+                      aria-label="Tambah Gerakan dari Halaman Library"
+                    >
+                      <Plus size={14} />
+                    </button>
                   </div>
                 </div>
 
                 {/* EMPTY STATE: JIKA BELUM ADA GERAKAN SAMA SEKALI */}
-                {workoutQuestExercises.length === 0 && !isAddingExercise && (
+                {workoutQuestExercises.length === 0 && (
                   <div className="lock-banner" style={{ padding: '24px 16px', marginBottom: '16px' }}>
                     <Dumbbell size={28} color="#9d70ed" style={{ margin: '0 auto 6px', opacity: 0.85 }} />
                     <strong style={{ display: 'block', fontSize: '13.5px', color: '#f3f1ff' }}>
                       Belum Ada Gerakan Latihan
                     </strong>
                     <p style={{ margin: '5px auto 14px', maxWidth: '280px', fontSize: '11px' }}>
-                      Pilih gerakan dari <strong>Library 85+ Gerakan Gym</strong> atau gunakan <strong>Referensi Program Default</strong> (Full Body / Upper Lower / PPL) yang bisa diubah-ubah kapan saja.
+                      Pilih gerakan dari <strong>Halaman Library Gerakan</strong> atau gunakan <strong>Halaman Referensi Program</strong> (2x–6x seminggu) yang bisa diubah kapan saja.
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px' }}>
                       <button
                         type="button"
-                        onClick={() => setIsAddingExercise(true)}
+                        onClick={() => {
+                          setReplacingExerciseId(null)
+                          setWorkoutSubPage('library')
+                        }}
                         className="btn-primary"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', padding: '8px 13px' }}
                       >
-                        <Search size={12} /> Cari di Library Gerakan
+                        <Search size={12} /> Buka Library Gerakan
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setGymModalTab('programs')
-                          setIsGymLibraryModalOpen(true)
-                        }}
+                        onClick={() => setWorkoutSubPage('programs')}
                         className="btn-secondary"
                         style={{
                           display: 'inline-flex',
@@ -5257,333 +5782,11 @@ export default function Page() {
                           color: '#e9d5ff',
                         }}
                       >
-                        <BookOpen size={12} color="#c084fc" /> Pakai Referensi Program
+                        <BookOpen size={12} color="#c084fc" /> Buka Referensi Program
                       </button>
                     </div>
                   </div>
                 )}
-
-                {/* FORM TAMBAH GERAKAN BARU + INTEGRATED GYM EXERCISE LIBRARY */}
-                {isAddingExercise && (() => {
-                  const matchedLibraryItems = searchGymExercises(newExerciseName, libraryCategoryFilter)
-                  return (
-                    <div
-                      style={{
-                        background: '#130f21',
-                        border: '1px solid #4a2f77',
-                        borderRadius: '16px',
-                        padding: '14px',
-                        marginBottom: '14px',
-                        boxShadow: '0 10px 28px rgba(0,0,0,0.6)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Search size={13} color="#c084fc" />
-                          <span className="modal-label" style={{ marginBottom: 0, color: '#e9d5ff' }}>
-                            LIBRARY & TAMBAH GERAKAN GYM
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAddingExercise(false)
-                            setNewExerciseName('')
-                          }}
-                          style={{ background: 'transparent', border: 0, color: '#8e84a2', cursor: 'pointer' }}
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-
-                      {/* INPUT PENCARIAN CERDAS (KEYWORD & FUZZY MATCH) */}
-                      <div style={{ position: 'relative', marginBottom: '9px' }}>
-                        <input
-                          type="text"
-                          value={newExerciseName}
-                          onChange={(e) => setNewExerciseName(e.target.value)}
-                          placeholder="Ketik gerakan atau otot (cth: bench, incline, dada, row, kaki)..."
-                          className="modal-input"
-                          style={{ marginBottom: 0, padding: '9px 32px 9px 11px', fontSize: '12px' }}
-                          autoFocus
-                        />
-                        {newExerciseName && (
-                          <button
-                            type="button"
-                            onClick={() => setNewExerciseName('')}
-                            style={{
-                              position: 'absolute',
-                              right: '8px',
-                              top: '50%',
-                              transform: 'translateY(-50%)',
-                              background: 'transparent',
-                              border: 0,
-                              color: '#8e84a2',
-                              cursor: 'pointer',
-                              padding: '2px',
-                            }}
-                            title="Bersihkan pencarian"
-                          >
-                            <X size={13} />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* FILTER KATEGORI OTOT (8 KATEGORI) */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '5px',
-                          overflowX: 'auto',
-                          paddingBottom: '7px',
-                          marginBottom: '8px',
-                        }}
-                      >
-                        {GYM_MUSCLE_CATEGORIES.map((cat) => {
-                          const isActive = libraryCategoryFilter === cat.id
-                          return (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => setLibraryCategoryFilter(cat.id)}
-                              style={{
-                                padding: '4px 9px',
-                                borderRadius: '99px',
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap',
-                                cursor: 'pointer',
-                                background: isActive
-                                  ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
-                                  : '#0c0916',
-                                border: isActive ? '1px solid #d8b4fe' : '1px solid #281f3d',
-                                color: isActive ? '#ffffff' : '#a79bc2',
-                                transition: 'all 0.15s ease',
-                              }}
-                            >
-                              {cat.icon} {cat.shortLabel}
-                            </button>
-                          )
-                        })}
-                      </div>
-
-                      {/* DAFTAR HASIL PENCARIAN DARI LIBRARY GERAKAN */}
-                      <div
-                        style={{
-                          maxHeight: '185px',
-                          overflowY: 'auto',
-                          background: '#0a0813',
-                          border: '1px solid #261d3a',
-                          borderRadius: '11px',
-                          padding: '6px',
-                          marginBottom: '11px',
-                          display: 'grid',
-                          gap: '5px',
-                        }}
-                      >
-                        {matchedLibraryItems.length === 0 ? (
-                          <div style={{ padding: '12px 8px', textAlign: 'center', fontSize: '11px', color: '#8e84a2' }}>
-                            Tidak ada gerakan yang persis di library untuk <strong>"{newExerciseName}"</strong>.
-                            <div style={{ marginTop: '4px', fontSize: '10px', color: '#b9a6dc' }}>
-                              Klik tombol <strong>Simpan Gerakan</strong> di bawah untuk tetap menambahkannya sebagai gerakan kustom!
-                            </div>
-                          </div>
-                        ) : (
-                          matchedLibraryItems.map((item) => {
-                            const isSelected = newExerciseName.trim().toLowerCase() === item.name.toLowerCase()
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => {
-                                  setNewExerciseName(item.name)
-                                  setNewExerciseSetsCount(item.defaultSets)
-                                  setNewExerciseReps(item.defaultReps)
-                                }}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '8px',
-                                  padding: '7px 9px',
-                                  borderRadius: '8px',
-                                  background: isSelected ? 'rgba(124, 58, 237, 0.28)' : '#130f22',
-                                  border: isSelected ? '1px solid #a855f7' : '1px solid #211a34',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.12s ease',
-                                }}
-                              >
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                    <strong style={{ fontSize: '11.5px', color: '#f3f1ff', fontWeight: 700 }}>
-                                      {item.name}
-                                    </strong>
-                                    <span
-                                      style={{
-                                        fontSize: '9px',
-                                        padding: '1px 6px',
-                                        borderRadius: '99px',
-                                        background: 'rgba(168, 85, 247, 0.15)',
-                                        border: '1px solid rgba(168, 85, 247, 0.3)',
-                                        color: '#d8b4fe',
-                                        fontWeight: 700,
-                                      }}
-                                    >
-                                      {item.category}
-                                    </span>
-                                  </div>
-                                  <span style={{ fontSize: '9.5px', color: '#8a80a0' }}>
-                                    Rekomendasi: {item.targetNote || `${item.defaultSets} × ${item.defaultReps}`}
-                                  </span>
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleAddExercise(
-                                      currentWorkoutQuest.id,
-                                      activeWorkoutQuest.type,
-                                      item.name,
-                                      newExerciseRest,
-                                      item.defaultSets,
-                                      item.defaultReps
-                                    )
-                                  }}
-                                  style={{
-                                    padding: '4px 9px',
-                                    borderRadius: '7px',
-                                    background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
-                                    border: '1px solid #c084fc',
-                                    color: '#ffffff',
-                                    fontSize: '10px',
-                                    fontWeight: 800,
-                                    cursor: 'pointer',
-                                    flexShrink: 0,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '3px',
-                                  }}
-                                  title={`Langsung tambahkan ${item.name}`}
-                                >
-                                  <Plus size={10} /> Pilih
-                                </button>
-                              </div>
-                            )
-                          })
-                        )}
-                      </div>
-
-                      {/* KONFIGURASI SET, REPS & ISTIRAHAT */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '9.5px', color: '#8e84a2', marginBottom: '4px', fontWeight: 600 }}>
-                            Jumlah Set
-                          </label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={10}
-                            value={newExerciseSetsCount}
-                            onChange={(e) => setNewExerciseSetsCount(parseInt(e.target.value, 10) || 3)}
-                            style={{
-                              width: '100%',
-                              padding: '6px 6px',
-                              background: '#0a0814',
-                              border: '1px solid #322549',
-                              borderRadius: '8px',
-                              color: '#f3f1ff',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              textAlign: 'center',
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '9.5px', color: '#8e84a2', marginBottom: '4px', fontWeight: 600 }}>
-                            Target Reps
-                          </label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={100}
-                            value={newExerciseReps}
-                            onChange={(e) => setNewExerciseReps(parseInt(e.target.value, 10) || 10)}
-                            style={{
-                              width: '100%',
-                              padding: '6px 6px',
-                              background: '#0a0814',
-                              border: '1px solid #322549',
-                              borderRadius: '8px',
-                              color: '#f3f1ff',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              textAlign: 'center',
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '9.5px', color: '#8e84a2', marginBottom: '4px', fontWeight: 600 }}>
-                            Istirahat (dtk)
-                          </label>
-                          <input
-                            type="number"
-                            min={10}
-                            step={5}
-                            value={newExerciseRest}
-                            onChange={(e) => setNewExerciseRest(parseInt(e.target.value, 10) || 60)}
-                            style={{
-                              width: '100%',
-                              padding: '6px 6px',
-                              background: '#0a0814',
-                              border: '1px solid #322549',
-                              borderRadius: '8px',
-                              color: '#f3f1ff',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              textAlign: 'center',
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsAddingExercise(false)
-                            setNewExerciseName('')
-                          }}
-                          className="btn-secondary"
-                          style={{ padding: '6px 12px', fontSize: '11px' }}
-                        >
-                          Selesai / Tutup
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (newExerciseName.trim()) {
-                              handleAddExercise(
-                                currentWorkoutQuest.id,
-                                activeWorkoutQuest.type,
-                                newExerciseName,
-                                newExerciseRest,
-                                newExerciseSetsCount,
-                                newExerciseReps
-                              )
-                              setNewExerciseName('')
-                            } else {
-                              showToast('Pilih gerakan dari library atau ketik nama gerakan terlebih dahulu!')
-                            }
-                          }}
-                          className="btn-primary"
-                          style={{ padding: '6px 14px', fontSize: '11px' }}
-                        >
-                          + Simpan Gerakan
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })()}
 
                 {/* BAGIAN 1 (ATAS): GERAKAN YANG BELUM DIKERJAKAN */}
                 {workoutQuestExercises.length > 0 && (
@@ -5648,7 +5851,7 @@ export default function Page() {
                   </div>
                 )}
 
-                {/* BOTTOM ACTION: SELESAIKAN WORKOUT (BUTTON LOGIN STYLE: WAJAR & TEKS FINISH) */}
+                {/* BOTTOM ACTION: SELESAIKAN WORKOUT */}
                 <div style={{ paddingTop: '8px' }}>
                   <button
                     type="button"
@@ -5729,7 +5932,7 @@ export default function Page() {
                   <span className="completion">{userHistoryItems.length} Sesi</span>
                 </div>
 
-                {/* Summary Bento Stats (3 Kartu Ringkasan) */}
+                {/* Summary Bento Stats (3 Kartu Ringkasan Umum Quest) */}
                 <div
                   style={{
                     display: 'grid',
@@ -5750,7 +5953,7 @@ export default function Page() {
                     <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#f5f2ff' }}>
                       {userHistoryItems.length}
                     </strong>
-                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Total Sesi</span>
+                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Quest Selesai</span>
                   </div>
                   <div
                     style={{
@@ -5762,9 +5965,9 @@ export default function Page() {
                     }}
                   >
                     <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#d8b4fe' }}>
-                      {totalHistorySets}
+                      {currentUser.xp.toLocaleString('id-ID')} XP
                     </strong>
-                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Total Set</span>
+                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Total XP</span>
                   </div>
                   <div
                     style={{
@@ -5776,9 +5979,9 @@ export default function Page() {
                     }}
                   >
                     <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#fbbf24' }}>
-                      {maxHistoryWeight} kg
+                      {currentUser.streak} Hari
                     </strong>
-                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Max Beban</span>
+                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Streak Aktif</span>
                   </div>
                 </div>
 
@@ -5978,141 +6181,127 @@ export default function Page() {
               </div>
             ) : (
               /* ================================================================
-                 BERANDA UTAMA: UNIFIED HERO BENTO CARD + HISTORY QUEST PREVIEW
+                 BERANDA UTAMA: GENERAL HUNTER & DAILY QUEST DASHBOARD
+                 (Fokus pada semua jenis Quest: Belajar, Produktivitas, Kesehatan, Gym, dll.)
                  ================================================================ */
               <>
-                <section className="hero-card-unified">
-                  <div className="hero-top-row">
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="hunter-status-pill">
-                        <span className="hunter-status-dot" />
-                        CURRENT LEVEL
-                      </div>
-                      <h1 className="hero-level-number">Level {currentLevel}</h1>
-
-                      <div className="hero-progress-inline">
-                        <div className="hero-progress-meta">
-                          <span>
-                            <Zap
-                              size={11}
-                              fill="currentColor"
-                              style={{ display: 'inline', color: '#c084fc', marginRight: '4px', verticalAlign: '-1px' }}
-                            />
-                            {currentUser.xp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
-                          </span>
-                          <span style={{ color: '#d8b4fe', fontWeight: 700 }}>{levelProgress}%</span>
-                        </div>
-                        <div className="hero-xp-track">
-                          <span
-                            className="hero-xp-fill"
-                            style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 5, levelProgress)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
+                {/* 1. RPG CREST COMMAND HERO */}
+                <section className="hero-command-card">
+                  <div className="hero-crest-row">
+                    {/* Perisai Rank di Kiri */}
                     <div
-                      className="rank-badge"
+                      className="rank-crest-shield"
                       onClick={() => setActiveTab('rank')}
                       title="Lihat Peringkat Hunter"
                     >
                       <span>RANK</span>
                       <strong>{currentRank}</strong>
                     </div>
-                  </div>
 
-                  {/* Integrated 3-Column Bento Stats Dock */}
-                  <div className="hero-stats-dock">
-                    <div className="hero-dock-item">
-                      <div
-                        className="hero-dock-icon"
-                        style={{
-                          background: 'rgba(255, 157, 97, 0.14)',
-                          border: '1px solid rgba(255, 157, 97, 0.3)',
-                          color: '#ff9d61',
-                        }}
-                      >
-                        <Flame size={14} />
+                    {/* Level & XP Bar di Kanan */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span className="hunter-tag-chip">
+                          <Sparkles size={10} />
+                          HUNTER • {currentUser.username.toUpperCase()}
+                        </span>
+                        <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#d8b4fe' }}>
+                          {levelProgress}%
+                        </span>
                       </div>
-                      <div>
-                        <strong>{currentUser.streak} Hari</strong>
-                        <span>Streak</span>
+
+                      <h1 className="hero-level-title">Level {currentLevel}</h1>
+
+                      <div className="hero-xp-bar-wrap">
+                        <div className="hero-xp-bar-track">
+                          <span
+                            className="hero-xp-bar-fill"
+                            style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 6, levelProgress)}%` }}
+                          />
+                        </div>
+                        <div className="hero-xp-labels">
+                          <span>
+                            <Zap
+                              size={10}
+                              fill="currentColor"
+                              style={{ display: 'inline', color: '#c084fc', marginRight: '3px', verticalAlign: '-1px' }}
+                            />
+                            {currentUser.xp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
+                          </span>
+                          <span>Next: Lv.{currentLevel + 1}</span>
+                        </div>
                       </div>
                     </div>
+                  </div>
 
+                  {/* 4-Pill Quick Metrics Row (Umum untuk Semua Quest) */}
+                  <div className="hero-quick-metrics">
+                    <div className="quick-metric-pill">
+                      <small>
+                        <Flame size={10} color="#ff9d61" /> Streak
+                      </small>
+                      <strong>{currentUser.streak} Hari</strong>
+                    </div>
                     <div
-                      className="hero-dock-item clickable"
+                      className="quick-metric-pill clickable"
                       onClick={() => setIsHistoryPageOpen(true)}
                       title="Buka History Quest"
                     >
-                      <div
-                        className="hero-dock-icon"
-                        style={{
-                          background: 'rgba(74, 222, 128, 0.14)',
-                          border: '1px solid rgba(74, 222, 128, 0.3)',
-                          color: '#4ade80',
-                        }}
-                      >
-                        <Activity size={14} />
-                      </div>
-                      <div>
-                        <strong>{userHistoryItems.length} Sesi</strong>
-                        <span>History</span>
-                      </div>
+                      <small>
+                        <Activity size={10} color="#4ade80" /> Selesai
+                      </small>
+                      <strong>{userHistoryItems.length} Quest</strong>
                     </div>
-
                     <div
-                      className="hero-dock-item clickable"
+                      className="quick-metric-pill clickable"
                       onClick={() => setActiveTab('clan')}
-                      title="Buka Komunitas Clan"
+                      title="Buka Clan"
                     >
-                      <div
-                        className="hero-dock-icon"
-                        style={{
-                          background: 'rgba(168, 85, 247, 0.16)',
-                          border: '1px solid rgba(168, 85, 247, 0.34)',
-                          color: '#c084fc',
-                        }}
-                      >
-                        <Shield size={14} />
-                      </div>
-                      <div>
-                        <strong>{userJoinedClanIds.length} Clan</strong>
-                        <span>Komunitas</span>
-                      </div>
+                      <small>
+                        <Shield size={10} color="#c084fc" /> Clan
+                      </small>
+                      <strong>{userJoinedClanIds.length} Guild</strong>
+                    </div>
+                    <div
+                      className="quick-metric-pill clickable"
+                      onClick={() => setActiveTab('calendar')}
+                      title="Buka Daftar Quest"
+                    >
+                      <small>
+                        <CheckCircle2 size={10} color="#fbbf24" /> Hari Ini
+                      </small>
+                      <strong>
+                        {completedTodayPersonalCount}/{todayPersonalTasks.length}
+                      </strong>
                     </div>
                   </div>
                 </section>
 
-                {/* SECTION 1: JADWAL & KONSISTENSI MINGGU INI (INTERACTIVE 7-DAY STRIP) */}
-                <section className="weekly-strip-card">
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    <div>
-                      <span className="eyebrow">WEEKLY SCHEDULE</span>
-                      <h2 style={{ fontSize: '15.5px', fontWeight: 800, margin: '2px 0 0', color: '#f5f2ff' }}>
-                        Jadwal Minggu Ini
-                      </h2>
-                    </div>
+                {/* 2. COMPACT 7-DAY QUEST STRIP + 2-COLUMN GENERAL QUEST BENTO */}
+                <div className="compact-week-bar">
+                  <div className="compact-week-header">
+                    <span>JADWAL QUEST MINGGU INI</span>
                     <button
                       type="button"
-                      className="show-more-btn"
                       onClick={() => setIsConsistencyModalOpen(true)}
-                      title="Lihat Konsistensi Tahunan"
+                      style={{
+                        background: 'transparent',
+                        border: 0,
+                        color: '#c4b5fd',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
                     >
-                      <BarChart2 size={12} />
-                      <span>Heatmap</span>
+                      <BarChart2 size={11} />
+                      <span>Heatmap Konsistensi ›</span>
                     </button>
                   </div>
-
-                  {/* 7-Day Interactive Strip (Sen - Min) */}
-                  <div className="week-days-grid">
+                  <div className="week-days-grid" style={{ marginBottom: 0 }}>
                     {currentWeekDays.map((day) => {
                       const isSelected = day.code === activeScheduleDayCode
                       const hasScheduled = day.scheduledTasks.length > 0
@@ -6134,267 +6323,189 @@ export default function Page() {
                       )
                     })}
                   </div>
+                </div>
 
-                  {/* Preview Quest pada Hari yang Dipilih */}
-                  <div
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: '13px',
-                      background: 'rgba(10, 8, 19, 0.72)',
-                      border: '1px solid rgba(139, 92, 246, 0.18)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: activeScheduleDayObj.scheduledTasks.length > 0 ? '8px' : '0',
-                      }}
-                    >
-                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#c4b5fd' }}>
-                        {activeScheduleDayObj.fullName}
-                        {activeScheduleDayObj.isToday ? ' (Hari Ini)' : ''}
-                      </span>
-                      <span style={{ fontSize: '10px', color: '#8a80a0' }}>
-                        {activeScheduleDayObj.scheduledTasks.length > 0
-                          ? `${activeScheduleDayObj.scheduledTasks.length} Quest Terjadwal`
-                          : 'Rest Day / Kosong'}
-                      </span>
-                    </div>
-
-                    {activeScheduleDayObj.scheduledTasks.length > 0 && (
-                      <div style={{ display: 'grid', gap: '6px' }}>
-                        {activeScheduleDayObj.scheduledTasks.slice(0, 2).map((task) => {
-                          const isGym = task.category.toLowerCase() === 'gym'
-                          return (
-                            <div
-                              key={task.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '8px',
-                                padding: '7px 9px',
-                                borderRadius: '10px',
-                                background: 'rgba(24, 18, 42, 0.85)',
-                                border: '1px solid rgba(168, 85, 247, 0.22)',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                <span style={{ fontSize: '15px' }}>{task.icon}</span>
-                                <div style={{ minWidth: 0 }}>
-                                  <strong
-                                    style={{
-                                      display: 'block',
-                                      fontSize: '12px',
-                                      color: '#f3f1ff',
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                    }}
-                                  >
-                                    {task.title}
-                                  </strong>
-                                  <span style={{ fontSize: '9.5px', color: '#8e84a2' }}>
-                                    {task.category} • +{task.xp} XP
-                                  </span>
-                                </div>
-                              </div>
-
-                              {isGym ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveWorkoutQuest({ type: 'personal', id: task.id })}
-                                  style={{
-                                    padding: '5px 11px',
-                                    borderRadius: '8px',
-                                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                    border: '1px solid rgba(168, 85, 247, 0.5)',
-                                    color: '#ffffff',
-                                    fontSize: '10.5px',
-                                    fontWeight: 800,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <Play size={10} fill="currentColor" />
-                                  <span>Start</span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleTogglePersonal(task.id)}
-                                  style={{
-                                    padding: '4px 9px',
-                                    borderRadius: '8px',
-                                    background: task.done ? 'rgba(74, 222, 128, 0.16)' : 'rgba(168, 85, 247, 0.15)',
-                                    border: task.done ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.35)',
-                                    color: task.done ? '#4ade80' : '#d8b4fe',
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  {task.done ? 'Selesai ✓' : 'Tandai'}
-                                </button>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                {/* SECTION 2: REKOR BEBAN & PERSONAL RECORDS (PR) */}
-                <section className="section-block" style={{ marginBottom: '22px' }}>
-                  <div className="section-title" style={{ marginBottom: '10px' }}>
+                {/* 2-Column Asymmetric Bento Grid: Left = Quest Hari Ini/Terpilih | Right = Target & XP Harian */}
+                <div className="dashboard-bento-2col">
+                  {/* KARTU KIRI: QUEST TERJADWAL PADA HARI YANG DIPILIH */}
+                  <div className="bento-focus-card">
                     <div>
-                      <span className="eyebrow">STRENGTH METRICS</span>
-                      <h2>Rekor & Volume Beban</h2>
-                    </div>
-                    {userExerciseRecords.length > 0 && (
-                      <span className="completion">{userExerciseRecords.length} Gerakan</span>
-                    )}
-                  </div>
+                      <span className="bento-card-label">
+                        <CalendarDays size={11} color="#c084fc" />
+                        {activeScheduleDayObj.fullName.toUpperCase()}
+                        {activeScheduleDayObj.isToday ? ' • HARI INI' : ''}
+                      </span>
 
-                  <div className="pr-stats-grid">
-                    <div className="pr-stat-box">
-                      <div
-                        style={{
-                          width: '34px',
-                          height: '34px',
-                          borderRadius: '10px',
-                          background: 'rgba(168, 85, 247, 0.16)',
-                          border: '1px solid rgba(168, 85, 247, 0.35)',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: '#c084fc',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Dumbbell size={16} />
-                      </div>
-                      <div>
-                        <strong style={{ display: 'block', fontSize: '15px', fontWeight: 800, color: '#f5f2ff' }}>
-                          {totalLiftedVolume.toLocaleString('id-ID')} kg
-                        </strong>
-                        <span style={{ fontSize: '10px', color: '#8c82a3' }}>Total Volume</span>
-                      </div>
-                    </div>
-
-                    <div className="pr-stat-box">
-                      <div
-                        style={{
-                          width: '34px',
-                          height: '34px',
-                          borderRadius: '10px',
-                          background: 'rgba(251, 191, 36, 0.14)',
-                          border: '1px solid rgba(251, 191, 36, 0.32)',
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: '#fbbf24',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <TrendingUp size={16} />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <strong style={{ display: 'block', fontSize: '15px', fontWeight: 800, color: '#fbbf24' }}>
-                          {topPrRecord ? `${topPrRecord.maxWeight} kg` : '0 kg'}
-                        </strong>
-                        <span
-                          style={{
-                            display: 'block',
-                            fontSize: '10px',
-                            color: '#8c82a3',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {topPrRecord ? `PR: ${topPrRecord.name}` : 'Rekor Beban'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Daftar Gerakan & Shortcut ke Grafik Beban */}
-                  {userExerciseRecords.length > 0 && (
-                    <div style={{ display: 'grid', gap: '7px' }}>
-                      {userExerciseRecords.slice(0, 3).map((rec) => (
-                        <div
-                          key={rec.exerciseId}
-                          className="pr-exercise-row"
-                          onClick={() => {
-                            setActiveWorkoutQuest({ type: 'personal', id: rec.questId })
-                            setActiveExerciseId(rec.exerciseId)
-                          }}
-                          title="Klik untuk melihat grafik progres beban"
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                            <div
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '9px',
-                                background: 'rgba(124, 58, 237, 0.16)',
-                                border: '1px solid rgba(168, 85, 247, 0.3)',
-                                display: 'grid',
-                                placeItems: 'center',
-                                color: '#d8b4fe',
-                                flexShrink: 0,
-                              }}
-                            >
-                              <TrendingUp size={14} />
-                            </div>
-                            <div style={{ minWidth: 0 }}>
+                      {activeScheduleDayObj.scheduledTasks.length > 0 ? (
+                        (() => {
+                          const primaryTask = activeScheduleDayObj.scheduledTasks[0]
+                          const isGym = primaryTask.category.toLowerCase() === 'gym'
+                          return (
+                            <div>
                               <strong
                                 style={{
                                   display: 'block',
-                                  fontSize: '12.5px',
-                                  color: '#f3f1ff',
-                                  fontWeight: 700,
+                                  fontSize: '14px',
+                                  fontWeight: 800,
+                                  color: '#f5f2ff',
+                                  marginBottom: '2px',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                 }}
                               >
-                                {rec.name}
+                                {primaryTask.icon} {primaryTask.title}
                               </strong>
-                              <span style={{ fontSize: '10px', color: '#8a80a0' }}>
-                                {rec.questTitle} • {rec.setsCount} Set ({rec.volume.toLocaleString('id-ID')} kg vol)
+                              <span style={{ fontSize: '10px', color: '#9a8fb2', display: 'block', marginBottom: '10px' }}>
+                                {primaryTask.category} • +{primaryTask.xp} XP
+                                {activeScheduleDayObj.scheduledTasks.length > 1
+                                  ? ` (+${activeScheduleDayObj.scheduledTasks.length - 1} lainnya)`
+                                  : ''}
                               </span>
+
+                              {isGym ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setWorkoutSubPage('overview')
+                                    setActiveWorkoutQuest({ type: 'personal', id: primaryTask.id })
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 10px',
+                                    borderRadius: '9px',
+                                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                    border: '1px solid rgba(168, 85, 247, 0.5)',
+                                    color: '#ffffff',
+                                    fontSize: '11px',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '5px',
+                                  }}
+                                >
+                                  <Play size={11} fill="currentColor" />
+                                  <span>Buka Quest</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTogglePersonal(primaryTask.id)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 10px',
+                                    borderRadius: '9px',
+                                    background: primaryTask.done
+                                      ? 'rgba(74, 222, 128, 0.16)'
+                                      : 'rgba(168, 85, 247, 0.18)',
+                                    border: primaryTask.done
+                                      ? '1px solid rgba(74, 222, 128, 0.4)'
+                                      : '1px solid rgba(168, 85, 247, 0.35)',
+                                    color: primaryTask.done ? '#4ade80' : '#e9d5ff',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  {primaryTask.done ? 'Selesai ✓' : 'Selesaikan Quest'}
+                                </button>
+                              )}
                             </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
-                            <span
-                              style={{
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                color: '#e9d5ff',
-                                background: 'rgba(124, 58, 237, 0.2)',
-                                border: '1px solid rgba(168, 85, 247, 0.35)',
-                                padding: '3px 8px',
-                                borderRadius: '8px',
-                              }}
-                            >
-                              {rec.maxWeight} kg × {rec.bestReps}
-                            </span>
-                            <ChevronRight size={14} color="#8c82a3" />
-                          </div>
+                          )
+                        })()
+                      ) : (
+                        <div>
+                          <strong style={{ display: 'block', fontSize: '13px', color: '#d8b4fe', marginBottom: '3px' }}>
+                            Belum Ada Jadwal
+                          </strong>
+                          <span style={{ fontSize: '10px', color: '#8a80a0', display: 'block', marginBottom: '10px' }}>
+                            Tambah quest belajar, produktivitas, kesehatan, atau olahraga.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('calendar')}
+                            style={{
+                              width: '100%',
+                              padding: '6px 10px',
+                              borderRadius: '9px',
+                              background: 'rgba(124, 58, 237, 0.14)',
+                              border: '1px solid rgba(168, 85, 247, 0.3)',
+                              color: '#d8b4fe',
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            + Kelola Quest
+                          </button>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </section>
+                  </div>
 
-                {/* SECTION 3: HISTORY QUEST DENGAN SHOW MORE */}
+                  {/* KARTU KANAN: TARGET QUEST HARIAN & REWARD XP (UMUM UNTUK SEMUA QUEST) */}
+                  <div
+                    className="bento-focus-card"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setActiveTab('calendar')}
+                    title="Buka Daftar Daily Quest"
+                  >
+                    <div>
+                      <span className="bento-card-label">
+                        <Zap size={11} color="#fbbf24" />
+                        TARGET HARI INI
+                      </span>
+
+                      <strong
+                        style={{
+                          display: 'block',
+                          fontSize: '15px',
+                          fontWeight: 900,
+                          color: '#fbbf24',
+                          marginBottom: '2px',
+                        }}
+                      >
+                        {completedTodayPersonalCount}/{todayPersonalTasks.length} Quest
+                      </strong>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          color: '#c4b5fd',
+                          display: 'block',
+                          marginBottom: '10px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {todayPersonalTasks.length > 0
+                          ? `Reward hari ini: +${todayPersonalTasks.reduce((sum, t) => sum + t.xp, 0)} XP`
+                          : 'Belum ada quest hari ini'}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: '6px 9px',
+                        borderRadius: '9px',
+                        background: 'rgba(10, 8, 19, 0.65)',
+                        border: '1px solid rgba(168, 85, 247, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '10px',
+                        color: '#a79bc2',
+                      }}
+                    >
+                      <span>Buka Checklist</span>
+                      <strong style={{ color: '#e9d5ff' }}>My Quest ›</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. HISTORY QUEST DENGAN SHOW MORE */}
                 <section className="section-block">
                   <div className="section-title">
                     <div>
@@ -6424,7 +6535,7 @@ export default function Page() {
                           color: '#827896',
                         }}
                       >
-                        <p style={{ margin: '0 0 10px' }}>Belum ada riwayat quest atau sesi workout yang tercatat.</p>
+                        <p style={{ margin: '0 0 10px' }}>Belum ada riwayat quest yang tercatat.</p>
                         <button
                           type="button"
                           className="show-more-btn"
@@ -6439,7 +6550,7 @@ export default function Page() {
                         const firstEx = item.exercises[0]
                         const summaryText =
                           item.isGym && firstEx
-                            ? `${firstEx.name} • ${firstEx.setsCount} Set (${firstEx.weight} kg × ${firstEx.reps})`
+                            ? `${item.category} • ${firstEx.name} (${firstEx.setsCount} Set)`
                             : item.category
 
                         return (
@@ -6522,253 +6633,471 @@ export default function Page() {
         )}
 
         {/* ================================================================
-            TAB 2: MY QUEST (Personal Checklist tanpa Mini Calendar)
+            TAB 2: MY QUEST (Personal Checklist + Full-Page Referensi Program jika dibuka)
            ================================================================ */}
         {activeTab === 'calendar' && (
           <>
-            <section className="quest-heading">
-              <div>
-                <p className="eyebrow">MY QUEST • {currentUser.username.toUpperCase()}</p>
-                <h1>Daily checklist</h1>
-                <p className="quest-date">
-                  {new Date().toLocaleDateString('id-ID', {
-                    weekday: 'long',
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </p>
-              </div>
-              <div className="quest-count">
-                <span>DONE</span>
-                <strong>
-                  {completedTodayPersonalCount}/{todayPersonalTasks.length}
-                </strong>
-              </div>
-            </section>
-
-            <section className="section-block quest-list-section">
-              {/* TAB SWITCHER: TODAY & UPCOMING */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '6px',
-                  padding: '4px',
-                  borderRadius: '11px',
-                  background: '#0e0b18',
-                  border: '1px solid #261f3d',
-                  marginBottom: '12px',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setQuestScheduleTab('today')}
-                  style={{
-                    padding: '7px 12px',
-                    borderRadius: '8px',
-                    border: questScheduleTab === 'today' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
-                    background:
-                      questScheduleTab === 'today'
-                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
-                        : 'transparent',
-                    color: questScheduleTab === 'today' ? '#f3f1ff' : '#827896',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span>Today</span>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      padding: '1px 6px',
-                      borderRadius: '999px',
-                      background: questScheduleTab === 'today' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
-                      color: questScheduleTab === 'today' ? '#e9d5ff' : '#827896',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {todayPersonalTasks.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuestScheduleTab('upcoming')}
-                  style={{
-                    padding: '7px 12px',
-                    borderRadius: '8px',
-                    border: questScheduleTab === 'upcoming' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
-                    background:
-                      questScheduleTab === 'upcoming'
-                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
-                        : 'transparent',
-                    color: questScheduleTab === 'upcoming' ? '#f3f1ff' : '#827896',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span>Upcoming</span>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      padding: '1px 6px',
-                      borderRadius: '999px',
-                      background: questScheduleTab === 'upcoming' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
-                      color: questScheduleTab === 'upcoming' ? '#e9d5ff' : '#827896',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {upcomingPersonalTasks.length}
-                  </span>
-                </button>
-              </div>
-
-              {/* Banner Reward List Quest Personal (Khusus Tab Today) */}
-              {questScheduleTab === 'today' && todayPersonalTasks.length > 0 && (() => {
-                const totalPersonalListXp = todayPersonalTasks.reduce((sum, t) => sum + t.xp, 0)
-                const isAllDone = todayPersonalTasks.length > 0 && completedTodayPersonalCount === todayPersonalTasks.length
+            {isQuestProgramPageOpen ? (
+              /* ============================================================
+                 HALAMAN PENUH: REFERENSI PROGRAM GYM (2X–6X SEMINGGU) DARI MY QUEST
+                 ============================================================ */
+              (() => {
+                const activeProgram =
+                  GYM_PROGRAM_TEMPLATES.find((p) => p.id === selectedProgramId) || GYM_PROGRAM_TEMPLATES[0]
 
                 return (
-                  <div
-                    style={{
-                      background: isAllDone
-                        ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(22, 101, 52, 0.2))'
-                        : 'linear-gradient(135deg, rgba(37, 20, 68, 0.65), rgba(18, 14, 30, 0.85))',
-                      border: isAllDone
-                        ? '1px solid rgba(74, 222, 128, 0.35)'
-                        : '1px solid rgba(139, 92, 246, 0.25)',
-                      borderRadius: '12px',
-                      padding: '10px 14px',
-                      marginBottom: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '10px',
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          color: isAllDone ? '#86efac' : '#c084fc',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                        }}
-                      >
-                        <Zap size={13} />
-                        {isAllDone ? 'DAILY REWARD DIPEROLEH!' : 'DAILY REWARD LIST'}
-                      </div>
-                      <div style={{ fontSize: '10px', color: '#8e84a2', marginTop: '2px' }}>
-                        {isAllDone
-                          ? `Seluruh (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
-                          : `Selesaikan semua (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest untuk mendapatkan XP`}
-                      </div>
-                    </div>
+                  <div style={{ animation: 'heroCardAppear 0.25s ease' }}>
                     <div
                       style={{
-                        fontSize: '12px',
-                        fontWeight: 800,
-                        color: isAllDone ? '#4ade80' : '#d5beff',
-                        background: isAllDone ? 'rgba(74, 222, 128, 0.2)' : 'rgba(168, 85, 247, 0.18)',
-                        padding: '4px 10px',
-                        borderRadius: '8px',
-                        border: isAllDone ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.3)',
-                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                        marginBottom: '14px',
                       }}
                     >
-                      +{totalPersonalListXp} XP
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => setIsQuestProgramPageOpen(false)}
+                          style={{
+                            background: '#171226',
+                            border: '1px solid #32254a',
+                            borderRadius: '10px',
+                            width: '34px',
+                            height: '34px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#d5beff',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                          title="Kembali ke My Quest"
+                        >
+                          <ArrowLeft size={16} />
+                        </button>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="eyebrow" style={{ color: '#9d76f3', fontSize: '9px' }}>
+                            QUEST WORKOUT TEMPLATES
+                          </div>
+                          <h2
+                            style={{
+                              fontSize: '18px',
+                              fontWeight: 800,
+                              color: '#ffffff',
+                              margin: '2px 0 0',
+                              letterSpacing: '-0.02em',
+                            }}
+                          >
+                            Referensi Program Latihan
+                          </h2>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PILIHAN FREKUENSI: 2x, 3x, 4x, 5x, 6x Seminggu (FLEX WRAP — TANPA SCROLLBAR) */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      {GYM_PROGRAM_TEMPLATES.map((prog) => {
+                        const isSel = prog.id === activeProgram.id
+                        return (
+                          <button
+                            key={prog.id}
+                            type="button"
+                            onClick={() => setSelectedProgramId(prog.id)}
+                            style={{
+                              padding: '6px 11px',
+                              borderRadius: '99px',
+                              fontSize: '10.5px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              background: isSel
+                                ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
+                                : '#141024',
+                              border: isSel ? '1px solid #d8b4fe' : '1px solid #2b2144',
+                              color: isSel ? '#ffffff' : '#b3a7cc',
+                            }}
+                          >
+                            {prog.frequencyLabel}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* BANNER INFO PROGRAM */}
+                    <div
+                      style={{
+                        padding: '13px',
+                        borderRadius: '14px',
+                        background: 'linear-gradient(135deg, rgba(44, 24, 92, 0.55), rgba(18, 13, 34, 0.9))',
+                        border: '1px solid rgba(168, 85, 247, 0.38)',
+                        marginBottom: '14px',
+                      }}
+                    >
+                      <strong style={{ display: 'block', fontSize: '14px', color: '#ffffff', fontWeight: 800 }}>
+                        {activeProgram.title}
+                      </strong>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#d8b4fe', marginTop: '2px' }}>
+                        {activeProgram.subtitle}
+                      </span>
+                      {activeProgram.note && (
+                        <p style={{ margin: '6px 0 0', fontSize: '10.5px', color: '#a89ec0', lineHeight: 1.4 }}>
+                          📌 {activeProgram.note}
+                        </p>
+                      )}
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          padding: '6px 9px',
+                          borderRadius: '8px',
+                          background: 'rgba(11, 8, 22, 0.65)',
+                          border: '1px solid rgba(168, 85, 247, 0.22)',
+                          fontSize: '10px',
+                          color: '#c4b5fd',
+                        }}
+                      >
+                        ✨ <strong>Fleksibel &amp; Tidak Permanen:</strong> Setelah membuat quest dari referensi ini, kamu bebas mengubah jadwal hari dan mengganti gerakan di halaman Library.
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyFullProgramSchedule(activeProgram)}
+                        className="btn-primary"
+                        style={{
+                          width: '100%',
+                          marginTop: '10px',
+                          padding: '9px 12px',
+                          fontSize: '11.5px',
+                          fontWeight: 800,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <Sparkles size={13} />
+                        <span>Terapkan Seluruh {activeProgram.sessions.length} Sesi ke Jadwal Quest</span>
+                      </button>
+                    </div>
+
+                    {/* DAFTAR SESI DALAM PROGRAM */}
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {activeProgram.sessions.map((session) => (
+                        <div
+                          key={session.id}
+                          style={{
+                            padding: '12px',
+                            borderRadius: '14px',
+                            background: '#110e1d',
+                            border: '1px solid #2b2242',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '8px',
+                              marginBottom: '8px',
+                            }}
+                          >
+                            <div>
+                              <strong style={{ display: 'block', fontSize: '13px', color: '#f3f1ff', fontWeight: 800 }}>
+                                {session.title}
+                              </strong>
+                              <span style={{ fontSize: '10px', color: '#9388ac' }}>
+                                Rekomendasi: {session.dayLabel} • {session.exercises.length} Gerakan
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleCreateQuestFromSessionTemplate(session)}
+                              style={{
+                                padding: '6px 11px',
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
+                                border: '1px solid #c084fc',
+                                color: '#ffffff',
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                              }}
+                            >
+                              + Buat Quest Ini
+                            </button>
+                          </div>
+
+                          <div style={{ display: 'grid', gap: '4px' }}>
+                            {session.exercises.map((ex, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '5px 8px',
+                                  borderRadius: '7px',
+                                  background: '#0a0813',
+                                  border: '1px solid #1e182e',
+                                  fontSize: '11px',
+                                }}
+                              >
+                                <span style={{ color: '#e2d9f3', fontWeight: 600 }}>
+                                  {idx + 1}. {ex.name}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    color: '#c4b5fd',
+                                    fontWeight: 700,
+                                    background: 'rgba(168, 85, 247, 0.12)',
+                                    padding: '1px 6px',
+                                    borderRadius: '6px',
+                                  }}
+                                >
+                                  {ex.note || `${ex.sets} × ${ex.reps}`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )
-              })()}
+              })()
+            ) : (
+              <>
+                <section className="quest-heading">
+                  <div>
+                    <p className="eyebrow">MY QUEST • {currentUser.username.toUpperCase()}</p>
+                    <h1>Daily checklist</h1>
+                    <p className="quest-date">
+                      {new Date().toLocaleDateString('id-ID', {
+                        weekday: 'long',
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  </div>
+                  <div className="quest-count">
+                    <span>DONE</span>
+                    <strong>
+                      {completedTodayPersonalCount}/{todayPersonalTasks.length}
+                    </strong>
+                  </div>
+                </section>
 
-              <div className="task-list">
-                {(questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).length === 0 ? (
+                <section className="section-block quest-list-section">
+                  {/* TAB SWITCHER: TODAY & UPCOMING */}
                   <div
                     style={{
-                      padding: '18px 14px',
-                      borderRadius: '12px',
-                      background: '#0e0c16',
-                      border: '1px dashed #28213a',
-                      textAlign: 'center',
-                      fontSize: '11.5px',
-                      color: '#7c738f',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '6px',
+                      padding: '4px',
+                      borderRadius: '11px',
+                      background: '#0e0b18',
+                      border: '1px solid #261f3d',
+                      marginBottom: '12px',
                     }}
                   >
-                    {questScheduleTab === 'today'
-                      ? `Tidak ada quest untuk hari ini (${todayDayCode}). Cek tab Upcoming atau tambah quest baru.`
-                      : `Tidak ada quest di jadwal Upcoming. Quest yang dipilih untuk hari selain hari ini (${todayDayCode}) akan tampil di sini.`}
+                    <button
+                      type="button"
+                      onClick={() => setQuestScheduleTab('today')}
+                      style={{
+                        padding: '7px 12px',
+                        borderRadius: '8px',
+                        border: questScheduleTab === 'today' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
+                        background:
+                          questScheduleTab === 'today'
+                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
+                            : 'transparent',
+                        color: questScheduleTab === 'today' ? '#f3f1ff' : '#827896',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <span>Today</span>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          padding: '1px 6px',
+                          borderRadius: '999px',
+                          background: questScheduleTab === 'today' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
+                          color: questScheduleTab === 'today' ? '#e9d5ff' : '#827896',
+                          fontWeight: 800,
+                        }}
+                      >
+                        {todayPersonalTasks.length}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuestScheduleTab('upcoming')}
+                      style={{
+                        padding: '7px 12px',
+                        borderRadius: '8px',
+                        border: questScheduleTab === 'upcoming' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
+                        background:
+                          questScheduleTab === 'upcoming'
+                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
+                            : 'transparent',
+                        color: questScheduleTab === 'upcoming' ? '#f3f1ff' : '#827896',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <span>Upcoming</span>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          padding: '1px 6px',
+                          borderRadius: '999px',
+                          background: questScheduleTab === 'upcoming' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
+                          color: questScheduleTab === 'upcoming' ? '#e9d5ff' : '#827896',
+                          fontWeight: 800,
+                        }}
+                      >
+                        {upcomingPersonalTasks.length}
+                      </span>
+                    </button>
                   </div>
-                ) : (
-                  (questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).map((task) => {
-                    const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
+
+                  {/* Banner Reward List Quest Personal (Khusus Tab Today) */}
+                  {questScheduleTab === 'today' && todayPersonalTasks.length > 0 && (() => {
+                    const totalPersonalListXp = todayPersonalTasks.reduce((sum, t) => sum + t.xp, 0)
+                    const isAllDone = todayPersonalTasks.length > 0 && completedTodayPersonalCount === todayPersonalTasks.length
+
                     return (
-                      <QuestCard
-                        key={task.id}
-                        questId={task.id}
-                        colorIndex={globalIdx >= 0 ? globalIdx : 0}
-                        title={task.title}
-                        meta={task.category}
-                        icon={task.icon}
-                        done={task.done}
-                        completedDates={task.completedDates}
-                        schedule={task.schedule}
-                        canManage={true}
-                        isGym={task.category.toLowerCase() === 'gym'}
-                        onOpenWorkout={() => setActiveWorkoutQuest({ type: 'personal', id: task.id })}
-                        onToggle={() => handleTogglePersonal(task.id)}
-                        onEdit={() => openEditPersonalModal(task)}
-                        onDelete={() => handleDeletePersonal(task.id)}
-                      />
+                      <div
+                        style={{
+                          background: isAllDone
+                            ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(22, 101, 52, 0.2))'
+                            : 'linear-gradient(135deg, rgba(37, 20, 68, 0.65), rgba(18, 14, 30, 0.85))',
+                          border: isAllDone
+                            ? '1px solid rgba(74, 222, 128, 0.35)'
+                            : '1px solid rgba(139, 92, 246, 0.25)',
+                          borderRadius: '12px',
+                          padding: '10px 14px',
+                          marginBottom: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              color: isAllDone ? '#86efac' : '#c084fc',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                            }}
+                          >
+                            <Zap size={13} />
+                            {isAllDone ? 'DAILY REWARD DIPEROLEH!' : 'DAILY REWARD LIST'}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#8e84a2', marginTop: '2px' }}>
+                            {isAllDone
+                              ? `Seluruh (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
+                              : `Selesaikan semua (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest untuk mendapatkan XP`}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            color: isAllDone ? '#4ade80' : '#d5beff',
+                            background: isAllDone ? 'rgba(74, 222, 128, 0.2)' : 'rgba(168, 85, 247, 0.18)',
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            border: isAllDone ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.3)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          +{totalPersonalListXp} XP
+                        </div>
+                      </div>
                     )
-                  })
-                )}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
-                <button className="add-task" style={{ marginTop: 0 }} onClick={openAddPersonalModal}>
-                  <Plus size={16} /> Tambah quest baru
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGymModalTab('programs')
-                    setIsGymLibraryModalOpen(true)
-                  }}
-                  style={{
-                    padding: '12px 10px',
-                    borderRadius: '14px',
-                    background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(67, 56, 202, 0.18))',
-                    border: '1px dashed rgba(168, 85, 247, 0.5)',
-                    color: '#e9d5ff',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <BookOpen size={15} color="#c084fc" />
-                  <span>Referensi & Library Gym</span>
-                </button>
-              </div>
-            </section>
+                  })()}
+
+                  <div className="task-list">
+                    {(questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).length === 0 ? (
+                      <div
+                        style={{
+                          padding: '18px 14px',
+                          borderRadius: '12px',
+                          background: '#0e0c16',
+                          border: '1px dashed #28213a',
+                          textAlign: 'center',
+                          fontSize: '11.5px',
+                          color: '#7c738f',
+                        }}
+                      >
+                        {questScheduleTab === 'today'
+                          ? `Tidak ada quest untuk hari ini (${todayDayCode}). Cek tab Upcoming atau tambah quest baru.`
+                          : `Tidak ada quest di jadwal Upcoming. Quest yang dipilih untuk hari selain hari ini (${todayDayCode}) akan tampil di sini.`}
+                      </div>
+                    ) : (
+                      (questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).map((task) => {
+                        const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
+                        return (
+                          <QuestCard
+                            key={task.id}
+                            questId={task.id}
+                            colorIndex={globalIdx >= 0 ? globalIdx : 0}
+                            title={task.title}
+                            meta={task.category}
+                            icon={task.icon}
+                            done={task.done}
+                            completedDates={task.completedDates}
+                            schedule={task.schedule}
+                            canManage={true}
+                            isGym={task.category.toLowerCase() === 'gym'}
+                            onOpenWorkout={() => {
+                              setWorkoutSubPage('overview')
+                              setActiveWorkoutQuest({ type: 'personal', id: task.id })
+                            }}
+                            onToggle={() => handleTogglePersonal(task.id)}
+                            onEdit={() => openEditPersonalModal(task)}
+                            onDelete={() => handleDeletePersonal(task.id)}
+                          />
+                        )
+                      })
+                    )}
+                  </div>
+                  <button className="add-task" onClick={openAddPersonalModal}>
+                    <Plus size={16} /> Tambah quest baru
+                  </button>
+                </section>
+              </>
+            )}
           </>
         )}
 
@@ -8722,8 +9051,8 @@ export default function Page() {
                       type="button"
                       onClick={() => {
                         setIsPersonalModalOpen(false)
-                        setGymModalTab('programs')
-                        setIsGymLibraryModalOpen(true)
+                        setIsQuestProgramPageOpen(true)
+                        setActiveTab('calendar')
                       }}
                       style={{
                         background: 'transparent',
@@ -8735,7 +9064,7 @@ export default function Page() {
                         textDecoration: 'underline',
                       }}
                     >
-                      Lihat Semua Program (2x–6x) ›
+                      Buka Halaman Referensi (2x–6x) ›
                     </button>
                   </div>
                   <select
@@ -8776,7 +9105,7 @@ export default function Page() {
                     ))}
                   </select>
                   <span style={{ display: 'block', fontSize: '10px', color: '#9a8fb2', lineHeight: 1.35 }}>
-                    💡 Semua gerakan dari referensi ini <strong>tidak permanen</strong> — setelah disimpan, kamu bebas mengganti gerakan dari library, menambah, atau menghapusnya.
+                    💡 Semua gerakan dari referensi ini <strong>tidak permanen</strong> — setelah disimpan, kamu bebas mengganti gerakan dari halaman Library, menambah, atau menghapusnya.
                   </span>
                 </div>
               )}
@@ -8830,520 +9159,6 @@ export default function Page() {
           </div>
         </div>
       )}
-
-      {/* ================================================================
-          MODAL BARU: REFERENSI PROGRAM (2X–6X) & LIBRARY GERAKAN GYM
-         ================================================================ */}
-      {isGymLibraryModalOpen && (() => {
-        const activeProgram =
-          GYM_PROGRAM_TEMPLATES.find((p) => p.id === selectedProgramId) || GYM_PROGRAM_TEMPLATES[0]
-        const catalogResults = searchGymExercises(catalogSearchQuery, catalogCategoryFilter)
-
-        return (
-          <div className="modal-overlay" onClick={() => setIsGymLibraryModalOpen(false)}>
-            <div
-              className="modal-content"
-              style={{
-                maxWidth: '450px',
-                maxHeight: '90vh',
-                display: 'flex',
-                flexDirection: 'column',
-                padding: '18px 16px',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* HEADER */}
-              <div className="modal-header" style={{ marginBottom: '12px' }}>
-                <div>
-                  <span className="eyebrow" style={{ color: '#c084fc', fontSize: '9px' }}>
-                    SOLO LEVELING GYM SYSTEM
-                  </span>
-                  <h3 style={{ margin: '2px 0 0', fontSize: '16px' }}>
-                    Referensi Program &amp; Library Gym
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  className="modal-close"
-                  onClick={() => setIsGymLibraryModalOpen(false)}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* TAB SWITCHER: REFERENSI PROGRAM vs LIBRARY GERAKAN */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '6px',
-                  padding: '4px',
-                  borderRadius: '11px',
-                  background: '#0a0814',
-                  border: '1px solid #281f3d',
-                  marginBottom: '12px',
-                  flexShrink: 0,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setGymModalTab('programs')}
-                  style={{
-                    padding: '7px 10px',
-                    borderRadius: '8px',
-                    border:
-                      gymModalTab === 'programs'
-                        ? '1px solid rgba(168, 85, 247, 0.5)'
-                        : '1px solid transparent',
-                    background:
-                      gymModalTab === 'programs'
-                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.38), rgba(88, 28, 135, 0.5))'
-                        : 'transparent',
-                    color: gymModalTab === 'programs' ? '#ffffff' : '#8e84a2',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <BookOpen size={13} />
-                  <span>Referensi Program (2x–6x)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGymModalTab('exercises')}
-                  style={{
-                    padding: '7px 10px',
-                    borderRadius: '8px',
-                    border:
-                      gymModalTab === 'exercises'
-                        ? '1px solid rgba(168, 85, 247, 0.5)'
-                        : '1px solid transparent',
-                    background:
-                      gymModalTab === 'exercises'
-                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.38), rgba(88, 28, 135, 0.5))'
-                        : 'transparent',
-                    color: gymModalTab === 'exercises' ? '#ffffff' : '#8e84a2',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <Search size={13} />
-                  <span>Library Gerakan ({GYM_EXERCISE_LIBRARY.length})</span>
-                </button>
-              </div>
-
-              {/* ============================================================
-                  TAB 1: REFERENSI PROGRAM LATIHAN DEFAULT (2X - 6X SEMINGGU)
-                 ============================================================ */}
-              {gymModalTab === 'programs' ? (
-                <div style={{ overflowY: 'auto', paddingRight: '2px', flex: 1 }}>
-                  {/* PILIHAN FREKUENSI: 2x, 3x, 4x, 5x, 6x Seminggu */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '5px',
-                      overflowX: 'auto',
-                      paddingBottom: '8px',
-                      marginBottom: '10px',
-                    }}
-                  >
-                    {GYM_PROGRAM_TEMPLATES.map((prog) => {
-                      const isSel = prog.id === activeProgram.id
-                      return (
-                        <button
-                          key={prog.id}
-                          type="button"
-                          onClick={() => setSelectedProgramId(prog.id)}
-                          style={{
-                            padding: '6px 11px',
-                            borderRadius: '99px',
-                            fontSize: '10.5px',
-                            fontWeight: 800,
-                            whiteSpace: 'nowrap',
-                            cursor: 'pointer',
-                            background: isSel
-                              ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
-                              : '#141024',
-                            border: isSel ? '1px solid #d8b4fe' : '1px solid #2b2144',
-                            color: isSel ? '#ffffff' : '#b3a7cc',
-                          }}
-                        >
-                          {prog.frequencyLabel}
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {/* BANNER INFO PROGRAM YANG DIPILIH */}
-                  <div
-                    style={{
-                      padding: '12px',
-                      borderRadius: '14px',
-                      background: 'linear-gradient(135deg, rgba(44, 24, 92, 0.55), rgba(18, 13, 34, 0.9))',
-                      border: '1px solid rgba(168, 85, 247, 0.38)',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    <strong style={{ display: 'block', fontSize: '13.5px', color: '#ffffff', fontWeight: 800 }}>
-                      {activeProgram.title}
-                    </strong>
-                    <span style={{ display: 'block', fontSize: '11px', color: '#d8b4fe', marginTop: '2px' }}>
-                      {activeProgram.subtitle}
-                    </span>
-                    {activeProgram.note && (
-                      <p style={{ margin: '6px 0 0', fontSize: '10.5px', color: '#a89ec0', lineHeight: 1.4 }}>
-                        📌 {activeProgram.note}
-                      </p>
-                    )}
-
-                    <div
-                      style={{
-                        marginTop: '8px',
-                        padding: '6px 9px',
-                        borderRadius: '8px',
-                        background: 'rgba(11, 8, 22, 0.65)',
-                        border: '1px solid rgba(168, 85, 247, 0.22)',
-                        fontSize: '10px',
-                        color: '#c4b5fd',
-                      }}
-                    >
-                      ✨ <strong>Fleksibel &amp; Tidak Permanen:</strong> Setelah memilih program ini, kamu bebas mengubah jadwal hari, mengganti gerakan dari library, atau mengatur set/repetisi kapan saja.
-                    </div>
-
-                    {!activeWorkoutQuest && (
-                      <button
-                        type="button"
-                        onClick={() => handleApplyFullProgramSchedule(activeProgram)}
-                        className="btn-primary"
-                        style={{
-                          width: '100%',
-                          marginTop: '10px',
-                          padding: '9px 12px',
-                          fontSize: '11.5px',
-                          fontWeight: 800,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                        }}
-                      >
-                        <Sparkles size={13} />
-                        <span>Terapkan Seluruh {activeProgram.sessions.length} Sesi ke Jadwal Quest</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* DAFTAR SESI DALAM PROGRAM */}
-                  <div style={{ display: 'grid', gap: '10px' }}>
-                    {activeProgram.sessions.map((session) => (
-                      <div
-                        key={session.id}
-                        style={{
-                          padding: '12px',
-                          borderRadius: '14px',
-                          background: '#110e1d',
-                          border: '1px solid #2b2242',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '8px',
-                            marginBottom: '8px',
-                          }}
-                        >
-                          <div>
-                            <strong style={{ display: 'block', fontSize: '13px', color: '#f3f1ff', fontWeight: 800 }}>
-                              {session.title}
-                            </strong>
-                            <span style={{ fontSize: '10px', color: '#9388ac' }}>
-                              Rekomendasi: {session.dayLabel} • {session.exercises.length} Gerakan
-                            </span>
-                          </div>
-
-                          {activeWorkoutQuest ? (
-                            <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
-                              <button
-                                type="button"
-                                onClick={() => handleApplySessionToCurrentWorkout(session, 'replace')}
-                                style={{
-                                  padding: '5px 10px',
-                                  borderRadius: '8px',
-                                  background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
-                                  border: '1px solid #c084fc',
-                                  color: '#ffffff',
-                                  fontSize: '10px',
-                                  fontWeight: 800,
-                                  cursor: 'pointer',
-                                }}
-                                title="Isi sesi workout saat ini dengan daftar gerakan ini"
-                              >
-                                Pakai di Sesi Ini
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleApplySessionToCurrentWorkout(session, 'append')}
-                                style={{
-                                  padding: '5px 8px',
-                                  borderRadius: '8px',
-                                  background: '#1d1532',
-                                  border: '1px solid #453075',
-                                  color: '#d8b4fe',
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                }}
-                                title="Tambahkan ke daftar gerakan yang sudah ada"
-                              >
-                                + Gabung
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleCreateQuestFromSessionTemplate(session)}
-                              style={{
-                                padding: '5px 10px',
-                                borderRadius: '8px',
-                                background: 'rgba(124, 58, 237, 0.22)',
-                                border: '1px solid rgba(168, 85, 247, 0.45)',
-                                color: '#e9d5ff',
-                                fontSize: '10px',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                                flexShrink: 0,
-                              }}
-                            >
-                              + Buat Sesi Ini
-                            </button>
-                          )}
-                        </div>
-
-                        {/* LIST GERAKAN DI SESI INI */}
-                        <div style={{ display: 'grid', gap: '4px' }}>
-                          {session.exercises.map((ex, idx) => (
-                            <div
-                              key={idx}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '5px 8px',
-                                borderRadius: '7px',
-                                background: '#0a0813',
-                                border: '1px solid #1e182e',
-                                fontSize: '11px',
-                              }}
-                            >
-                              <span style={{ color: '#e2d9f3', fontWeight: 600 }}>
-                                {idx + 1}. {ex.name}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: '10px',
-                                  color: '#c4b5fd',
-                                  fontWeight: 700,
-                                  background: 'rgba(168, 85, 247, 0.12)',
-                                  padding: '1px 6px',
-                                  borderRadius: '6px',
-                                }}
-                              >
-                                {ex.note || `${ex.sets} × ${ex.reps}`}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                /* ============================================================
-                   TAB 2: LIBRARY 85+ GERAKAN GYM (8 KATEGORI + SMART SEARCH)
-                   ============================================================ */
-                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                  {/* INPUT PENCARIAN KEYWORD & FUZZY */}
-                  <div style={{ position: 'relative', marginBottom: '8px', flexShrink: 0 }}>
-                    <input
-                      type="text"
-                      value={catalogSearchQuery}
-                      onChange={(e) => setCatalogSearchQuery(e.target.value)}
-                      placeholder="Cari nama gerakan atau otot (cth: incline, dada, row, bicep, squat)..."
-                      className="modal-input"
-                      style={{ marginBottom: 0, padding: '9px 32px 9px 12px', fontSize: '12px' }}
-                      autoFocus
-                    />
-                    {catalogSearchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setCatalogSearchQuery('')}
-                        style={{
-                          position: 'absolute',
-                          right: '9px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'transparent',
-                          border: 0,
-                          color: '#8e84a2',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* FILTER KATEGORI OTOT */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '5px',
-                      overflowX: 'auto',
-                      paddingBottom: '8px',
-                      marginBottom: '8px',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {GYM_MUSCLE_CATEGORIES.map((cat) => {
-                      const active = catalogCategoryFilter === cat.id
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setCatalogCategoryFilter(cat.id)}
-                          style={{
-                            padding: '5px 10px',
-                            borderRadius: '99px',
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                            cursor: 'pointer',
-                            background: active
-                              ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
-                              : '#130f22',
-                            border: active ? '1px solid #d8b4fe' : '1px solid #281f3d',
-                            color: active ? '#ffffff' : '#a79bc2',
-                          }}
-                        >
-                          {cat.icon} {cat.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {/* DAFTAR GERAKAN HASIL FILTER / PENCARIAN */}
-                  <div
-                    style={{
-                      flex: 1,
-                      overflowY: 'auto',
-                      display: 'grid',
-                      gap: '6px',
-                      paddingRight: '2px',
-                    }}
-                  >
-                    {catalogResults.length === 0 ? (
-                      <div style={{ padding: '24px 12px', textAlign: 'center', fontSize: '11.5px', color: '#8e84a2' }}>
-                        Tidak ditemukan gerakan yang cocok dengan kata kunci <strong>"{catalogSearchQuery}"</strong>.
-                      </div>
-                    ) : (
-                      catalogResults.map((item) => (
-                        <div
-                          key={item.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '8px',
-                            padding: '9px 11px',
-                            borderRadius: '11px',
-                            background: '#110e1d',
-                            border: '1px solid #261e3a',
-                          }}
-                        >
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                              <strong style={{ fontSize: '12.5px', color: '#f3f1ff', fontWeight: 700 }}>
-                                {item.name}
-                              </strong>
-                              <span
-                                style={{
-                                  fontSize: '9px',
-                                  padding: '1px 7px',
-                                  borderRadius: '99px',
-                                  background: 'rgba(168, 85, 247, 0.15)',
-                                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                                  color: '#d8b4fe',
-                                  fontWeight: 700,
-                                }}
-                              >
-                                {item.category}
-                              </span>
-                            </div>
-                            <span style={{ fontSize: '10px', color: '#8a80a0' }}>
-                              Target Referensi: {item.targetNote || `${item.defaultSets} × ${item.defaultReps}`}
-                            </span>
-                          </div>
-
-                          {activeWorkoutQuest && currentWorkoutQuest ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleAddExercise(
-                                  currentWorkoutQuest.id,
-                                  activeWorkoutQuest.type,
-                                  item.name,
-                                  60,
-                                  item.defaultSets,
-                                  item.defaultReps
-                                )
-                              }}
-                              style={{
-                                padding: '5px 10px',
-                                borderRadius: '8px',
-                                background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
-                                border: '1px solid #c084fc',
-                                color: '#ffffff',
-                                fontSize: '10px',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                                flexShrink: 0,
-                              }}
-                            >
-                              + Tambah
-                            </button>
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                color: '#a78bfa',
-                                flexShrink: 0,
-                              }}
-                            >
-                              {item.defaultSets} Set
-                            </span>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )
-      })()}
 
 
 

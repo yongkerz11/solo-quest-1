@@ -1485,3 +1485,4 @@ export const GYM_PROGRAM_TEMPLATES: GymProgramTemplate[] = [
     ],
   },
 ]
+
