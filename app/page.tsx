@@ -6186,21 +6186,6 @@ export default function Page() {
                  ================================================================ */
               <>
                 <section className="hero-card-unified">
-                  {/* 4 Sudut Bingkai Sistem RPG (HUD Corner Brackets) */}
-                  <span className="hud-corner tl" />
-                  <span className="hud-corner tr" />
-                  <span className="hud-corner bl" />
-                  <span className="hud-corner br" />
-
-                  {/* Efek Partikel Mana Melayang (Floating Mana Sparks) */}
-                  <div className="hero-mana-particles">
-                    <span className="mana-spark s1" />
-                    <span className="mana-spark s2" />
-                    <span className="mana-spark s3" />
-                    <span className="mana-spark s4" />
-                    <span className="mana-spark s5" />
-                  </div>
-
                   <div className="hero-top-row">
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="hunter-status-pill">
@@ -6230,49 +6215,125 @@ export default function Page() {
                       </div>
                     </div>
 
-                    {/* ROYAL ANIMATED GAME RANK CREST (ISTIMEWA DENGAN ROTATING MAGIC RING & CONIC NEON BORDER) */}
+                    {/* SHADOW MONARCH WINGED HEXAGONAL SVG RANK EMBLEM */}
                     <div
-                      className="rank-emblem-showcase"
+                      className="rank-hex-emblem"
                       onClick={() => setActiveTab('rank')}
                       title="Lihat Peringkat Hunter"
                     >
-                      {/* Cincin Orbit Luar & Dalam yang Berputar Berlawanan Arah */}
-                      <span className="rank-orbit-outer" />
-                      <span className="rank-orbit-inner" />
+                      <svg
+                        className="rank-hex-svg"
+                        viewBox="0 0 106 102"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <defs>
+                          <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stopColor="#e9d5ff" />
+                            <stop offset="45%" stopColor="#9333ea" />
+                            <stop offset="100%" stopColor="#4c1d95" />
+                          </linearGradient>
+                          <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
+                            <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
+                            <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
+                            <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
+                          </radialGradient>
+                          <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
+                            <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
+                          </linearGradient>
+                        </defs>
 
-                      {/* Mahkota Kecil di Puncak Perisai Rank */}
-                      <span className="rank-crown-top">
-                        <Crown size={9} color="#fbbf24" />
-                        <span>RANK</span>
-                      </span>
+                        {/* 1. Cincin Orbit Luar Berputar Halus */}
+                        <g className="rank-svg-orbit-cw">
+                          <circle
+                            cx="53"
+                            cy="51"
+                            r="47"
+                            stroke="rgba(168, 85, 247, 0.25)"
+                            strokeWidth="1"
+                            strokeDasharray="6 6"
+                          />
+                          <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
+                          <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
+                        </g>
 
-                      {/* 4 Permata Sudut Berkilau */}
-                      <span className="rank-corner-gem g-tl" />
-                      <span className="rank-corner-gem g-tr" />
-                      <span className="rank-corner-gem g-bl" />
-                      <span className="rank-corner-gem g-br" />
+                        {/* 2. Busur Energi Dalam Berputar Berlawanan */}
+                        <g className="rank-svg-orbit-ccw">
+                          <circle
+                            cx="53"
+                            cy="51"
+                            r="43"
+                            stroke="rgba(216, 180, 254, 0.35)"
+                            strokeWidth="1.2"
+                            strokeDasharray="24 66"
+                            strokeLinecap="round"
+                          />
+                        </g>
 
-                      {/* Perisai Utama dengan Border Conic Neon Berputar */}
-                      <div className="rank-crest-shell">
-                        <div className="rank-crest-core">
-                          <strong className="rank-crest-letter">{currentRank}</strong>
-                        </div>
+                        {/* 3. Sayap Geometris Kiri & Kanan (Shadow Blades) */}
+                        <g className="rank-svg-wings">
+                          {/* Sayap Kiri */}
+                          <path
+                            d="M15 34 L3 25 L8 42 L15 46 Z"
+                            fill="url(#wingGrad)"
+                          />
+                          <path
+                            d="M15 50 L1 47 L7 60 L15 62 Z"
+                            fill="url(#wingGrad)"
+                            opacity="0.75"
+                          />
+                          {/* Sayap Kanan */}
+                          <path
+                            d="M91 34 L103 25 L98 42 L91 46 Z"
+                            fill="url(#wingGrad)"
+                          />
+                          <path
+                            d="M91 50 L105 47 L99 60 L91 62 Z"
+                            fill="url(#wingGrad)"
+                            opacity="0.75"
+                          />
+                        </g>
+
+                        {/* 4. Bingkai Perisai Heksagonal Utama */}
+                        <polygon
+                          points="53,8 90,28 90,74 53,94 16,74 16,28"
+                          fill="url(#hexCoreGrad)"
+                          stroke="url(#hexOuterGrad)"
+                          strokeWidth="2"
+                          strokeLinejoin="round"
+                        />
+
+                        {/* 5. Aliran Cahaya Laser Mengelilingi Garis Heksagon */}
+                        <polygon
+                          className="rank-svg-laser-border"
+                          points="53,8 90,28 90,74 53,94 16,74 16,28"
+                          fill="none"
+                          stroke="#f3e8ff"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+
+                        {/* 6. Garis Dalam Heksagon Presisi */}
+                        <polygon
+                          points="53,13 85,31 85,71 53,89 21,71 21,31"
+                          fill="none"
+                          stroke="rgba(192, 132, 252, 0.28)"
+                          strokeWidth="1"
+                        />
+
+                        {/* 7. Ornamen Berlian Puncak & Bawah */}
+                        <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
+                        <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
+                      </svg>
+
+                      {/* Teks Rank di Tengah Perisai Heksagon */}
+                      <div className="rank-hex-content">
+                        <span className="rank-hex-label">RANK</span>
+                        <strong className="rank-hex-letter">{currentRank}</strong>
+                        <span className="rank-hex-sub">HUNTER</span>
                       </div>
-
-                      {/* Pita Gelar Rank di Bawah Perisai */}
-                      <span className="rank-tier-ribbon">
-                        {currentRank === 'S'
-                          ? '★ MONARCH ★'
-                          : currentRank === 'A'
-                          ? '★ MASTER ★'
-                          : currentRank === 'B'
-                          ? '★ KNIGHT ★'
-                          : currentRank === 'C'
-                          ? '★ ELITE ★'
-                          : currentRank === 'D'
-                          ? '★ IRON ★'
-                          : '★ AWAKENED ★'}
-                      </span>
                     </div>
                   </div>
 
