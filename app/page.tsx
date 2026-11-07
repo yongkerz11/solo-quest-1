@@ -3372,11 +3372,16 @@ export default function Page() {
       <div className="phone-frame">
         {/* TOPBAR */}
         <header className="topbar" style={{ marginBottom: '16px' }}>
-          <div className="brand-mark">
+          <div
+            className="brand-mark"
+            onClick={() => {
+              setActiveWorkoutQuest(null)
+              setActiveExerciseId(null)
+              setActiveTab('home')
+            }}
+            title="Beranda"
+          >
             <Swords size={17} strokeWidth={2.5} />
-          </div>
-          <div className="brand-name">
-            SOLO<span>LEVEL</span>
           </div>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button
@@ -4910,46 +4915,65 @@ export default function Page() {
                ================================================================ */}
             {activeTab === 'home' && (
           <>
-            <section className="hero">
-              <div>
-                <p className="eyebrow">HUNTER: {currentUser.username.toUpperCase()}</p>
-                <h1>
-                  Bangun kekuatanmu
-                  <br />
-                  <span>setiap hari.</span>
-                </h1>
-              </div>
-              <div className="rank-badge">
-                <span>RANK</span>
-                <strong>{currentRank}</strong>
-              </div>
-            </section>
-
-            <section className="level-card">
-              <div className="level-heading">
+            <section className="hero-card-unified">
+              <div className="hero-top-row">
                 <div>
-                  <span className="label-muted">CURRENT LEVEL</span>
-                  <strong>Level {currentLevel}</strong>
+                  <div className="hunter-status-pill">
+                    <span className="hunter-status-dot" />
+                    HUNTER • {currentUser.username.toUpperCase()}
+                  </div>
+                  <h1 className="hero-level-number">Level {currentLevel}</h1>
+                  <div className="hero-xp-badge">
+                    <Zap size={13} fill="currentColor" style={{ color: '#c084fc' }} />
+                    <span>
+                      {currentUser.xp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
+                    </span>
+                  </div>
                 </div>
-                <div className="xp-count">
-                  <Zap size={14} fill="currentColor" /> {currentUser.xp.toLocaleString('id-ID')} XP
+
+                <div
+                  className="rank-badge"
+                  onClick={() => setActiveTab('rank')}
+                  title="Lihat Peringkat Hunter"
+                >
+                  <span>RANK</span>
+                  <strong>{currentRank}</strong>
                 </div>
               </div>
-              <div className="xp-track">
-                <span style={{ width: `${levelProgress}%` }} />
-              </div>
-              <div className="level-footer">
-                <span>Ke level {currentLevel + 1}</span>
-                <span>{nextLevelXp.toLocaleString('id-ID')} XP</span>
+
+              <div className="hero-progress-wrap">
+                <div className="hero-progress-meta">
+                  <span>Menuju Level {currentLevel + 1}</span>
+                  <span style={{ color: '#d8b4fe', fontWeight: 700 }}>{levelProgress}%</span>
+                </div>
+                <div className="hero-xp-track">
+                  <span
+                    className="hero-xp-fill"
+                    style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 4, levelProgress)}%` }}
+                  />
+                </div>
               </div>
             </section>
 
             <section className="stats-grid">
               <div className="stat-card accent">
-                <Flame size={18} />
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '11px',
+                    background: 'rgba(255, 157, 97, 0.12)',
+                    border: '1px solid rgba(255, 157, 97, 0.28)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Flame size={18} />
+                </div>
                 <div>
-                  <strong>{currentUser.streak} hari</strong>
-                  <span>Streak saat ini</span>
+                  <strong>{currentUser.streak} Hari</strong>
+                  <span>Streak aktif</span>
                 </div>
               </div>
               <div
@@ -4957,10 +4981,23 @@ export default function Page() {
                 style={{ cursor: 'pointer' }}
                 onClick={() => setActiveTab('clan')}
               >
-                <Shield size={18} />
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '11px',
+                    background: 'rgba(168, 85, 247, 0.14)',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Shield size={18} />
+                </div>
                 <div>
                   <strong>{userJoinedClanIds.length} Clan</strong>
-                  <span>Komunitas diikuti</span>
+                  <span>Komunitas</span>
                 </div>
               </div>
             </section>
@@ -4968,8 +5005,8 @@ export default function Page() {
             <section className="section-block">
               <div className="section-title">
                 <div>
-                  <span className="eyebrow">PERSONAL QUEST</span>
-                  <h2>Quest Pribadi ({currentUser.username})</h2>
+                  <span className="eyebrow">DAILY QUEST</span>
+                  <h2>Quest Pribadi</h2>
                 </div>
                 <span className="completion">
                   {completedTodayPersonalCount}/{todayPersonalTasks.length}
