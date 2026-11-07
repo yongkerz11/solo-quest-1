@@ -960,6 +960,8 @@ export default function Page() {
   const [inviteCodeInput, setInviteCodeInput] = useState('')
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'offline'>('idle')
+  const [isHistoryPageOpen, setIsHistoryPageOpen] = useState<boolean>(false)
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'gym' | 'other'>('all')
 
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
@@ -1252,6 +1254,128 @@ export default function Page() {
   const currentRank = getHunterRank(currentUser.xp)
   const nextLevelXp = currentLevel * 100
   const levelProgress = Math.min(100, Math.round(((currentUser.xp % 100) / 100) * 100))
+
+  // Derive History Quest Logs dari seluruh aktivitas latihan & penyelesaian quest user
+  const userHistoryItems = (() => {
+    const items: Array<{
+      id: string
+      questId: string
+      title: string
+      category: string
+      icon: string
+      xp: number
+      dateLabel: string
+      timestamp: number
+      isGym: boolean
+      exercises: Array<{ name: string; setsCount: number; weight: number; reps: number }>
+      totalSets: number
+      maxWeight: number
+    }> = []
+
+    const todayShort = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+
+    userPersonalTasks.forEach((task) => {
+      const isGym = task.category.toLowerCase() === 'gym' || Boolean(task.workoutExercises && task.workoutExercises.length > 0)
+      if (isGym && task.workoutExercises && task.workoutExercises.length > 0) {
+        const dateMap = new Map<
+          string,
+          { timestamp: number; exercises: Array<{ name: string; setsCount: number; weight: number; reps: number }> }
+        >()
+
+        task.workoutExercises.forEach((ex) => {
+          if (ex.history && ex.history.length > 0) {
+            ex.history.forEach((h) => {
+              const existing = dateMap.get(h.date) || { timestamp: h.timestamp || Date.now(), exercises: [] }
+              existing.timestamp = Math.max(existing.timestamp, h.timestamp || 0)
+              existing.exercises.push({
+                name: ex.name,
+                setsCount: ex.sets.length || 1,
+                weight: Number(h.weight) || 0,
+                reps: Number(h.reps) || 10,
+              })
+              dateMap.set(h.date, existing)
+            })
+          }
+        })
+
+        // Jika belum ada entry di ex.history tetapi sudah ada gerakan/set yang diisi atau quest selesai
+        if (dateMap.size === 0) {
+          const activeExs = task.workoutExercises
+            .filter((ex) => ex.sets.length > 0)
+            .map((ex) => {
+              const weights = ex.sets.map((s) => Number(s.weight) || 0)
+              const maxW = weights.length > 0 ? Math.max(...weights) : 0
+              const firstReps = Number(ex.sets[0]?.reps) || 10
+              return {
+                name: ex.name,
+                setsCount: ex.sets.length,
+                weight: maxW,
+                reps: firstReps,
+              }
+            })
+          if (activeExs.length > 0) {
+            const lastDateIso = task.completedDates && task.completedDates.length > 0
+              ? task.completedDates[task.completedDates.length - 1]
+              : null
+            const label = lastDateIso
+              ? new Date(lastDateIso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+              : todayShort
+            dateMap.set(label, { timestamp: Date.now(), exercises: activeExs })
+          }
+        }
+
+        dateMap.forEach((val, dateLabel) => {
+          const totalSets = val.exercises.reduce((acc, e) => acc + e.setsCount, 0)
+          const maxWeight = val.exercises.reduce((acc, e) => Math.max(acc, e.weight), 0)
+          items.push({
+            id: `${task.id}-${dateLabel}`,
+            questId: task.id,
+            title: task.title,
+            category: task.category,
+            icon: task.icon,
+            xp: task.xp,
+            dateLabel,
+            timestamp: val.timestamp,
+            isGym: true,
+            exercises: val.exercises,
+            totalSets,
+            maxWeight,
+          })
+        })
+      } else {
+        const dates = task.completedDates && task.completedDates.length > 0
+          ? task.completedDates
+          : task.done
+          ? [new Date().toISOString().slice(0, 10)]
+          : []
+        dates.forEach((iso) => {
+          const parsed = new Date(iso)
+          const label = !isNaN(parsed.getTime())
+            ? parsed.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+            : todayShort
+          items.push({
+            id: `${task.id}-${iso}`,
+            questId: task.id,
+            title: task.title,
+            category: task.category,
+            icon: task.icon,
+            xp: task.xp,
+            dateLabel: label,
+            timestamp: !isNaN(parsed.getTime()) ? parsed.getTime() : Date.now(),
+            isGym: false,
+            exercises: [],
+            totalSets: 0,
+            maxWeight: 0,
+          })
+        })
+      }
+    })
+
+    return items.sort((a, b) => b.timestamp - a.timestamp)
+  })()
+
+  const totalHistorySets = userHistoryItems.reduce((acc, item) => acc + item.totalSets, 0)
+  const maxHistoryWeight = userHistoryItems.reduce((acc, item) => Math.max(acc, item.maxWeight), 0)
 
   // Sinkronisasi otomatis dengan Supabase Cloud (Quest & Progres Beban)
   const syncWithCloud = async (forcePushLocal = false) => {
@@ -3377,6 +3501,7 @@ export default function Page() {
             onClick={() => {
               setActiveWorkoutQuest(null)
               setActiveExerciseId(null)
+              setIsHistoryPageOpen(false)
               setActiveTab('home')
             }}
             title="Beranda"
@@ -4915,298 +5040,530 @@ export default function Page() {
                ================================================================ */}
             {activeTab === 'home' && (
           <>
-            <section className="hero-card-unified">
-              <div className="hero-top-row">
-                <div>
-                  <div className="hunter-status-pill">
-                    <span className="hunter-status-dot" />
-                    HUNTER • {currentUser.username.toUpperCase()}
-                  </div>
-                  <h1 className="hero-level-number">Level {currentLevel}</h1>
-                  <div className="hero-xp-badge">
-                    <Zap size={13} fill="currentColor" style={{ color: '#c084fc' }} />
-                    <span>
-                      {currentUser.xp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  className="rank-badge"
-                  onClick={() => setActiveTab('rank')}
-                  title="Lihat Peringkat Hunter"
-                >
-                  <span>RANK</span>
-                  <strong>{currentRank}</strong>
-                </div>
-              </div>
-
-              <div className="hero-progress-wrap">
-                <div className="hero-progress-meta">
-                  <span>Menuju Level {currentLevel + 1}</span>
-                  <span style={{ color: '#d8b4fe', fontWeight: 700 }}>{levelProgress}%</span>
-                </div>
-                <div className="hero-xp-track">
-                  <span
-                    className="hero-xp-fill"
-                    style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 4, levelProgress)}%` }}
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section className="stats-grid">
-              <div className="stat-card accent">
+            {isHistoryPageOpen ? (
+              /* ================================================================
+                 HALAMAN HISTORY QUEST (FULL PAGE VIEW DARI TOMBOL SHOW MORE)
+                 ================================================================ */
+              <div style={{ animation: 'heroCardAppear 0.35s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                {/* Header History Quest */}
                 <div
                   style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '11px',
-                    background: 'rgba(255, 157, 97, 0.12)',
-                    border: '1px solid rgba(255, 157, 97, 0.28)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Flame size={18} />
-                </div>
-                <div>
-                  <strong>{currentUser.streak} Hari</strong>
-                  <span>Streak aktif</span>
-                </div>
-              </div>
-              <div
-                className="stat-card"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveTab('clan')}
-              >
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '11px',
-                    background: 'rgba(168, 85, 247, 0.14)',
-                    border: '1px solid rgba(168, 85, 247, 0.3)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Shield size={18} />
-                </div>
-                <div>
-                  <strong>{userJoinedClanIds.length} Clan</strong>
-                  <span>Komunitas</span>
-                </div>
-              </div>
-            </section>
-
-            <section className="section-block">
-              <div className="section-title">
-                <div>
-                  <span className="eyebrow">DAILY QUEST</span>
-                  <h2>Quest Pribadi</h2>
-                </div>
-                <span className="completion">
-                  {completedTodayPersonalCount}/{todayPersonalTasks.length}
-                </span>
-              </div>
-
-              {/* TAB SWITCHER: TODAY & UPCOMING */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '6px',
-                  padding: '4px',
-                  borderRadius: '11px',
-                  background: '#0e0b18',
-                  border: '1px solid #261f3d',
-                  marginBottom: '12px',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setQuestScheduleTab('today')}
-                  style={{
-                    padding: '7px 12px',
-                    borderRadius: '8px',
-                    border: questScheduleTab === 'today' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
-                    background:
-                      questScheduleTab === 'today'
-                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
-                        : 'transparent',
-                    color: questScheduleTab === 'today' ? '#f3f1ff' : '#827896',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s ease',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginBottom: '18px',
                   }}
                 >
-                  <span>Today</span>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      padding: '1px 6px',
-                      borderRadius: '999px',
-                      background: questScheduleTab === 'today' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
-                      color: questScheduleTab === 'today' ? '#e9d5ff' : '#827896',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {todayPersonalTasks.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuestScheduleTab('upcoming')}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsHistoryPageOpen(false)}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '11px',
+                        background: '#161126',
+                        border: '1px solid #352754',
+                        color: '#d8b4fe',
+                        display: 'grid',
+                        placeItems: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                      title="Kembali ke Home"
+                    >
+                      <ArrowLeft size={16} />
+                    </button>
+                    <div>
+                      <span className="eyebrow">ACTIVITY LOG</span>
+                      <h1 style={{ fontSize: '20px', fontWeight: 800, margin: '2px 0 0', color: '#f5f2ff' }}>
+                        History Quest
+                      </h1>
+                    </div>
+                  </div>
+                  <span className="completion">{userHistoryItems.length} Sesi</span>
+                </div>
+
+                {/* Summary Bento Stats (3 Kartu Ringkasan) */}
+                <div
                   style={{
-                    padding: '7px 12px',
-                    borderRadius: '8px',
-                    border: questScheduleTab === 'upcoming' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
-                    background:
-                      questScheduleTab === 'upcoming'
-                        ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
-                        : 'transparent',
-                    color: questScheduleTab === 'upcoming' ? '#f3f1ff' : '#827896',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.15s ease',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '8px',
+                    marginBottom: '16px',
                   }}
                 >
-                  <span>Upcoming</span>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      padding: '1px 6px',
-                      borderRadius: '999px',
-                      background: questScheduleTab === 'upcoming' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
-                      color: questScheduleTab === 'upcoming' ? '#e9d5ff' : '#827896',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {upcomingPersonalTasks.length}
-                  </span>
-                </button>
-              </div>
-
-              {/* Banner Reward List Quest Personal (Khusus Tab Today) */}
-              {questScheduleTab === 'today' && todayPersonalTasks.length > 0 && (() => {
-                const totalPersonalListXp = todayPersonalTasks.reduce((sum, t) => sum + t.xp, 0)
-                const isAllDone = todayPersonalTasks.length > 0 && completedTodayPersonalCount === todayPersonalTasks.length
-
-                return (
                   <div
                     style={{
-                      background: isAllDone
-                        ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(22, 101, 52, 0.2))'
-                        : 'linear-gradient(135deg, rgba(37, 20, 68, 0.65), rgba(18, 14, 30, 0.85))',
-                      border: isAllDone
-                        ? '1px solid rgba(74, 222, 128, 0.35)'
-                        : '1px solid rgba(139, 92, 246, 0.25)',
-                      borderRadius: '12px',
-                      padding: '10px 14px',
-                      marginBottom: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '10px',
+                      padding: '12px 10px',
+                      borderRadius: '14px',
+                      background: 'linear-gradient(145deg, rgba(32, 20, 62, 0.7), rgba(16, 12, 28, 0.9))',
+                      border: '1px solid rgba(168, 85, 247, 0.25)',
+                      textAlign: 'center',
                     }}
                   >
-                    <div>
-                      <div
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          color: isAllDone ? '#86efac' : '#c084fc',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                        }}
-                      >
-                        <Zap size={13} />
-                        {isAllDone ? 'DAILY REWARD DIPEROLEH!' : 'DAILY REWARD LIST'}
-                      </div>
-                      <div style={{ fontSize: '10px', color: '#8e84a2', marginTop: '2px' }}>
-                        {isAllDone
-                          ? `Seluruh (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
-                          : `Selesaikan semua (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest untuk mendapatkan XP`}
-                      </div>
-                    </div>
-                    <div
+                    <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#f5f2ff' }}>
+                      {userHistoryItems.length}
+                    </strong>
+                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Total Sesi</span>
+                  </div>
+                  <div
+                    style={{
+                      padding: '12px 10px',
+                      borderRadius: '14px',
+                      background: 'linear-gradient(145deg, rgba(32, 20, 62, 0.7), rgba(16, 12, 28, 0.9))',
+                      border: '1px solid rgba(168, 85, 247, 0.25)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#d8b4fe' }}>
+                      {totalHistorySets}
+                    </strong>
+                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Total Set</span>
+                  </div>
+                  <div
+                    style={{
+                      padding: '12px 10px',
+                      borderRadius: '14px',
+                      background: 'linear-gradient(145deg, rgba(32, 20, 62, 0.7), rgba(16, 12, 28, 0.9))',
+                      border: '1px solid rgba(168, 85, 247, 0.25)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#fbbf24' }}>
+                      {maxHistoryWeight} kg
+                    </strong>
+                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Max Beban</span>
+                  </div>
+                </div>
+
+                {/* Filter Tabs */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '6px',
+                    padding: '4px',
+                    borderRadius: '11px',
+                    background: '#0e0b18',
+                    border: '1px solid #261f3d',
+                    marginBottom: '14px',
+                  }}
+                >
+                  {[
+                    { key: 'all', label: 'Semua' },
+                    { key: 'gym', label: 'Gym' },
+                    { key: 'other', label: 'Quest Lain' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setHistoryFilter(tab.key as 'all' | 'gym' | 'other')}
                       style={{
-                        fontSize: '12px',
-                        fontWeight: 800,
-                        color: isAllDone ? '#4ade80' : '#d5beff',
-                        background: isAllDone ? 'rgba(74, 222, 128, 0.2)' : 'rgba(168, 85, 247, 0.18)',
-                        padding: '4px 10px',
+                        padding: '7px 10px',
                         borderRadius: '8px',
-                        border: isAllDone ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.3)',
-                        whiteSpace: 'nowrap',
+                        border:
+                          historyFilter === tab.key
+                            ? '1px solid rgba(168, 85, 247, 0.45)'
+                            : '1px solid transparent',
+                        background:
+                          historyFilter === tab.key
+                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
+                            : 'transparent',
+                        color: historyFilter === tab.key ? '#f3f1ff' : '#827896',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      +{totalPersonalListXp} XP
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Daftar Lengkap History Quest */}
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {(() => {
+                    const filteredHistory = userHistoryItems.filter((item) => {
+                      if (historyFilter === 'gym') return item.isGym
+                      if (historyFilter === 'other') return !item.isGym
+                      return true
+                    })
+
+                    if (filteredHistory.length === 0) {
+                      return (
+                        <div
+                          style={{
+                            padding: '28px 16px',
+                            borderRadius: '16px',
+                            background: '#0e0c16',
+                            border: '1px dashed #2c2342',
+                            textAlign: 'center',
+                            color: '#827896',
+                            fontSize: '12px',
+                          }}
+                        >
+                          Belum ada riwayat pada kategori ini.
+                        </div>
+                      )
+                    }
+
+                    return filteredHistory.map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          padding: '14px',
+                          borderRadius: '16px',
+                          background: 'linear-gradient(145deg, rgba(22, 17, 36, 0.94), rgba(14, 11, 24, 0.98))',
+                          border: '1px solid rgba(139, 92, 246, 0.24)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                            <div className="history-icon-box">
+                              {item.isGym ? <Dumbbell size={18} /> : item.icon}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
+                                <strong style={{ fontSize: '13.5px', color: '#f5f2ff', fontWeight: 700 }}>
+                                  {item.title}
+                                </strong>
+                                <span
+                                  style={{
+                                    fontSize: '9.5px',
+                                    padding: '2px 7px',
+                                    borderRadius: '99px',
+                                    background: 'rgba(168, 85, 247, 0.14)',
+                                    border: '1px solid rgba(168, 85, 247, 0.28)',
+                                    color: '#d8b4fe',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {item.dateLabel}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '10.5px', color: '#8a80a0', display: 'block', marginTop: '2px' }}>
+                                {item.category} {item.isGym && item.exercises.length > 0 ? `• ${item.exercises.length} Gerakan • ${item.totalSets} Set` : ''}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 800,
+                              color: '#4ade80',
+                              background: 'rgba(74, 222, 128, 0.14)',
+                              border: '1px solid rgba(74, 222, 128, 0.32)',
+                              padding: '4px 9px',
+                              borderRadius: '8px',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            +{item.xp} XP
+                          </div>
+                        </div>
+
+                        {/* Breakdown Gerakan Latihan jika Gym */}
+                        {item.isGym && item.exercises.length > 0 && (
+                          <div
+                            style={{
+                              display: 'grid',
+                              gap: '6px',
+                              padding: '10px',
+                              borderRadius: '11px',
+                              background: 'rgba(10, 8, 19, 0.7)',
+                              border: '1px solid rgba(139, 92, 246, 0.14)',
+                            }}
+                          >
+                            {item.exercises.map((ex, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  fontSize: '11px',
+                                }}
+                              >
+                                <span style={{ color: '#e2d9f3', fontWeight: 600 }}>{ex.name}</span>
+                                <span style={{ color: '#b9a6dc', fontWeight: 700 }}>
+                                  {ex.setsCount} Set • {ex.weight} kg × {ex.reps} reps
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {item.isGym && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsHistoryPageOpen(false)
+                              setActiveWorkoutQuest({ type: 'personal', id: item.questId })
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '7px 10px',
+                              borderRadius: '9px',
+                              background: 'rgba(124, 58, 237, 0.14)',
+                              border: '1px solid rgba(168, 85, 247, 0.3)',
+                              color: '#d8b4fe',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '5px',
+                            }}
+                          >
+                            <span>Buka Detail Workout</span>
+                            <ChevronRight size={13} />
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  })()}
+                </div>
+              </div>
+            ) : (
+              /* ================================================================
+                 BERANDA UTAMA: UNIFIED HERO BENTO CARD + HISTORY QUEST PREVIEW
+                 ================================================================ */
+              <>
+                <section className="hero-card-unified">
+                  <div className="hero-top-row">
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="hunter-status-pill">
+                        <span className="hunter-status-dot" />
+                        CURRENT LEVEL
+                      </div>
+                      <h1 className="hero-level-number">Level {currentLevel}</h1>
+
+                      <div className="hero-progress-inline">
+                        <div className="hero-progress-meta">
+                          <span>
+                            <Zap
+                              size={11}
+                              fill="currentColor"
+                              style={{ display: 'inline', color: '#c084fc', marginRight: '4px', verticalAlign: '-1px' }}
+                            />
+                            {currentUser.xp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
+                          </span>
+                          <span style={{ color: '#d8b4fe', fontWeight: 700 }}>{levelProgress}%</span>
+                        </div>
+                        <div className="hero-xp-track">
+                          <span
+                            className="hero-xp-fill"
+                            style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 5, levelProgress)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="rank-badge"
+                      onClick={() => setActiveTab('rank')}
+                      title="Lihat Peringkat Hunter"
+                    >
+                      <span>RANK</span>
+                      <strong>{currentRank}</strong>
                     </div>
                   </div>
-                )
-              })()}
 
-              <div className="task-list">
-                {(questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).length === 0 ? (
-                  <div
-                    style={{
-                      padding: '18px 14px',
-                      borderRadius: '12px',
-                      background: '#0e0c16',
-                      border: '1px dashed #28213a',
-                      textAlign: 'center',
-                      fontSize: '11.5px',
-                      color: '#7c738f',
-                    }}
-                  >
-                    {questScheduleTab === 'today'
-                      ? `Tidak ada quest untuk hari ini (${todayDayCode}). Cek tab Upcoming atau tambah quest baru.`
-                      : `Tidak ada quest di jadwal Upcoming. Quest yang dipilih untuk hari selain hari ini (${todayDayCode}) akan tampil di sini.`}
+                  {/* Integrated 3-Column Bento Stats Dock */}
+                  <div className="hero-stats-dock">
+                    <div className="hero-dock-item">
+                      <div
+                        className="hero-dock-icon"
+                        style={{
+                          background: 'rgba(255, 157, 97, 0.14)',
+                          border: '1px solid rgba(255, 157, 97, 0.3)',
+                          color: '#ff9d61',
+                        }}
+                      >
+                        <Flame size={14} />
+                      </div>
+                      <div>
+                        <strong>{currentUser.streak} Hari</strong>
+                        <span>Streak</span>
+                      </div>
+                    </div>
+
+                    <div
+                      className="hero-dock-item clickable"
+                      onClick={() => setIsHistoryPageOpen(true)}
+                      title="Buka History Quest"
+                    >
+                      <div
+                        className="hero-dock-icon"
+                        style={{
+                          background: 'rgba(74, 222, 128, 0.14)',
+                          border: '1px solid rgba(74, 222, 128, 0.3)',
+                          color: '#4ade80',
+                        }}
+                      >
+                        <Activity size={14} />
+                      </div>
+                      <div>
+                        <strong>{userHistoryItems.length} Sesi</strong>
+                        <span>History</span>
+                      </div>
+                    </div>
+
+                    <div
+                      className="hero-dock-item clickable"
+                      onClick={() => setActiveTab('clan')}
+                      title="Buka Komunitas Clan"
+                    >
+                      <div
+                        className="hero-dock-icon"
+                        style={{
+                          background: 'rgba(168, 85, 247, 0.16)',
+                          border: '1px solid rgba(168, 85, 247, 0.34)',
+                          color: '#c084fc',
+                        }}
+                      >
+                        <Shield size={14} />
+                      </div>
+                      <div>
+                        <strong>{userJoinedClanIds.length} Clan</strong>
+                        <span>Komunitas</span>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  (questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).map((task) => {
-                    const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
-                    return (
-                      <QuestCard
-                        key={task.id}
-                        questId={task.id}
-                        colorIndex={globalIdx >= 0 ? globalIdx : 0}
-                        title={task.title}
-                        meta={task.category}
-                        icon={task.icon}
-                        done={task.done}
-                        completedDates={task.completedDates}
-                        schedule={task.schedule}
-                        canManage={true}
-                        isGym={task.category.toLowerCase() === 'gym'}
-                        onOpenWorkout={() => setActiveWorkoutQuest({ type: 'personal', id: task.id })}
-                        onToggle={() => handleTogglePersonal(task.id)}
-                        onEdit={() => openEditPersonalModal(task)}
-                        onDelete={() => handleDeletePersonal(task.id)}
-                      />
-                    )
-                  })
-                )}
-              </div>
-              <button className="add-task" onClick={openAddPersonalModal}>
-                <Plus size={17} /> Tambah quest pribadi
-              </button>
-            </section>
+                </section>
+
+                {/* SECTION HISTORY QUEST DENGAN SHOW MORE */}
+                <section className="section-block">
+                  <div className="section-title">
+                    <div>
+                      <span className="eyebrow">RECENT ACTIVITY</span>
+                      <h2>History Quest</h2>
+                    </div>
+                    <button
+                      type="button"
+                      className="show-more-btn"
+                      onClick={() => setIsHistoryPageOpen(true)}
+                    >
+                      <span>Show More</span>
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
+
+                  <div className="task-list">
+                    {userHistoryItems.length === 0 ? (
+                      <div
+                        style={{
+                          padding: '22px 16px',
+                          borderRadius: '16px',
+                          background: '#0e0c16',
+                          border: '1px dashed #28213a',
+                          textAlign: 'center',
+                          fontSize: '11.5px',
+                          color: '#827896',
+                        }}
+                      >
+                        <p style={{ margin: '0 0 10px' }}>Belum ada riwayat quest atau sesi workout yang tercatat.</p>
+                        <button
+                          type="button"
+                          className="show-more-btn"
+                          onClick={() => setActiveTab('calendar')}
+                        >
+                          <span>Mulai dari My Quest</span>
+                          <ChevronRight size={13} />
+                        </button>
+                      </div>
+                    ) : (
+                      userHistoryItems.slice(0, 3).map((item) => {
+                        const firstEx = item.exercises[0]
+                        const summaryText =
+                          item.isGym && firstEx
+                            ? `${firstEx.name} • ${firstEx.setsCount} Set (${firstEx.weight} kg × ${firstEx.reps})`
+                            : item.category
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="history-quest-card"
+                            onClick={() => setIsHistoryPageOpen(true)}
+                          >
+                            <div className="history-icon-box">
+                              {item.isGym ? <Dumbbell size={18} /> : item.icon}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                                <strong
+                                  style={{
+                                    fontSize: '13px',
+                                    color: '#f5f2ff',
+                                    fontWeight: 700,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                  }}
+                                >
+                                  {item.title}
+                                </strong>
+                                <span
+                                  style={{
+                                    fontSize: '9.5px',
+                                    padding: '1px 6px',
+                                    borderRadius: '99px',
+                                    background: 'rgba(168, 85, 247, 0.14)',
+                                    border: '1px solid rgba(168, 85, 247, 0.28)',
+                                    color: '#d8b4fe',
+                                    fontWeight: 600,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {item.dateLabel}
+                                </span>
+                              </div>
+                              <small
+                                style={{
+                                  display: 'block',
+                                  marginTop: '3px',
+                                  fontSize: '10.5px',
+                                  color: '#8c82a3',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                              >
+                                {summaryText}
+                              </small>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                              <span
+                                style={{
+                                  fontSize: '10.5px',
+                                  fontWeight: 800,
+                                  color: '#4ade80',
+                                  background: 'rgba(74, 222, 128, 0.12)',
+                                  border: '1px solid rgba(74, 222, 128, 0.28)',
+                                  padding: '3px 8px',
+                                  borderRadius: '8px',
+                                }}
+                              >
+                                +{item.xp} XP
+                              </span>
+                              <ChevronRight size={15} color="#7c738f" />
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </section>
+              </>
+            )}
           </>
         )}
 
@@ -7277,7 +7634,10 @@ export default function Page() {
           <button
             key={key as string}
             className={activeTab === key ? 'active' : ''}
-            onClick={() => setActiveTab(key as typeof activeTab)}
+            onClick={() => {
+              setIsHistoryPageOpen(false)
+              setActiveTab(key as typeof activeTab)
+            }}
           >
             <Icon size={18} />
             <span>{label as string}</span>

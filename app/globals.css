@@ -18,10 +18,10 @@ button { font: inherit; color: inherit; }
 .brand-name { margin-right: auto; margin-left: 10px; color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .2em; }.brand-name span { color: #9d76f3; }
 .icon-button { border: 0; background: none; padding: 4px; color: #bab5c9; }
 .hero { display:flex; justify-content:space-between; align-items: center; margin-bottom: 18px; }.eyebrow, .label-muted { color: #8b82a1; font-size: 10px; letter-spacing: .15em; font-weight: 700; }.hero h1 { margin: 6px 0 0; font-size: 24px; line-height: 1.12; letter-spacing: -.03em; }.hero h1 span { color: #9d70ed; }
-.rank-badge { width: 76px; height: 76px; display:flex; flex-direction:column; align-items:center; justify-content:center; border: 1.5px solid rgba(168, 85, 247, 0.75); border-radius: 20px; background: radial-gradient(circle at 50% 25%, rgba(147, 51, 234, 0.45), rgba(24, 15, 48, 0.9) 75%); box-shadow: 0 8px 28px rgba(124, 58, 237, 0.32), inset 0 0 20px rgba(168, 85, 247, 0.28); animation: rankPulseFloat 3.6s ease-in-out infinite; cursor: pointer; transition: transform 0.2s ease, border-color 0.2s ease; flex-shrink: 0; }
-.rank-badge:hover { transform: scale(1.05); border-color: #c084fc; }
-.rank-badge span { font-size: 9px; font-weight: 800; color: #c4b5fd; letter-spacing:.2em; margin-bottom: 2px; }
-.rank-badge strong { font-size: 36px; font-weight: 900; line-height: 1; color: #f5edff; text-shadow: 0 0 22px rgba(192, 132, 252, 0.9); }
+.rank-badge { width: 82px; height: 82px; display:flex; flex-direction:column; align-items:center; justify-content:center; border: 1.5px solid rgba(176, 108, 255, 0.8); border-radius: 22px; background: radial-gradient(circle at 50% 25%, rgba(147, 51, 234, 0.5), rgba(20, 12, 42, 0.92) 76%); box-shadow: 0 10px 30px rgba(124, 58, 237, 0.35), inset 0 0 22px rgba(168, 85, 247, 0.3); animation: rankPulseFloat 3.6s ease-in-out infinite; cursor: pointer; transition: transform 0.2s ease, border-color 0.2s ease; flex-shrink: 0; }
+.rank-badge:hover { transform: scale(1.05); border-color: #d8b4fe; }
+.rank-badge span { font-size: 9px; font-weight: 800; color: #c4b5fd; letter-spacing:.22em; margin-bottom: 3px; }
+.rank-badge strong { font-size: 40px; font-weight: 900; line-height: 1; color: #ffffff; text-shadow: 0 0 24px rgba(192, 132, 252, 0.95); }
 
 /* UNIFIED ANIMATED HERO CARD */
 @keyframes heroCardAppear {
@@ -30,11 +30,11 @@ button { font: inherit; color: inherit; }
 }
 @keyframes rankPulseFloat {
   0%, 100% { transform: translateY(0px); box-shadow: 0 8px 26px rgba(124, 58, 237, 0.28), inset 0 0 18px rgba(168, 85, 247, 0.24); }
-  50% { transform: translateY(-3px); box-shadow: 0 12px 34px rgba(147, 51, 234, 0.45), inset 0 0 24px rgba(192, 132, 252, 0.38); }
+  50% { transform: translateY(-3px); box-shadow: 0 12px 34px rgba(147, 51, 234, 0.48), inset 0 0 24px rgba(192, 132, 252, 0.4); }
 }
 @keyframes auraPulse {
   0%, 100% { opacity: 0.45; transform: scale(1); }
-  50% { opacity: 0.75; transform: scale(1.12); }
+  50% { opacity: 0.8; transform: scale(1.12); }
 }
 @keyframes xpShimmer {
   0% { background-position: -200% 0; }
@@ -48,23 +48,23 @@ button { font: inherit; color: inherit; }
 .hero-card-unified {
   position: relative;
   overflow: hidden;
-  padding: 20px 18px 18px;
-  border-radius: 22px;
-  background: linear-gradient(145deg, rgba(39, 22, 79, 0.9) 0%, rgba(18, 13, 35, 0.96) 55%, rgba(25, 15, 48, 0.95) 100%);
-  border: 1px solid rgba(154, 103, 247, 0.42);
-  box-shadow: 0 16px 40px rgba(8, 3, 24, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  margin-bottom: 12px;
+  padding: 20px 18px 16px;
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(42, 24, 86, 0.92) 0%, rgba(18, 13, 35, 0.97) 58%, rgba(26, 15, 50, 0.96) 100%);
+  border: 1px solid rgba(158, 108, 250, 0.44);
+  box-shadow: 0 18px 44px rgba(7, 3, 22, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  margin-bottom: 24px;
   animation: heroCardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .hero-card-unified::before {
   content: '';
   position: absolute;
-  top: -45px;
+  top: -50px;
   right: -35px;
-  width: 150px;
-  height: 150px;
+  width: 165px;
+  height: 165px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.32) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.34) 0%, transparent 70%);
   pointer-events: none;
   animation: auraPulse 4.5s ease-in-out infinite;
 }
@@ -74,22 +74,18 @@ button { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
 }
 .hunter-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 99px;
-  background: rgba(168, 85, 247, 0.14);
-  border: 1px solid rgba(168, 85, 247, 0.32);
-  color: #d8b4fe;
+  color: #c4b5fd;
   font-size: 9.5px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .hunter-status-dot {
   width: 6px;
@@ -99,46 +95,31 @@ button { font: inherit; color: inherit; }
   animation: statusDotBlink 2.4s ease-in-out infinite;
 }
 .hero-level-number {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 900;
   color: #ffffff;
   letter-spacing: -0.03em;
   line-height: 1.05;
-  margin: 0 0 8px;
+  margin: 0 0 12px;
 }
-.hero-xp-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #d0b8ff;
-  font-size: 11.5px;
-  font-weight: 700;
-  background: rgba(15, 10, 28, 0.65);
-  border: 1px solid rgba(139, 92, 246, 0.28);
-  padding: 4px 10px;
-  border-radius: 8px;
-}
-.hero-progress-wrap {
-  position: relative;
-  z-index: 1;
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(168, 85, 247, 0.16);
+.hero-progress-inline {
+  width: 100%;
 }
 .hero-progress-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   font-size: 10.5px;
   font-weight: 600;
-  color: #a396ba;
-  margin-bottom: 7px;
+  color: #a89bc2;
+  margin-bottom: 6px;
 }
 .hero-xp-track {
-  height: 8px;
+  height: 7px;
   border-radius: 99px;
-  background: rgba(10, 8, 20, 0.85);
-  border: 1px solid rgba(139, 92, 246, 0.22);
+  background: rgba(9, 7, 18, 0.88);
+  border: 1px solid rgba(139, 92, 246, 0.25);
   overflow: hidden;
   padding: 1px;
 }
@@ -148,9 +129,108 @@ button { font: inherit; color: inherit; }
   border-radius: 99px;
   background: linear-gradient(90deg, #7c3aed 0%, #c084fc 50%, #7c3aed 100%);
   background-size: 200% 100%;
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.7);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.75);
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   animation: xpShimmer 3.5s linear infinite;
+}
+.hero-stats-dock {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(168, 85, 247, 0.16);
+}
+.hero-dock-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 13px;
+  background: rgba(11, 8, 22, 0.58);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  transition: all 0.2s ease;
+}
+.hero-dock-item.clickable {
+  cursor: pointer;
+}
+.hero-dock-item.clickable:hover {
+  transform: translateY(-2px);
+  background: rgba(34, 21, 66, 0.65);
+  border-color: rgba(168, 85, 247, 0.42);
+}
+.hero-dock-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.hero-dock-item strong {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #f5f2ff;
+  line-height: 1.15;
+}
+.hero-dock-item span {
+  display: block;
+  font-size: 9.5px;
+  color: #8c82a3;
+  margin-top: 1px;
+}
+
+/* HISTORY QUEST CARDS & SHOW MORE BUTTON */
+.show-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: rgba(124, 58, 237, 0.16);
+  border: 1px solid rgba(168, 85, 247, 0.36);
+  color: #d8b4fe;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.show-more-btn:hover {
+  background: rgba(124, 58, 237, 0.28);
+  border-color: #a855f7;
+  color: #ffffff;
+  transform: translateX(2px);
+}
+.history-quest-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(21, 17, 34, 0.92), rgba(14, 11, 23, 0.96));
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.history-quest-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(168, 85, 247, 0.45);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+.history-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.22), rgba(46, 22, 92, 0.4));
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  display: grid;
+  place-items: center;
+  color: #d8b4fe;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 .level-card { padding: 17px 17px 14px; background: linear-gradient(120deg, #211548, #17112a); border: 1px solid rgba(145,100,241,.42); border-radius: 16px; box-shadow: 0 13px 35px rgba(18,5,48,.25); }.level-heading strong { display:block; margin-top: 7px; font-size: 19px; }.xp-count { color: #c3a2ff; font-size: 11px; display:flex; align-items:center; gap: 4px; }.xp-track { height: 7px; border-radius: 99px; background: #0d0b19; overflow:hidden; margin-top:17px; }.xp-track span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, #7a43d8, #c38eff); box-shadow: 0 0 13px #9e6aff; }.level-footer { color:#8d829f; font-size: 10px; margin-top: 8px; }
 .stats-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 22px; }.stat-card { display:flex; align-items:center; gap:11px; padding: 13px 14px; border-radius: 16px; border:1px solid rgba(139, 92, 246, 0.18); background: linear-gradient(145deg, rgba(22, 18, 36, 0.9), rgba(14, 12, 24, 0.95)); color:#bb90ff; transition: all 0.2s ease; }.stat-card:hover { transform: translateY(-2px); border-color: rgba(168, 85, 247, 0.4); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }.stat-card.accent { color:#ff9d61; }.stat-card strong, .stat-card span { display:block; }.stat-card strong { font-size: 15px; font-weight: 800; color:#f7f4ff; line-height: 1.15; }.stat-card span { color:#867d99; font-size: 10.5px; margin-top: 2px; }
