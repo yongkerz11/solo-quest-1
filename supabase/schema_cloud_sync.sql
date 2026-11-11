@@ -15,11 +15,15 @@ CREATE TABLE IF NOT EXISTS public.user_quests (
   icon TEXT NOT NULL DEFAULT '🏋️',
   done BOOLEAN NOT NULL DEFAULT FALSE,
   schedule JSONB DEFAULT '[]'::jsonb,
+  target_time TEXT,
   completed_dates JSONB DEFAULT '[]'::jsonb,
   workout_exercises JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migrasi jika tabel sudah pernah dibuat sebelumnya:
+ALTER TABLE public.user_quests ADD COLUMN IF NOT EXISTS target_time TEXT;
 
 -- Index agar performa query per user sangat kencang
 CREATE INDEX IF NOT EXISTS idx_user_quests_user_id ON public.user_quests(user_id);

@@ -33,6 +33,7 @@ export interface PersonalTask {
   icon: string
   done: boolean
   schedule?: string[]
+  targetTime?: string
   completedDates?: string[]
   workoutExercises?: WorkoutExercise[]
 }
@@ -74,18 +75,26 @@ export async function fetchCloudQuests(
 
     if (!data) return []
 
-    return data.map((row: any) => ({
-      id: row.id,
-      userId: row.user_id,
-      title: row.title,
-      category: row.category,
-      xp: row.xp ?? 20,
-      icon: row.icon ?? '🏋️',
-      done: Boolean(row.done),
-      schedule: Array.isArray(row.schedule) ? row.schedule : [],
-      completedDates: Array.isArray(row.completed_dates) ? row.completed_dates : [],
-      workoutExercises: Array.isArray(row.workout_exercises) ? row.workout_exercises : [],
-    }))
+    return data.map((row: any) => {
+      const rawSchedule = Array.isArray(row.schedule) ? row.schedule : []
+      const timeTag = rawSchedule.find((s: string) => typeof s === 'string' && s.startsWith('time:'))
+      const targetTimeFromSchedule = timeTag ? timeTag.replace('time:', '') : undefined
+      const cleanSchedule = rawSchedule.filter((s: string) => typeof s === 'string' && !s.startsWith('time:'))
+
+      return {
+        id: row.id,
+        userId: row.user_id,
+        title: row.title,
+        category: row.category,
+        xp: row.xp ?? 20,
+        icon: row.icon ?? '🏋️',
+        done: Boolean(row.done),
+        schedule: cleanSchedule,
+        targetTime: row.target_time || targetTimeFromSchedule || undefined,
+        completedDates: Array.isArray(row.completed_dates) ? row.completed_dates : [],
+        workoutExercises: Array.isArray(row.workout_exercises) ? row.workout_exercises : [],
+      }
+    })
   } catch (err) {
     console.error('fetchCloudQuests exception:', err)
     return null
@@ -102,6 +111,11 @@ export async function saveCloudQuest(
   if (!isSupabaseConfigured || !supabase) return false
 
   try {
+    const cleanSchedule = (task.schedule || []).filter((s) => typeof s === 'string' && !s.startsWith('time:'))
+    const scheduleWithTime = task.targetTime
+      ? [...cleanSchedule, `time:${task.targetTime}`]
+      : cleanSchedule
+
     const payload = {
       id: task.id,
       user_id: task.userId,
@@ -111,7 +125,7 @@ export async function saveCloudQuest(
       xp: task.xp,
       icon: task.icon,
       done: task.done,
-      schedule: task.schedule || [],
+      schedule: scheduleWithTime,
       completed_dates: task.completedDates || [],
       workout_exercises: task.workoutExercises || [],
       updated_at: new Date().toISOString(),
@@ -158,20 +172,27 @@ export async function saveAllCloudQuests(
   if (!isSupabaseConfigured || !supabase || tasks.length === 0) return false
 
   try {
-    const payload = tasks.map((task) => ({
-      id: task.id,
-      user_id: task.userId,
-      username: username || '',
-      title: task.title,
-      category: task.category,
-      xp: task.xp,
-      icon: task.icon,
-      done: task.done,
-      schedule: task.schedule || [],
-      completed_dates: task.completedDates || [],
-      workout_exercises: task.workoutExercises || [],
-      updated_at: new Date().toISOString(),
-    }))
+    const payload = tasks.map((task) => {
+      const cleanSchedule = (task.schedule || []).filter((s) => typeof s === 'string' && !s.startsWith('time:'))
+      const scheduleWithTime = task.targetTime
+        ? [...cleanSchedule, `time:${task.targetTime}`]
+        : cleanSchedule
+
+      return {
+        id: task.id,
+        user_id: task.userId,
+        username: username || '',
+        title: task.title,
+        category: task.category,
+        xp: task.xp,
+        icon: task.icon,
+        done: task.done,
+        schedule: scheduleWithTime,
+        completed_dates: task.completedDates || [],
+        workout_exercises: task.workoutExercises || [],
+        updated_at: new Date().toISOString(),
+      }
+    })
 
     const { error } = await supabase.from('user_quests').upsert(payload)
     if (error) {
