@@ -1000,7 +1000,7 @@ export default function Page() {
   // Form states for Personal / Clan Quest Modal
   const [questTitle, setQuestTitle] = useState('')
   const [questCategory, setQuestCategory] = useState(CATEGORIES[0].name)
-  const [questXp, setQuestXp] = useState(CATEGORIES[0].xp)
+  const [questXp, setQuestXp] = useState<number | string>(CATEGORIES[0].xp)
   const [questType, setQuestType] = useState<'daily' | 'event'>('daily')
   const [questDeadline, setQuestDeadline] = useState('')
   const [questDays, setQuestDays] = useState<string[]>(['Everyday'])
@@ -1062,13 +1062,13 @@ export default function Page() {
   const [replacingExerciseId, setReplacingExerciseId] = useState<string | null>(null)
   const [isQuestProgramPageOpen, setIsQuestProgramPageOpen] = useState<boolean>(false)
   const [newExerciseName, setNewExerciseName] = useState('')
-  const [newExerciseRest, setNewExerciseRest] = useState<number>(60)
-  const [newExerciseSetsCount, setNewExerciseSetsCount] = useState<number>(3)
-  const [newExerciseReps, setNewExerciseReps] = useState<number>(10)
+  const [newExerciseRest, setNewExerciseRest] = useState<number | string>(60)
+  const [newExerciseSetsCount, setNewExerciseSetsCount] = useState<number | string>(3)
+  const [newExerciseReps, setNewExerciseReps] = useState<number | string>(10)
   const [libraryCategoryFilter, setLibraryCategoryFilter] = useState<'ALL' | GymMuscleCategory>('ALL')
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null)
   const [editingExerciseName, setEditingExerciseName] = useState<string>('')
-  const [editingExerciseRest, setEditingExerciseRest] = useState<number>(60)
+  const [editingExerciseRest, setEditingExerciseRest] = useState<number | string>(60)
   const [showEditLibraryPicker, setShowEditLibraryPicker] = useState<boolean>(false)
   const [editLibraryCategoryFilter, setEditLibraryCategoryFilter] = useState<'ALL' | GymMuscleCategory>('ALL')
   const [isGymLibraryModalOpen, setIsGymLibraryModalOpen] = useState<boolean>(false)
@@ -1078,7 +1078,7 @@ export default function Page() {
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState<'ALL' | GymMuscleCategory>('ALL')
   const [selectedTemplateSessionIdForQuest, setSelectedTemplateSessionIdForQuest] = useState<string>('')
   const [isTimerSettingOpen, setIsTimerSettingOpen] = useState<boolean>(false)
-  const [customTimerSeconds, setCustomTimerSeconds] = useState<number>(60)
+  const [customTimerSeconds, setCustomTimerSeconds] = useState<number | string>(60)
   const [applyTimerToAllExercises, setApplyTimerToAllExercises] = useState<boolean>(false)
   const [isHistoryManagerOpen, setIsHistoryManagerOpen] = useState<boolean>(false)
   const [customHistDate, setCustomHistDate] = useState<string>('')
@@ -2283,12 +2283,17 @@ export default function Page() {
       ? buildWorkoutExercisesFromTemplate(chosenTemplateSession)
       : undefined
 
+    const finalXp =
+      typeof questXp === 'number'
+        ? (questXp > 0 ? questXp : (catObj.xp || 50))
+        : (parseInt(questXp, 10) > 0 ? parseInt(questXp, 10) : (catObj.xp || 50))
+
     if (editingPersonalTask) {
       const updatedTask: PersonalTask = {
         ...editingPersonalTask,
         title: questTitle.trim(),
         category: catObj.name,
-        xp: questXp,
+        xp: finalXp,
         icon: catObj.icon,
         schedule: questDays,
         workoutExercises: isGym
@@ -2306,7 +2311,7 @@ export default function Page() {
         userId: currentUser.id,
         title: questTitle.trim(),
         category: catObj.name,
-        xp: questXp,
+        xp: finalXp,
         icon: catObj.icon,
         done: false,
         schedule: questDays,
@@ -2579,6 +2584,11 @@ export default function Page() {
     const catObj = findCategory(questCategory)
     const isGym = catObj.name.toLowerCase() === 'gym'
 
+    const finalXp =
+      typeof questXp === 'number'
+        ? (questXp > 0 ? questXp : (catObj.xp || 50))
+        : (parseInt(questXp, 10) > 0 ? parseInt(questXp, 10) : (catObj.xp || 50))
+
     if (editingClanQuest) {
       setClanQuests((curr) =>
         curr.map((cq) =>
@@ -2587,7 +2597,7 @@ export default function Page() {
                 ...cq,
                 title: questTitle.trim(),
                 category: catObj.name,
-                xp: questXp,
+                xp: finalXp,
                 icon: catObj.icon,
                 questType,
                 deadline: questType === 'event' ? questDeadline.trim() || 'Terbatas' : undefined,
@@ -2605,7 +2615,7 @@ export default function Page() {
         createdBy: currentUser.id,
         title: questTitle.trim(),
         category: catObj.name,
-        xp: questXp,
+        xp: finalXp,
         icon: catObj.icon,
         questType,
         deadline: questType === 'event' ? questDeadline.trim() || 'Terbatas' : undefined,
@@ -2820,10 +2830,20 @@ export default function Page() {
               <span style={{ fontSize: '11px', color: '#8e84a2' }}>Waktu Istirahat:</span>
               <input
                 type="number"
-                min={10}
+                min={5}
                 step={5}
                 value={editingExerciseRest}
-                onChange={(e) => setEditingExerciseRest(parseInt(e.target.value, 10) || 60)}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setEditingExerciseRest(val === '' ? '' : parseInt(val, 10))
+                }}
+                onBlur={() => {
+                  if (editingExerciseRest === '' || Number(editingExerciseRest) < 5) {
+                    setEditingExerciseRest(60)
+                  }
+                }}
+                placeholder="60"
                 style={{
                   width: '64px',
                   padding: '5px 6px',
@@ -2855,7 +2875,7 @@ export default function Page() {
                     activeWorkoutQuest.type,
                     exercise.id,
                     editingExerciseName,
-                    editingExerciseRest
+                    Number(editingExerciseRest) || 60
                   )
                 }}
                 className="btn-primary"
@@ -3398,7 +3418,7 @@ export default function Page() {
 
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
             {[30, 45, 60, 90, 120, 180].map((secs) => {
-              const isSelected = customTimerSeconds === secs
+              const isSelected = Number(customTimerSeconds) === secs
               return (
                 <button
                   key={secs}
@@ -3427,7 +3447,7 @@ export default function Page() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
             <button
               type="button"
-              onClick={() => setCustomTimerSeconds((s) => Math.max(5, s - 15))}
+              onClick={() => setCustomTimerSeconds((s) => Math.max(5, (Number(s) || 0) - 15))}
               style={{
                 padding: '7px 12px',
                 borderRadius: '8px',
@@ -3460,7 +3480,17 @@ export default function Page() {
                 max={600}
                 step={5}
                 value={customTimerSeconds}
-                onChange={(e) => setCustomTimerSeconds(Math.max(5, parseInt(e.target.value, 10) || 5))}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setCustomTimerSeconds(val === '' ? '' : parseInt(val, 10))
+                }}
+                onBlur={() => {
+                  if (customTimerSeconds === '' || Number(customTimerSeconds) < 5) {
+                    setCustomTimerSeconds(60)
+                  }
+                }}
+                placeholder="60"
                 style={{
                   width: '55px',
                   background: 'transparent',
@@ -3472,12 +3502,12 @@ export default function Page() {
                   fontFamily: 'monospace',
                 }}
               />
-              <span style={{ fontSize: '11px', color: '#8e84a2', fontWeight: 600 }}>detik ({formatTimer(customTimerSeconds)})</span>
+              <span style={{ fontSize: '11px', color: '#8e84a2', fontWeight: 600 }}>detik ({formatTimer(Number(customTimerSeconds) || 60)})</span>
             </div>
 
             <button
               type="button"
-              onClick={() => setCustomTimerSeconds((s) => s + 15)}
+              onClick={() => setCustomTimerSeconds((s) => (Number(s) || 0) + 15)}
               style={{
                 padding: '7px 12px',
                 borderRadius: '8px',
@@ -3526,7 +3556,7 @@ export default function Page() {
             <button
               type="button"
               onClick={() => {
-                const newSecs = Math.max(5, customTimerSeconds)
+                const newSecs = Math.max(5, Number(customTimerSeconds) || 60)
                 setRestDurationPreset(newSecs)
                 setRestSecondsLeft(newSecs)
                 setRestTimerActive(false)
@@ -4162,10 +4192,20 @@ export default function Page() {
                       <span style={{ fontSize: '11px', color: '#8e84a2' }}>Waktu Istirahat:</span>
                       <input
                         type="number"
-                        min={10}
+                        min={5}
                         step={5}
                         value={editingExerciseRest}
-                        onChange={(e) => setEditingExerciseRest(parseInt(e.target.value, 10) || 60)}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setEditingExerciseRest(val === '' ? '' : parseInt(val, 10))
+                        }}
+                        onBlur={() => {
+                          if (editingExerciseRest === '' || Number(editingExerciseRest) < 5) {
+                            setEditingExerciseRest(60)
+                          }
+                        }}
+                        placeholder="60"
                         style={{
                           width: '68px',
                           padding: '6px 8px',
@@ -4197,7 +4237,7 @@ export default function Page() {
                             activeWorkoutQuest.type,
                             activeExercise.id,
                             editingExerciseName,
-                            editingExerciseRest
+                            Number(editingExerciseRest) || 60
                           )
                         }
                         className="btn-primary"
@@ -5068,7 +5108,17 @@ export default function Page() {
                               min={1}
                               max={10}
                               value={newExerciseSetsCount}
-                              onChange={(e) => setNewExerciseSetsCount(parseInt(e.target.value, 10) || 3)}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setNewExerciseSetsCount(val === '' ? '' : parseInt(val, 10))
+                              }}
+                              onBlur={() => {
+                                if (newExerciseSetsCount === '' || Number(newExerciseSetsCount) < 1) {
+                                  setNewExerciseSetsCount(3)
+                                }
+                              }}
+                              placeholder="3"
                               style={{
                                 width: '100%',
                                 padding: '6px',
@@ -5091,7 +5141,17 @@ export default function Page() {
                               min={1}
                               max={100}
                               value={newExerciseReps}
-                              onChange={(e) => setNewExerciseReps(parseInt(e.target.value, 10) || 10)}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setNewExerciseReps(val === '' ? '' : parseInt(val, 10))
+                              }}
+                              onBlur={() => {
+                                if (newExerciseReps === '' || Number(newExerciseReps) < 1) {
+                                  setNewExerciseReps(10)
+                                }
+                              }}
+                              placeholder="10"
                               style={{
                                 width: '100%',
                                 padding: '6px',
@@ -5111,10 +5171,20 @@ export default function Page() {
                             </label>
                             <input
                               type="number"
-                              min={10}
+                              min={5}
                               step={5}
                               value={newExerciseRest}
-                              onChange={(e) => setNewExerciseRest(parseInt(e.target.value, 10) || 60)}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setNewExerciseRest(val === '' ? '' : parseInt(val, 10))
+                              }}
+                              onBlur={() => {
+                                if (newExerciseRest === '' || Number(newExerciseRest) < 5) {
+                                  setNewExerciseRest(60)
+                                }
+                              }}
+                              placeholder="60"
                               style={{
                                 width: '100%',
                                 padding: '6px',
@@ -5138,9 +5208,9 @@ export default function Page() {
                                 currentWorkoutQuest.id,
                                 activeWorkoutQuest.type,
                                 newExerciseName,
-                                newExerciseRest,
-                                newExerciseSetsCount,
-                                newExerciseReps
+                                Number(newExerciseRest) || 60,
+                                Number(newExerciseSetsCount) || 3,
+                                Number(newExerciseReps) || 10
                               )
                               setNewExerciseName('')
                               setWorkoutSubPage('overview')
@@ -5257,7 +5327,7 @@ export default function Page() {
                                     currentWorkoutQuest.id,
                                     activeWorkoutQuest.type,
                                     item.name,
-                                    newExerciseRest,
+                                    Number(newExerciseRest) || 60,
                                     item.defaultSets,
                                     item.defaultReps
                                   )
@@ -8326,9 +8396,24 @@ export default function Page() {
                         type="number"
                         className="modal-input"
                         value={questXp}
-                        onChange={(e) => setQuestXp(Number(e.target.value))}
-                        min={10}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          if (val === '') {
+                            setQuestXp('')
+                          } else {
+                            const parsed = parseInt(val, 10)
+                            setQuestXp(isNaN(parsed) ? '' : parsed)
+                          }
+                        }}
+                        onBlur={() => {
+                          if (questXp === '' || Number(questXp) < 5) {
+                            setQuestXp(findCategory(questCategory).xp || 50)
+                          }
+                        }}
+                        min={5}
                         max={1000}
+                        placeholder="50"
                       />
 
                       <div className="modal-actions" style={{ marginTop: '20px' }}>
@@ -9259,9 +9344,24 @@ export default function Page() {
                 type="number"
                 className="modal-input"
                 value={questXp}
-                onChange={(e) => setQuestXp(Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val === '') {
+                    setQuestXp('')
+                  } else {
+                    const parsed = parseInt(val, 10)
+                    setQuestXp(isNaN(parsed) ? '' : parsed)
+                  }
+                }}
+                onBlur={() => {
+                  if (questXp === '' || Number(questXp) < 5) {
+                    setQuestXp(findCategory(questCategory).xp || 50)
+                  }
+                }}
                 min={5}
                 max={500}
+                placeholder="50"
               />
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setIsPersonalModalOpen(false)}>
