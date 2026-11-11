@@ -1298,103 +1298,85 @@ export default function Page() {
       maxWeight: number
     }> = []
 
+    const todayIso = new Date().toISOString().slice(0, 10)
     const todayShort = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
 
     userPersonalTasks.forEach((task) => {
+      // HANYA QUEST YANG BENAR-BENAR TELAH SELESAI DIKERJAKAN YANG MASUK KE HISTORY QUEST
+      // Jika quest belum selesai (task.done === false dan completedDates kosong / tidak ada),
+      // maka quest ini BELUM PERNAH SELESAI dan TIDAK BOLEH masuk ke History Quest!
+      const hasCompletedDates = Boolean(task.completedDates && task.completedDates.length > 0)
+      if (!task.done && !hasCompletedDates) {
+        return
+      }
+
+      // Kumpulkan tanggal-tanggal valid di mana quest ini selesai dikerjakan
+      const completionDates: string[] = Array.from(
+        new Set([
+          ...(task.completedDates || []),
+          ...(task.done ? [todayIso] : []),
+        ])
+      )
+
+      if (completionDates.length === 0) return
+
       const isGym = task.category.toLowerCase() === 'gym' || Boolean(task.workoutExercises && task.workoutExercises.length > 0)
-      if (isGym && task.workoutExercises && task.workoutExercises.length > 0) {
-        const dateMap = new Map<
-          string,
-          { timestamp: number; exercises: Array<{ name: string; setsCount: number; weight: number; reps: number }> }
-        >()
 
-        task.workoutExercises.forEach((ex) => {
-          if (ex.history && ex.history.length > 0) {
-            ex.history.forEach((h) => {
-              const existing = dateMap.get(h.date) || { timestamp: h.timestamp || Date.now(), exercises: [] }
-              existing.timestamp = Math.max(existing.timestamp, h.timestamp || 0)
-              existing.exercises.push({
-                name: ex.name,
-                setsCount: ex.sets.length || 1,
-                weight: Number(h.weight) || 0,
-                reps: Number(h.reps) || 10,
-              })
-              dateMap.set(h.date, existing)
-            })
-          }
-        })
+      completionDates.forEach((isoDate) => {
+        const parsed = new Date(isoDate)
+        const dateLabel = !isNaN(parsed.getTime())
+          ? parsed.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+          : todayShort
+        const timestamp = !isNaN(parsed.getTime()) ? parsed.getTime() : Date.now()
 
-        // Jika belum ada entry di ex.history tetapi sudah ada gerakan/set yang diisi atau quest selesai
-        if (dateMap.size === 0) {
-          const activeExs = task.workoutExercises
-            .filter((ex) => ex.sets.length > 0)
-            .map((ex) => {
-              const weights = ex.sets.map((s) => Number(s.weight) || 0)
-              const maxW = weights.length > 0 ? Math.max(...weights) : 0
-              const firstReps = Number(ex.sets[0]?.reps) || 10
-              return {
-                name: ex.name,
-                setsCount: ex.sets.length,
-                weight: maxW,
-                reps: firstReps,
-              }
-            })
-          if (activeExs.length > 0) {
-            const lastDateIso = task.completedDates && task.completedDates.length > 0
-              ? task.completedDates[task.completedDates.length - 1]
-              : null
-            const label = lastDateIso
-              ? new Date(lastDateIso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
-              : todayShort
-            dateMap.set(label, { timestamp: Date.now(), exercises: activeExs })
-          }
-        }
+        if (isGym && task.workoutExercises && task.workoutExercises.length > 0) {
+          const exercises = task.workoutExercises.map((ex) => {
+            const histOnDate = ex.history?.find((h) => h.date === dateLabel)
+            const weights = ex.sets.map((s) => Number(s.weight) || 0)
+            const maxW = histOnDate ? histOnDate.weight : weights.length > 0 ? Math.max(...weights) : 0
+            const reps = (histOnDate && histOnDate.reps !== undefined) ? histOnDate.reps : (Number(ex.sets[0]?.reps) || 10)
+            return {
+              name: ex.name,
+              setsCount: ex.sets.length,
+              weight: maxW,
+              reps,
+            }
+          })
 
-        dateMap.forEach((val, dateLabel) => {
-          const totalSets = val.exercises.reduce((acc, e) => acc + e.setsCount, 0)
-          const maxWeight = val.exercises.reduce((acc, e) => Math.max(acc, e.weight), 0)
+          const totalSets = exercises.reduce((acc, e) => acc + e.setsCount, 0)
+          const maxWeight = exercises.reduce((acc, e) => Math.max(acc, e.weight), 0)
+
           items.push({
-            id: `${task.id}-${dateLabel}`,
+            id: `${task.id}-${isoDate}`,
             questId: task.id,
             title: task.title,
             category: task.category,
             icon: task.icon,
             xp: task.xp,
             dateLabel,
-            timestamp: val.timestamp,
+            timestamp,
             isGym: true,
-            exercises: val.exercises,
+            exercises,
             totalSets,
             maxWeight,
           })
-        })
-      } else {
-        const dates = task.completedDates && task.completedDates.length > 0
-          ? task.completedDates
-          : task.done
-          ? [new Date().toISOString().slice(0, 10)]
-          : []
-        dates.forEach((iso) => {
-          const parsed = new Date(iso)
-          const label = !isNaN(parsed.getTime())
-            ? parsed.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
-            : todayShort
+        } else {
           items.push({
-            id: `${task.id}-${iso}`,
+            id: `${task.id}-${isoDate}`,
             questId: task.id,
             title: task.title,
             category: task.category,
             icon: task.icon,
             xp: task.xp,
-            dateLabel: label,
-            timestamp: !isNaN(parsed.getTime()) ? parsed.getTime() : Date.now(),
+            dateLabel,
+            timestamp,
             isGym: false,
             exercises: [],
             totalSets: 0,
             maxWeight: 0,
           })
-        })
-      }
+        }
+      })
     })
 
     return items.sort((a, b) => b.timestamp - a.timestamp)
@@ -1481,7 +1463,6 @@ export default function Page() {
 
       const isDone = userPersonalTasks.some((t) => {
         if (t.completedDates?.includes(isoDate)) return true
-        if (t.workoutExercises?.some((ex) => ex.history?.some((h) => h.date === dateShortId))) return true
         return isToday && t.done
       })
 
@@ -2236,6 +2217,36 @@ export default function Page() {
     setPersonalTasks((curr) => curr.filter((t) => t.id !== taskId))
     deleteCloudQuest(taskId)
     showToast('Quest pribadi dihapus.')
+  }
+
+  const handleDeleteHistoryItem = (questId: string, dateLabel: string, isoDate?: string) => {
+    const todayIso = new Date().toISOString().slice(0, 10)
+    setPersonalTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== questId) return t
+        const updatedDates = (t.completedDates || []).filter((d) => d !== isoDate && d !== dateLabel)
+        const isTodayDate =
+          isoDate === todayIso ||
+          dateLabel === new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+        const nextDone = isTodayDate ? false : t.done
+
+        let updatedExs = t.workoutExercises
+        if (updatedExs) {
+          updatedExs = updatedExs.map((ex) => ({
+            ...ex,
+            history: (ex.history || []).filter((h) => h.date !== dateLabel && h.date !== isoDate),
+          }))
+        }
+
+        return {
+          ...t,
+          done: nextDone,
+          completedDates: updatedDates,
+          workoutExercises: updatedExs,
+        }
+      })
+    )
+    showToast(`Riwayat quest (${dateLabel}) berhasil dihapus.`)
   }
 
   const openAddPersonalModal = () => {
@@ -6100,19 +6111,47 @@ export default function Page() {
                             </div>
                           </div>
 
-                          <div
-                            style={{
-                              fontSize: '11px',
-                              fontWeight: 800,
-                              color: '#4ade80',
-                              background: 'rgba(74, 222, 128, 0.14)',
-                              border: '1px solid rgba(74, 222, 128, 0.32)',
-                              padding: '4px 9px',
-                              borderRadius: '8px',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            +{item.xp} XP
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                color: '#4ade80',
+                                background: 'rgba(74, 222, 128, 0.14)',
+                                border: '1px solid rgba(74, 222, 128, 0.32)',
+                                padding: '4px 9px',
+                                borderRadius: '8px',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              +{item.xp} XP
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (confirm(`Hapus riwayat quest "${item.title}" (${item.dateLabel})?`)) {
+                                  handleDeleteHistoryItem(item.questId, item.dateLabel, item.id.split('-').slice(1).join('-'))
+                                }
+                              }}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '7px',
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                border: '1px solid rgba(239, 68, 68, 0.28)',
+                                color: '#ff85a2',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.15s ease',
+                              }}
+                              title="Hapus dari History Quest"
+                              aria-label="Hapus dari History Quest"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         </div>
 
