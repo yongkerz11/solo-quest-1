@@ -48,6 +48,7 @@ import {
   Search,
   BookOpen,
   Sparkles,
+  FastForward,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import {
@@ -112,9 +113,11 @@ interface PersonalTask {
   xp: number
   icon: string
   done: boolean
+  skipped?: boolean
   schedule?: string[]
   targetTime?: string
   completedDates?: string[]
+  skippedDates?: string[]
   workoutExercises?: WorkoutExercise[]
 }
 
@@ -147,6 +150,7 @@ interface ClanQuest {
   deadline?: string
   targetTime?: string
   completedByUserIds: string[]
+  skippedByUserIds?: string[]
   schedule?: string[]
   workoutExercises?: WorkoutExercise[]
 }
@@ -200,20 +204,9 @@ function isQuestForToday(schedule?: string[]): boolean {
   return schedule.includes(todayDayCode)
 }
 
-function isQuestTimeSkipped(targetTime?: string, isDone?: boolean, schedule?: string[]): boolean {
-  if (!targetTime) return false
-  if (isDone) return false
-  if (!isQuestForToday(schedule)) return false
-
-  const now = new Date()
-  const currentMinutes = now.getHours() * 60 + now.getMinutes()
-  const [hStr, mStr] = targetTime.split(':')
-  const h = parseInt(hStr, 10)
-  const m = parseInt(mStr, 10) || 0
-  if (isNaN(h)) return false
-  const targetMinutes = h * 60 + m
-
-  return currentMinutes > targetMinutes
+function isQuestTimeSkipped(_targetTime?: string, _isDone?: boolean, _schedule?: string[]): boolean {
+  // Quest tidak lagi diskip otomatis oleh jam (skip manual via tombol Skip)
+  return false
 }
 
 function getHunterRank(xp: number): string {
@@ -410,8 +403,10 @@ function QuestCard({
   completedCount,
   totalMembers,
   isGym,
+  xp,
   onOpenWorkout,
   onToggle,
+  onSkip,
   onInfo,
   onEdit,
   onDelete,
@@ -433,8 +428,10 @@ function QuestCard({
   completedCount?: number
   totalMembers?: number
   isGym?: boolean
+  xp?: number
   onOpenWorkout?: () => void
   onToggle: () => void
+  onSkip?: () => void
   onInfo?: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -446,7 +443,7 @@ function QuestCard({
   const closedTimestampRef = useRef(0)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
-  const hasMenuOptions = Boolean(onInfo || (isGym && onOpenWorkout) || (canManage && (onEdit || onDelete)))
+  const hasMenuOptions = Boolean(onInfo || onSkip || (isGym && onOpenWorkout) || (canManage && (onEdit || onDelete)))
 
   const handleClearHold = () => {
     if (timerRef.current) {
@@ -580,13 +577,13 @@ function QuestCard({
         }}
       >
         <span
-          className={`check-box ${isSkipped && !done ? 'skipped' : ''}`}
+          className={`check-box ${done ? 'completed' : isSkipped ? 'skipped' : ''}`}
           style={
             isSkipped && !done
               ? {
                   borderColor: 'rgba(239, 68, 68, 0.65)',
                   background: 'rgba(239, 68, 68, 0.2)',
-                  cursor: 'not-allowed',
+                  cursor: 'pointer',
                 }
               : undefined
           }
@@ -597,11 +594,12 @@ function QuestCard({
           }}
           role="button"
           aria-label="Toggle status"
+          title={done ? 'Batalkan centang selesai' : 'Centang selesai (+XP)'}
         >
           {done ? (
             <Check size={15} strokeWidth={3} />
           ) : isSkipped ? (
-            <X size={14} color="#f87171" strokeWidth={2.5} />
+            <FastForward size={13} color="#f87171" strokeWidth={2.5} />
           ) : null}
         </span>
         <span className="task-symbol">{icon}</span>
@@ -609,27 +607,6 @@ function QuestCard({
           <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {title}
             {isEvent && <span className="clan-badge event">EVENT</span>}
-            {targetTime && (
-              <span
-                style={{
-                  fontSize: '9px',
-                  color: isSkipped && !done ? '#fca5a5' : '#e9d5ff',
-                  background: isSkipped && !done ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.2)',
-                  border: isSkipped && !done
-                    ? '1px solid rgba(239, 68, 68, 0.5)'
-                    : '1px solid rgba(168, 85, 247, 0.45)',
-                  padding: '1px 6px',
-                  borderRadius: '6px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  fontWeight: 700,
-                }}
-              >
-                <Clock size={9} />
-                {targetTime}
-              </span>
-            )}
             {isSkipped && !done && (
               <span
                 style={{
@@ -644,7 +621,7 @@ function QuestCard({
                   letterSpacing: '0.04em',
                 }}
               >
-                TERSKIP
+                DILEWATI
               </span>
             )}
             {schedule && schedule.length > 0 && (
@@ -669,14 +646,14 @@ function QuestCard({
           </strong>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
             <small style={isSkipped && !done ? { color: '#f87171' } : undefined}>
-              {isSkipped && !done ? `Melewati batas jam ${targetTime} • Terskip hari ini` : meta}
+              {isSkipped && !done ? 'Dilewati hari ini • 0 XP' : meta}
             </small>
           </div>
         </span>
 
-        {/* Right side: START button (Gym) + XP badge + subtle 3-dots if options exist */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          {!isSkipped && isGym && onOpenWorkout && (
+        {/* SISI KANAN: TOMBOL START (GYM) + BUTTON CENTANG + BUTTON SKIP + XP BADGE */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {!isSkipped && !done && isGym && onOpenWorkout && (
             <button
               type="button"
               onClick={(e) => {
@@ -686,12 +663,12 @@ function QuestCard({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                padding: '4px 10px',
+                gap: '4px',
+                padding: '4px 9px',
                 borderRadius: '8px',
                 fontSize: '11px',
                 fontWeight: 800,
-                letterSpacing: '0.04em',
+                letterSpacing: '0.03em',
                 background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
                 border: '1px solid rgba(168, 85, 247, 0.6)',
                 color: '#ffffff',
@@ -701,34 +678,105 @@ function QuestCard({
               }}
               title="Mulai Workout"
               aria-label="Mulai Workout"
-              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.15)')}
-              onMouseLeave={(e) => (e.currentTarget.style.filter = 'brightness(1.0)')}
             >
               <Play size={10} fill="#ffffff" />
               <span>Start</span>
             </button>
           )}
+
+          {/* BUTTON CENTANG */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!disabled) onToggle()
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+              padding: '4px 8px',
+              borderRadius: '8px',
+              fontSize: '10.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              background: done
+                ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(22, 101, 52, 0.4))'
+                : 'rgba(168, 85, 247, 0.16)',
+              border: done
+                ? '1px solid rgba(74, 222, 128, 0.6)'
+                : '1px solid rgba(168, 85, 247, 0.4)',
+              color: done ? '#4ade80' : '#e9d5ff',
+              boxShadow: done ? '0 0 10px rgba(34, 197, 94, 0.25)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+            title={done ? 'Batalkan centang selesai' : 'Centang selesai (+XP)'}
+            aria-label={done ? 'Batalkan centang selesai' : 'Centang selesai (+XP)'}
+          >
+            <Check size={12} strokeWidth={done ? 3 : 2.5} />
+            <span>{done ? 'Selesai' : 'Centang'}</span>
+          </button>
+
+          {/* BUTTON SKIP */}
+          {!done && onSkip && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (!disabled) onSkip()
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                padding: '4px 7px',
+                borderRadius: '8px',
+                fontSize: '10.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: isSkipped
+                  ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(153, 27, 27, 0.4))'
+                  : 'rgba(255, 255, 255, 0.05)',
+                border: isSkipped
+                  ? '1px solid rgba(239, 68, 68, 0.6)'
+                  : '1px solid rgba(255, 255, 255, 0.18)',
+                color: isSkipped ? '#fca5a5' : '#94a3b8',
+                boxShadow: isSkipped ? '0 0 10px rgba(239, 68, 68, 0.2)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+              title={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
+              aria-label={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
+            >
+              <FastForward size={11} />
+              <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
+            </button>
+          )}
+
+          {/* XP BADGE */}
           {isSkipped && !done ? (
             <span
               style={{
                 fontSize: '9.5px',
                 fontWeight: 800,
                 color: '#f87171',
-                padding: '2px 7px',
+                padding: '2px 6px',
                 background: 'rgba(239, 68, 68, 0.12)',
                 border: '1px solid rgba(239, 68, 68, 0.35)',
                 borderRadius: '6px',
                 letterSpacing: '0.04em',
               }}
             >
-              LEWAT
+              0 XP
+            </span>
+          ) : xp !== undefined ? (
+            <span
+              className="task-xp"
+              style={done ? { color: '#4ade80', borderColor: 'rgba(74, 222, 128, 0.4)' } : undefined}
+            >
+              +{xp} XP
             </span>
           ) : badgeText ? (
             <span className="task-xp">{badgeText}</span>
-          ) : done ? (
-            <span className="task-xp" style={{ color: '#9e72e7', fontWeight: 700 }}>
-              DONE
-            </span>
           ) : null}
 
           {hasMenuOptions && (
@@ -986,6 +1034,38 @@ function QuestCard({
               </button>
             )}
 
+            {/* Opsi Skip / Batal Skip Quest */}
+            {onSkip && !done && (
+              <button
+                type="button"
+                onClick={() => {
+                  closeMenu()
+                  onSkip()
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 10px',
+                  borderRadius: '8px',
+                  background: isSkipped ? 'rgba(239, 68, 68, 0.12)' : 'transparent',
+                  border: isSkipped ? '1px solid rgba(239, 68, 68, 0.35)' : 0,
+                  color: isSkipped ? '#fca5a5' : '#f3f1ff',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = isSkipped ? 'rgba(239, 68, 68, 0.2)' : '#251745')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = isSkipped ? 'rgba(239, 68, 68, 0.12)' : 'transparent')}
+              >
+                <FastForward size={14} color={isSkipped ? '#f87171' : '#fb7185'} />
+                <span>{isSkipped ? 'Batalkan Lewati Quest' : 'Lewati Quest (Skip)'}</span>
+              </button>
+            )}
+
             {/* Opsi 2: Edit Quest */}
             {canManage && onEdit && (
               <button
@@ -1114,7 +1194,6 @@ export default function Page() {
   const [questXp, setQuestXp] = useState<number | string>(CATEGORIES[0].xp)
   const [questType, setQuestType] = useState<'daily' | 'event'>('daily')
   const [questDeadline, setQuestDeadline] = useState('')
-  const [questTargetTime, setQuestTargetTime] = useState('')
   const [questDays, setQuestDays] = useState<string[]>(['Everyday'])
 
   const handleToggleDay = (day: string) => {
@@ -1390,8 +1469,15 @@ export default function Page() {
           const normalizedUsers = parsed.users.map((u: any) => {
             const userDoneTasks = (parsed.personalTasks || []).filter((t: any) => t.userId === u.id && t.done)
             const userDoneClanQuests = (parsed.clanQuests || []).filter((cq: any) => cq.completedByUserIds?.includes(u.id))
+            const earnedXp =
+              userDoneTasks.reduce((sum: number, t: any) => sum + (Number(t.xp) || 0), 0) +
+              userDoneClanQuests.reduce((sum: number, cq: any) => sum + (Number(cq.xp) || 0), 0)
+
             if (u.xp === 100 && userDoneTasks.length === 0 && userDoneClanQuests.length === 0 && (u.id.startsWith('hunter-') || u.username === 'yongzz')) {
               return { ...u, xp: 0, streak: 0 }
+            }
+            if (u.xp === 0 && earnedXp > 0) {
+              return { ...u, xp: earnedXp }
             }
             return u
           })
@@ -2419,58 +2505,97 @@ export default function Page() {
   const handleTogglePersonal = (taskId: string) => {
     const target = personalTasks.find((t) => t.id === taskId && t.userId === currentUser.id)
     if (!target) return
-    if (!target.done && isQuestTimeSkipped(target.targetTime, target.done, target.schedule)) {
-      showToast(`Quest "${target.title}" telah terskip karena melewati batas jam ${target.targetTime}! (Edit quest jika ingin mengubah jam)`)
-      return
-    }
     const nextDone = !target.done
-
-    const userTasks = personalTasks.filter((t) => t.userId === currentUser.id)
-    const wasAllDone = userTasks.length > 0 && userTasks.every((t) => t.done)
 
     const todayIso = new Date().toISOString().slice(0, 10)
     const nextTasks = personalTasks.map((t) => {
       if (t.id !== taskId) return t
       const prevDates = new Set(t.completedDates || [])
+      const prevSkipped = new Set(t.skippedDates || [])
       if (nextDone) {
         prevDates.add(todayIso)
+        prevSkipped.delete(todayIso)
       } else {
         prevDates.delete(todayIso)
       }
-      return { ...t, done: nextDone, completedDates: Array.from(prevDates) }
-    })
-    const nextUserTasks = nextTasks.filter((t) => t.userId === currentUser.id)
-    const isAllDone = nextUserTasks.length > 0 && nextUserTasks.every((t) => t.done)
-
-    const totalListXp = nextUserTasks.reduce((sum, t) => sum + t.xp, 0)
-    let xpDelta = 0
-
-    if (!wasAllDone && isAllDone) {
-      xpDelta = totalListXp
-      showToast(`🎉 Seluruh (${nextUserTasks.length}/${nextUserTasks.length}) Quest Harian selesai! +${totalListXp} XP didapatkan!`)
-    } else if (wasAllDone && !isAllDone) {
-      xpDelta = -totalListXp
-      showToast(`Quest dibatalkan. Selesaikan semua quest untuk mempertahankan +${totalListXp} XP.`)
-    } else {
-      const doneCount = nextUserTasks.filter((t) => t.done).length
-      if (nextDone) {
-        showToast(`Quest dicentang (${doneCount}/${nextUserTasks.length}). Selesaikan seluruhnya untuk klaim +${totalListXp} XP!`)
+      return {
+        ...t,
+        done: nextDone,
+        skipped: nextDone ? false : t.skipped,
+        completedDates: Array.from(prevDates),
+        skippedDates: Array.from(prevSkipped),
       }
-    }
+    })
 
     setPersonalTasks(nextTasks)
     const updatedTask = nextTasks.find((t) => t.id === taskId)
     if (updatedTask) {
       saveCloudQuest(updatedTask, currentUser.username)
     }
-    if (xpDelta !== 0) {
-      const nextXp = Math.max(0, currentUser.xp + xpDelta)
+
+    // UPDATE XP LANGSUNG PER QUEST
+    const xpDelta = nextDone ? target.xp : -target.xp
+    const nextXp = Math.max(0, currentUser.xp + xpDelta)
+    setUsers((curr) =>
+      curr.map((u) =>
+        u.id === currentUser.id ? { ...u, xp: nextXp } : u
+      )
+    )
+    saveCloudProfile({ ...currentUser, xp: nextXp })
+
+    if (nextDone) {
+      showToast(`Quest "${target.title}" selesai! +${target.xp} XP 🎉`)
+    } else {
+      showToast(`Quest "${target.title}" dibatalkan. (-${target.xp} XP)`)
+    }
+  }
+
+  const handleSkipPersonal = (taskId: string) => {
+    const target = personalTasks.find((t) => t.id === taskId && t.userId === currentUser.id)
+    if (!target) return
+
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const nextSkipped = !target.skipped
+    const wasDone = target.done
+
+    const nextTasks = personalTasks.map((t) => {
+      if (t.id !== taskId) return t
+      const prevDates = new Set(t.completedDates || [])
+      const prevSkipped = new Set(t.skippedDates || [])
+
+      if (nextSkipped) {
+        prevSkipped.add(todayIso)
+        prevDates.delete(todayIso)
+      } else {
+        prevSkipped.delete(todayIso)
+      }
+      return {
+        ...t,
+        skipped: nextSkipped,
+        done: nextSkipped ? false : t.done,
+        completedDates: Array.from(prevDates),
+        skippedDates: Array.from(prevSkipped),
+      }
+    })
+
+    setPersonalTasks(nextTasks)
+    const updatedTask = nextTasks.find((t) => t.id === taskId)
+    if (updatedTask) {
+      saveCloudQuest(updatedTask, currentUser.username)
+    }
+
+    if (wasDone) {
+      const nextXp = Math.max(0, currentUser.xp - target.xp)
       setUsers((curr) =>
-        curr.map((u) =>
-          u.id === currentUser.id ? { ...u, xp: nextXp } : u
-        )
+        curr.map((u) => (u.id === currentUser.id ? { ...u, xp: nextXp } : u))
       )
       saveCloudProfile({ ...currentUser, xp: nextXp })
+    }
+
+    if (nextSkipped) {
+      showToast(`Quest "${target.title}" dilewati (Terskip hari ini) ⏭`)
+    } else {
+      showToast(`Skip quest "${target.title}" dibatalkan. Siap dikerjakan!`)
     }
   }
 
@@ -2515,7 +2640,6 @@ export default function Page() {
     setQuestTitle('')
     setQuestCategory(CATEGORIES[0].name)
     setQuestXp(CATEGORIES[0].xp)
-    setQuestTargetTime('')
     setQuestDays(['Everyday'])
     setSelectedTemplateSessionIdForQuest('')
     setIsPersonalModalOpen(true)
@@ -2526,7 +2650,6 @@ export default function Page() {
     setQuestTitle(task.title)
     setQuestCategory(findCategory(task.category).name)
     setQuestXp(task.xp)
-    setQuestTargetTime(task.targetTime || '')
     setQuestDays(task.schedule && task.schedule.length > 0 ? task.schedule : ['Everyday'])
     setSelectedTemplateSessionIdForQuest('')
     setIsPersonalModalOpen(true)
@@ -2551,8 +2674,6 @@ export default function Page() {
         ? (questXp > 0 ? questXp : (catObj.xp || 50))
         : (parseInt(questXp, 10) > 0 ? parseInt(questXp, 10) : (catObj.xp || 50))
 
-    const cleanTargetTime = questTargetTime.trim() || undefined
-
     if (editingPersonalTask) {
       const updatedTask: PersonalTask = {
         ...editingPersonalTask,
@@ -2561,7 +2682,6 @@ export default function Page() {
         xp: finalXp,
         icon: catObj.icon,
         schedule: questDays,
-        targetTime: cleanTargetTime,
         workoutExercises: isGym
           ? templateExercises ?? (editingPersonalTask.workoutExercises ?? [])
           : undefined,
@@ -2581,7 +2701,6 @@ export default function Page() {
         icon: catObj.icon,
         done: false,
         schedule: questDays,
-        targetTime: cleanTargetTime,
         workoutExercises: isGym ? (templateExercises ?? []) : undefined,
       }
       setPersonalTasks((curr) => [...curr, newTask])
@@ -2753,63 +2872,90 @@ export default function Page() {
       return
     }
     const alreadyDone = quest.completedByUserIds.includes(currentUser.id)
-    if (!alreadyDone && isQuestTimeSkipped(quest.targetTime, alreadyDone, quest.schedule)) {
-      showToast(`Quest Clan "${quest.title}" telah terskip karena melewati batas jam ${quest.targetTime}!`)
-      return
-    }
+    const nextDone = !alreadyDone
 
-    const clanQuestsForClan = clanQuests.filter((cq) => cq.clanId === quest.clanId)
-    const wasAllDone =
-      clanQuestsForClan.length > 0 &&
-      clanQuestsForClan.every((cq) => cq.completedByUserIds.includes(currentUser.id))
-
-    const nextClanQuests = clanQuests.map((cq) =>
-      cq.id === quest.id
-        ? {
-            ...cq,
-            completedByUserIds: alreadyDone
-              ? cq.completedByUserIds.filter((id) => id !== currentUser.id)
-              : [...cq.completedByUserIds, currentUser.id],
-          }
-        : cq
-    )
-
-    const nextQuestsForClan = nextClanQuests.filter((cq) => cq.clanId === quest.clanId)
-    const isAllDone =
-      nextQuestsForClan.length > 0 &&
-      nextQuestsForClan.every((cq) => cq.completedByUserIds.includes(currentUser.id))
-
-    const totalClanListXp = nextQuestsForClan.reduce((sum, q) => sum + q.xp, 0)
-    let xpDelta = 0
-
-    if (!wasAllDone && isAllDone) {
-      xpDelta = totalClanListXp
-      showToast(
-        `🎉 Luar biasa! Seluruh (${nextQuestsForClan.length}/${nextQuestsForClan.length}) Quest Clan selesai! +${totalClanListXp} XP diperoleh!`
-      )
-    } else if (wasAllDone && !isAllDone) {
-      xpDelta = -totalClanListXp
-      showToast(`Quest Clan dibatalkan. Selesaikan semua quest untuk mempertahankan +${totalClanListXp} XP.`)
-    } else {
-      const doneCount = nextQuestsForClan.filter((cq) => cq.completedByUserIds.includes(currentUser.id)).length
-      if (!alreadyDone) {
-        showToast(
-          `Quest dicentang (${doneCount}/${nextQuestsForClan.length}). Selesaikan seluruh quest clan untuk klaim +${totalClanListXp} XP!`
-        )
+    const nextClanQuests = clanQuests.map((cq) => {
+      if (cq.id !== quest.id) return cq
+      const nextCompleted = nextDone
+        ? [...cq.completedByUserIds, currentUser.id]
+        : cq.completedByUserIds.filter((id) => id !== currentUser.id)
+      const nextSkipped = (cq.skippedByUserIds || []).filter((id) => id !== currentUser.id)
+      return {
+        ...cq,
+        completedByUserIds: nextCompleted,
+        skippedByUserIds: nextSkipped,
       }
-    }
+    })
 
     setClanQuests(nextClanQuests)
 
-    if (xpDelta !== 0) {
-      // Update User Personal XP
-      setUsers((curr) =>
-        curr.map((u) =>
-          u.id === currentUser.id ? { ...u, xp: Math.max(0, u.xp + xpDelta) } : u
-        )
-      )
+    const xpDelta = nextDone ? quest.xp : -quest.xp
+    const nextXp = Math.max(0, currentUser.xp + xpDelta)
 
-      // Update Member Contributed XP in Clan
+    // Update User Personal XP
+    setUsers((curr) =>
+      curr.map((u) =>
+        u.id === currentUser.id ? { ...u, xp: nextXp } : u
+      )
+    )
+    saveCloudProfile({ ...currentUser, xp: nextXp })
+
+    // Update Member Contributed XP in Clan
+    setClanMembers((curr) =>
+      curr.map((cm) =>
+        cm.clanId === quest.clanId && cm.userId === currentUser.id
+          ? { ...cm, contributedXp: Math.max(0, cm.contributedXp + xpDelta) }
+          : cm
+      )
+    )
+
+    // Update Clan Total XP
+    setClans((curr) =>
+      curr.map((c) =>
+        c.id === quest.clanId ? { ...c, totalXp: Math.max(0, c.totalXp + xpDelta) } : c
+      )
+    )
+
+    if (nextDone) {
+      showToast(`Quest Clan "${quest.title}" selesai! +${quest.xp} XP diperoleh! 🎉`)
+    } else {
+      showToast(`Quest Clan "${quest.title}" dibatalkan. (-${quest.xp} XP)`)
+    }
+  }
+
+  const handleSkipClanQuest = (quest: ClanQuest) => {
+    if (!isMemberOfSelectedClan) {
+      showToast('Kamu harus gabung ke Clan ini dulu!')
+      return
+    }
+    const alreadySkipped = (quest.skippedByUserIds || []).includes(currentUser.id)
+    const nextSkipped = !alreadySkipped
+    const wasDone = quest.completedByUserIds.includes(currentUser.id)
+
+    const nextClanQuests = clanQuests.map((cq) => {
+      if (cq.id !== quest.id) return cq
+      const nextCompleted = nextSkipped
+        ? cq.completedByUserIds.filter((id) => id !== currentUser.id)
+        : cq.completedByUserIds
+      const nextSkippedList = nextSkipped
+        ? [...(cq.skippedByUserIds || []), currentUser.id]
+        : (cq.skippedByUserIds || []).filter((id) => id !== currentUser.id)
+      return {
+        ...cq,
+        completedByUserIds: nextCompleted,
+        skippedByUserIds: nextSkippedList,
+      }
+    })
+
+    setClanQuests(nextClanQuests)
+
+    if (wasDone) {
+      const xpDelta = -quest.xp
+      const nextXp = Math.max(0, currentUser.xp + xpDelta)
+      setUsers((curr) =>
+        curr.map((u) => (u.id === currentUser.id ? { ...u, xp: nextXp } : u))
+      )
+      saveCloudProfile({ ...currentUser, xp: nextXp })
       setClanMembers((curr) =>
         curr.map((cm) =>
           cm.clanId === quest.clanId && cm.userId === currentUser.id
@@ -2817,13 +2963,17 @@ export default function Page() {
             : cm
         )
       )
-
-      // Update Clan Total XP
       setClans((curr) =>
         curr.map((c) =>
           c.id === quest.clanId ? { ...c, totalXp: Math.max(0, c.totalXp + xpDelta) } : c
         )
       )
+    }
+
+    if (nextSkipped) {
+      showToast(`Quest Clan "${quest.title}" dilewati (Terskip hari ini) ⏭`)
+    } else {
+      showToast(`Skip Quest Clan "${quest.title}" dibatalkan.`)
     }
   }
 
@@ -2834,7 +2984,6 @@ export default function Page() {
     setQuestXp(CATEGORIES[0].xp)
     setQuestType('daily')
     setQuestDeadline('')
-    setQuestTargetTime('')
     setQuestDays(['Everyday'])
     setIsClanQuestPageOpen(true)
   }
@@ -2846,7 +2995,6 @@ export default function Page() {
     setQuestXp(cq.xp)
     setQuestType(cq.questType)
     setQuestDeadline(cq.deadline || '')
-    setQuestTargetTime(cq.targetTime || '')
     setQuestDays(cq.schedule && cq.schedule.length > 0 ? cq.schedule : ['Everyday'])
     setIsClanQuestPageOpen(true)
   }
@@ -2862,8 +3010,6 @@ export default function Page() {
         ? (questXp > 0 ? questXp : (catObj.xp || 50))
         : (parseInt(questXp, 10) > 0 ? parseInt(questXp, 10) : (catObj.xp || 50))
 
-    const cleanTargetTime = questTargetTime.trim() || undefined
-
     if (editingClanQuest) {
       setClanQuests((curr) =>
         curr.map((cq) =>
@@ -2876,7 +3022,6 @@ export default function Page() {
                 icon: catObj.icon,
                 questType,
                 deadline: questType === 'event' ? questDeadline.trim() || 'Terbatas' : undefined,
-                targetTime: cleanTargetTime,
                 schedule: questDays,
                 workoutExercises: isGym ? (cq.workoutExercises ?? []) : undefined,
               }
@@ -2895,7 +3040,6 @@ export default function Page() {
         icon: catObj.icon,
         questType,
         deadline: questType === 'event' ? questDeadline.trim() || 'Terbatas' : undefined,
-        targetTime: cleanTargetTime,
         completedByUserIds: [],
         schedule: questDays,
         workoutExercises: isGym ? [] : undefined,
@@ -6880,9 +7024,9 @@ export default function Page() {
 
                     {activeScheduleDayObj.scheduledTasks.length > 0 && (
                       <div style={{ display: 'grid', gap: '6px' }}>
-                        {activeScheduleDayObj.scheduledTasks.slice(0, 3).map((task) => {
+                        {activeScheduleDayObj.scheduledTasks.slice(0, 4).map((task) => {
                           const isGym = task.category.toLowerCase() === 'gym'
-                          const isSkipped = isQuestTimeSkipped(task.targetTime, task.done, task.schedule)
+                          const isSkipped = Boolean(task.skipped || task.skippedDates?.includes(new Date().toISOString().slice(0, 10)))
                           return (
                             <div
                               key={task.id}
@@ -6925,66 +7069,91 @@ export default function Page() {
                                           flexShrink: 0,
                                         }}
                                       >
-                                        TERSKIP
+                                        DILEWATI
                                       </span>
                                     )}
                                   </strong>
                                   <span style={{ fontSize: '9.5px', color: isSkipped && !task.done ? '#fca5a5' : '#8e84a2' }}>
                                     {task.category}
-                                    {task.targetTime ? ` • ⏰ ${task.targetTime}` : ''}
-                                    {isSkipped && !task.done ? ' • (Terlewat)' : ''}
-                                    {' • '}+{task.xp} XP
+                                    {isSkipped && !task.done ? ' • (Dilewati)' : ` • +${task.xp} XP`}
                                   </span>
                                 </div>
                               </div>
 
-                              {isGym ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (isSkipped && !task.done) {
-                                      showToast(`Quest "${task.title}" telah terskip karena melewati batas jam ${task.targetTime}!`)
-                                      return
-                                    }
-                                    setWorkoutSubPage('overview')
-                                    setActiveWorkoutQuest({ type: 'personal', id: task.id })
-                                  }}
-                                  style={{
-                                    padding: '5px 11px',
-                                    borderRadius: '8px',
-                                    background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                    border: '1px solid rgba(168, 85, 247, 0.5)',
-                                    color: '#ffffff',
-                                    fontSize: '10.5px',
-                                    fontWeight: 800,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <Play size={10} fill="currentColor" />
-                                  <span>Start</span>
-                                </button>
-                              ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                {isGym && !task.done && !isSkipped && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setWorkoutSubPage('overview')
+                                      setActiveWorkoutQuest({ type: 'personal', id: task.id })
+                                    }}
+                                    style={{
+                                      padding: '4px 8px',
+                                      borderRadius: '7px',
+                                      background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                      border: '1px solid rgba(168, 85, 247, 0.5)',
+                                      color: '#ffffff',
+                                      fontSize: '10px',
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                    }}
+                                    title="Mulai Workout"
+                                  >
+                                    <Play size={9} fill="currentColor" />
+                                    <span>Start</span>
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
                                   onClick={() => handleTogglePersonal(task.id)}
                                   style={{
-                                    padding: '4px 9px',
-                                    borderRadius: '8px',
-                                    background: task.done ? 'rgba(74, 222, 128, 0.16)' : 'rgba(168, 85, 247, 0.15)',
-                                    border: task.done ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.35)',
+                                    padding: '4px 8px',
+                                    borderRadius: '7px',
+                                    background: task.done ? 'rgba(74, 222, 128, 0.2)' : 'rgba(168, 85, 247, 0.15)',
+                                    border: task.done ? '1px solid rgba(74, 222, 128, 0.5)' : '1px solid rgba(168, 85, 247, 0.35)',
                                     color: task.done ? '#4ade80' : '#d8b4fe',
                                     fontSize: '10px',
                                     fontWeight: 700,
                                     cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
                                   }}
+                                  title={task.done ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
                                 >
-                                  {task.done ? 'Selesai ✓' : 'Tandai'}
+                                  <Check size={10} strokeWidth={2.5} />
+                                  <span>{task.done ? 'Selesai' : 'Centang'}</span>
                                 </button>
-                              )}
+
+                                {!task.done && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSkipPersonal(task.id)}
+                                    style={{
+                                      padding: '4px 7px',
+                                      borderRadius: '7px',
+                                      background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                                      border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                      color: isSkipped ? '#fca5a5' : '#94a3b8',
+                                      fontSize: '10px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                    }}
+                                    title={isSkipped ? 'Batal lewati quest' : 'Lewati quest (0 XP)'}
+                                  >
+                                    <FastForward size={9} />
+                                    <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )
                         })}
@@ -7514,7 +7683,7 @@ export default function Page() {
                           <div style={{ fontSize: '10px', color: '#8e84a2', marginTop: '2px' }}>
                             {isAllDone
                               ? `Seluruh (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
-                              : `Selesaikan semua (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest untuk mendapatkan XP`}
+                              : `Dapatkan XP untuk setiap quest yang kamu selesaikan (${completedTodayPersonalCount}/${todayPersonalTasks.length} selesai)`}
                           </div>
                         </div>
                         <div
@@ -7555,7 +7724,7 @@ export default function Page() {
                     ) : (
                       (questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).map((task) => {
                         const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
-                        const isSkipped = isQuestTimeSkipped(task.targetTime, task.done, task.schedule)
+                        const isSkipped = Boolean(task.skipped || task.skippedDates?.includes(new Date().toISOString().slice(0, 10)))
                         return (
                           <QuestCard
                             key={task.id}
@@ -7567,19 +7736,16 @@ export default function Page() {
                             done={task.done}
                             completedDates={task.completedDates}
                             schedule={task.schedule}
-                            targetTime={task.targetTime}
                             isSkipped={isSkipped}
                             canManage={true}
                             isGym={task.category.toLowerCase() === 'gym'}
+                            xp={task.xp}
                             onOpenWorkout={() => {
-                              if (isSkipped && !task.done) {
-                                showToast(`Quest "${task.title}" telah terskip karena melewati batas jam ${task.targetTime}!`)
-                                return
-                              }
                               setWorkoutSubPage('overview')
                               setActiveWorkoutQuest({ type: 'personal', id: task.id })
                             }}
                             onToggle={() => handleTogglePersonal(task.id)}
+                            onSkip={() => handleSkipPersonal(task.id)}
                             onEdit={() => openEditPersonalModal(task)}
                             onDelete={() => handleDeletePersonal(task.id)}
                           />
@@ -8215,25 +8381,6 @@ export default function Page() {
                           {questInfoTarget.schedule.includes('Everyday') ? 'Everyday' : questInfoTarget.schedule.join(', ')}
                         </span>
                       )}
-                      {questInfoTarget.targetTime && (
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            color: '#e9d5ff',
-                            background: 'rgba(168, 85, 247, 0.2)',
-                            border: '1px solid rgba(168, 85, 247, 0.45)',
-                            padding: '2px 8px',
-                            borderRadius: '6px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontWeight: 700,
-                          }}
-                        >
-                          <Clock size={10} />
-                          Batas Jam: {questInfoTarget.targetTime}
-                        </span>
-                      )}
                     </div>
 
                     {/* Clan Completion Progress Bar */}
@@ -8719,74 +8866,6 @@ export default function Page() {
                         })}
                       </div>
 
-                      {/* BATAS JAM QUEST / TARGET WAKTU (CLAN) */}
-                      <div style={{ marginBottom: '14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <label className="modal-label" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <Clock size={12} /> BATAS JAM QUEST (AUTO-SKIP JIKA LEWAT)
-                          </label>
-                          {questTargetTime && (
-                            <button
-                              type="button"
-                              onClick={() => setQuestTargetTime('')}
-                              style={{
-                                background: 'transparent',
-                                border: 0,
-                                color: '#f87171',
-                                fontSize: '10.5px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              ✕ Hapus Jam
-                            </button>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input
-                            type="time"
-                            className="modal-input"
-                            value={questTargetTime}
-                            onChange={(e) => setQuestTargetTime(e.target.value)}
-                            style={{
-                              marginBottom: 0,
-                              height: '38px',
-                              fontSize: '13px',
-                              fontWeight: 700,
-                              color: '#f3f1ff',
-                              background: '#0a0814',
-                              border: '1px solid #3d2a63',
-                              borderRadius: '8px',
-                              flex: 1,
-                            }}
-                          />
-                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                            {['05:00', '07:00', '12:00', '18:00', '21:00'].map((preset) => (
-                              <button
-                                key={preset}
-                                type="button"
-                                onClick={() => setQuestTargetTime(preset)}
-                                style={{
-                                  padding: '5px 8px',
-                                  borderRadius: '7px',
-                                  background: questTargetTime === preset ? '#7c3aed' : '#140f24',
-                                  border: questTargetTime === preset ? '1px solid #c084fc' : '1px solid #2e2346',
-                                  color: questTargetTime === preset ? '#ffffff' : '#b0a3c7',
-                                  fontSize: '10.5px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                {preset}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <span style={{ display: 'block', fontSize: '9.5px', color: '#9a8fb2', marginTop: '5px', lineHeight: 1.35 }}>
-                          ⏰ Lewat jam ini tanpa checklist = quest <strong>terskip otomatis</strong> bagi anggota Clan &amp; <strong>tidak masuk history</strong>. Kosongkan jika bebas kapan saja.
-                        </span>
-                      </div>
-
                       <label className="modal-label">BOBOT XP QUEST (KONTRIBUSI KE TOTAL REWARD LIST)</label>
                       <input
                         type="number"
@@ -9199,7 +9278,7 @@ export default function Page() {
                               <div style={{ fontSize: '10px', color: '#8e84a2', marginTop: '2px' }}>
                                 {isAllDone
                                   ? `Seluruh (${completedByMeCount}/${selectedClanQuests.length}) quest selesai • +${totalClanListXp} XP aktif`
-                                  : `Selesaikan semua (${completedByMeCount}/${selectedClanQuests.length}) quest untuk mendapatkan XP`}
+                                  : `Dapatkan XP untuk setiap quest clan yang kamu selesaikan (${completedByMeCount}/${selectedClanQuests.length} selesai)`}
                               </div>
                             </div>
                             <div
@@ -9229,7 +9308,7 @@ export default function Page() {
                         ) : (
                           selectedClanQuests.map((cq, cIdx) => {
                             const isDoneByMe = cq.completedByUserIds.includes(currentUser.id)
-                            const isSkipped = isQuestTimeSkipped(cq.targetTime, isDoneByMe, cq.schedule)
+                            const isSkipped = (cq.skippedByUserIds || []).includes(currentUser.id)
                             return (
                               <QuestCard
                                 key={cq.id}
@@ -9241,20 +9320,17 @@ export default function Page() {
                                 done={isDoneByMe}
                                 isEvent={cq.questType === 'event'}
                                 schedule={cq.schedule}
-                                targetTime={cq.targetTime}
                                 isSkipped={isSkipped}
                                 canManage={isLeaderOfSelectedClan}
                                 completedCount={cq.completedByUserIds.length}
                                 totalMembers={selectedClanMembers.length}
                                 isGym={cq.category.toLowerCase() === 'gym'}
+                                xp={cq.xp}
                                 onOpenWorkout={() => {
-                                  if (isSkipped && !isDoneByMe) {
-                                    showToast(`Quest Clan "${cq.title}" telah terskip karena melewati batas jam ${cq.targetTime}!`)
-                                    return
-                                  }
                                   setActiveWorkoutQuest({ type: 'clan', id: cq.id })
                                 }}
                                 onToggle={() => handleToggleClanQuest(cq)}
+                                onSkip={() => handleSkipClanQuest(cq)}
                                 onInfo={() => setQuestInfoTarget(cq)}
                                 onEdit={() => openEditClanQuestModal(cq)}
                                 onDelete={() => handleDeleteClanQuest(cq.id)}
@@ -9742,74 +9818,6 @@ export default function Page() {
                     </button>
                   )
                 })}
-              </div>
-
-              {/* BATAS JAM QUEST / TARGET WAKTU */}
-              <div style={{ marginBottom: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <label className="modal-label" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Clock size={12} /> BATAS JAM QUEST (AUTO-SKIP JIKA LEWAT)
-                  </label>
-                  {questTargetTime && (
-                    <button
-                      type="button"
-                      onClick={() => setQuestTargetTime('')}
-                      style={{
-                        background: 'transparent',
-                        border: 0,
-                        color: '#f87171',
-                        fontSize: '10.5px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ✕ Hapus Jam (Bebas Waktu)
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input
-                    type="time"
-                    className="modal-input"
-                    value={questTargetTime}
-                    onChange={(e) => setQuestTargetTime(e.target.value)}
-                    style={{
-                      marginBottom: 0,
-                      height: '38px',
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      color: '#f3f1ff',
-                      background: '#0a0814',
-                      border: '1px solid #3d2a63',
-                      borderRadius: '8px',
-                      flex: 1,
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                    {['05:00', '07:00', '12:00', '18:00', '21:00'].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setQuestTargetTime(preset)}
-                        style={{
-                          padding: '5px 8px',
-                          borderRadius: '7px',
-                          background: questTargetTime === preset ? '#7c3aed' : '#140f24',
-                          border: questTargetTime === preset ? '1px solid #c084fc' : '1px solid #2e2346',
-                          color: questTargetTime === preset ? '#ffffff' : '#b0a3c7',
-                          fontSize: '10.5px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <span style={{ display: 'block', fontSize: '9.5px', color: '#9a8fb2', marginTop: '5px', lineHeight: 1.35 }}>
-                  ⏰ Contoh: Set <strong>05:00</strong> untuk bangun pagi. Jika lewat jam 05:00 belum checklist, quest akan <strong>terskip otomatis</strong> &amp; <strong>tidak masuk history</strong>. Kosongkan jika quest bebas dikerjakan kapan saja.
-                </span>
               </div>
 
               <label className="modal-label">BOBOT XP QUEST (KONTRIBUSI KE TOTAL REWARD LIST)</label>
