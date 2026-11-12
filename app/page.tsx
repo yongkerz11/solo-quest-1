@@ -1169,6 +1169,7 @@ export default function Page() {
   const [restTimerActive, setRestTimerActive] = useState<boolean>(false)
   const [showFloatingTimer, setShowFloatingTimer] = useState<boolean>(false)
   const [restDurationPreset, setRestDurationPreset] = useState<number>(60)
+  const restEndTimeRef = useRef<number | null>(null)
   const [isAddingExercise, setIsAddingExercise] = useState(false)
   const [workoutSubPage, setWorkoutSubPage] = useState<'overview' | 'library' | 'programs'>('overview')
   const [replacingExerciseId, setReplacingExerciseId] = useState<string | null>(null)
@@ -1198,6 +1199,27 @@ export default function Page() {
   const [customHistReps, setCustomHistReps] = useState<string>('10')
   const chartScrollRef = useRef<HTMLDivElement>(null)
 
+  const requestNotificationPermission = () => {
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission()
+      }
+    } catch (e) {}
+  }
+
+  const sendTimerNotification = () => {
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('⚡ WAKTU ISTIRAHAT SELESAI!', {
+          body: 'Waktu rest gym kamu telah selesai. Siap untuk set latihan berikutnya!',
+          icon: '/favicon.ico',
+        })
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const playTimerBeep = () => {
     try {
       if (typeof window === 'undefined') return
@@ -1208,7 +1230,7 @@ export default function Page() {
       const gain = ctx.createGain()
       osc.type = 'sine'
       osc.frequency.setValueAtTime(880, ctx.currentTime)
-      gain.gain.setValueAtTime(0.2, ctx.currentTime)
+      gain.gain.setValueAtTime(0.25, ctx.currentTime)
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8)
       osc.connect(gain)
       gain.connect(ctx.destination)
@@ -1219,27 +1241,130 @@ export default function Page() {
     }
   }
 
-  // Countdown timer istirahat
+  const startRestCountdown = (seconds: number) => {
+    requestNotificationPermission()
+    const endTime = Date.now() + seconds * 1000
+    restEndTimeRef.current = endTime
+    setRestDurationPreset(seconds)
+    setRestSecondsLeft(seconds)
+    setRestTimerActive(true)
+    setShowFloatingTimer(true)
+    try {
+      localStorage.setItem(
+        'solo_rest_timer_target',
+        JSON.stringify({ endTime, preset: seconds, active: true })
+      )
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const pauseRestCountdown = () => {
+    if (restEndTimeRef.current) {
+      const remaining = Math.max(0, Math.ceil((restEndTimeRef.current - Date.now()) / 1000))
+      setRestSecondsLeft(remaining)
+    }
+    restEndTimeRef.current = null
+    setRestTimerActive(false)
+    try {
+      localStorage.removeItem('solo_rest_timer_target')
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const resumeRestCountdown = () => {
+    const remaining = restSecondsLeft > 0 ? restSecondsLeft : (restDurationPreset || 60)
+    startRestCountdown(remaining)
+  }
+
+  const extendRestCountdown = (extraSeconds: number) => {
+    if (restTimerActive && restEndTimeRef.current) {
+      restEndTimeRef.current += extraSeconds * 1000
+      const remaining = Math.max(0, Math.ceil((restEndTimeRef.current - Date.now()) / 1000))
+      setRestSecondsLeft(remaining)
+      try {
+        localStorage.setItem(
+          'solo_rest_timer_target',
+          JSON.stringify({ endTime: restEndTimeRef.current, preset: restDurationPreset, active: true })
+        )
+      } catch (e) {
+        console.error(e)
+      }
+    } else {
+      setRestSecondsLeft((s) => s + extraSeconds)
+    }
+  }
+
+  const stopRestCountdown = (skipped: boolean = false) => {
+    restEndTimeRef.current = null
+    setRestTimerActive(false)
+    setShowFloatingTimer(false)
+    try {
+      localStorage.removeItem('solo_rest_timer_target')
+    } catch (e) {
+      console.error(e)
+    }
+    if (skipped) {
+      setRestSecondsLeft(restDurationPreset)
+      showToast('Waktu istirahat dilewati. Siap latihan!')
+    }
+  }
+
+  // Countdown timer istirahat berbasis Wall-Clock Timestamp
+  // (Tetap berjalan akurat saat buka aplikasi lain, lock screen, atau minimize)
   useEffect(() => {
     if (!restTimerActive) return
 
-    const interval = setInterval(() => {
-      setRestSecondsLeft((prev) => {
-        if (prev <= 1) {
-          setRestTimerActive(false)
-          setShowFloatingTimer(false)
-          playTimerBeep()
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate([200, 100, 200])
-          }
-          showToast('⚡ WAKTU ISTIRAHAT SELESAI! Siap untuk set berikutnya!')
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const tick = () => {
+      if (!restEndTimeRef.current) return
+      const now = Date.now()
+      const remaining = Math.max(0, Math.ceil((restEndTimeRef.current - now) / 1000))
 
-    return () => clearInterval(interval)
+      if (remaining <= 0) {
+        restEndTimeRef.current = null
+        setRestSecondsLeft(0)
+        setRestTimerActive(false)
+        setShowFloatingTimer(false)
+        try {
+          localStorage.removeItem('solo_rest_timer_target')
+        } catch (e) {}
+
+        playTimerBeep()
+        sendTimerNotification()
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([300, 150, 300])
+        }
+        showToast('⚡ WAKTU ISTIRAHAT SELESAI! Siap untuk set berikutnya!')
+      } else {
+        setRestSecondsLeft(remaining)
+      }
+    }
+
+    // Jalankan segera 1x saat aktif
+    tick()
+
+    // Interval 500ms agar update UI selalu presisi tanpa drift
+    const interval = setInterval(tick, 500)
+
+    // Handler ketika user beralih dari / kembali ke tab atau aplikasi lain
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        tick()
+      }
+    }
+    const handleWindowFocus = () => {
+      tick()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleWindowFocus)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleWindowFocus)
+    }
   }, [restTimerActive])
 
   const formatTimer = (totalSeconds: number) => {
@@ -1300,6 +1425,28 @@ export default function Page() {
       } catch (e) {
         console.error(e)
       }
+    }
+
+    // Pulihkan timer istirahat jika sebelumnya sedang berjalan
+    try {
+      const savedTimer = localStorage.getItem('solo_rest_timer_target')
+      if (savedTimer) {
+        const parsedTimer = JSON.parse(savedTimer)
+        if (parsedTimer && parsedTimer.active && parsedTimer.endTime) {
+          const remaining = Math.max(0, Math.ceil((parsedTimer.endTime - Date.now()) / 1000))
+          if (remaining > 0) {
+            restEndTimeRef.current = parsedTimer.endTime
+            setRestDurationPreset(parsedTimer.preset || 60)
+            setRestSecondsLeft(remaining)
+            setRestTimerActive(true)
+            setShowFloatingTimer(true)
+          } else {
+            localStorage.removeItem('solo_rest_timer_target')
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e)
     }
 
     // Periksa cookie sesi login untuk memastikan akun sendiri yang aktif
@@ -1769,10 +1916,7 @@ export default function Page() {
     handleUpdateWorkoutExercises(questId, type, updatedExs)
 
     if (justCompleted) {
-      setRestSecondsLeft(restTime)
-      setRestDurationPreset(restTime)
-      setRestTimerActive(true)
-      setShowFloatingTimer(true)
+      startRestCountdown(restTime)
       showToast(`Set selesai! Istirahat ${restTime}s dimulai ⏳`)
     }
   }
@@ -1841,18 +1985,14 @@ export default function Page() {
     handleUpdateWorkoutExercises(questId, type, updatedExs)
 
     if (triggeredRest) {
-      setRestSecondsLeft(restTime)
-      setRestDurationPreset(restTime)
-      setRestTimerActive(true)
-      setShowFloatingTimer(true)
+      startRestCountdown(restTime)
       if (completedAfter === totalSets) {
         showToast(`🔥 Semua set (${completedAfter}/${totalSets}) "${exName}" selesai! Istirahat ${restTime}s dimulai ⏳`)
       } else {
         showToast(`⚡ Set ${completedAfter}/${totalSets} "${exName}" selesai! Istirahat ${restTime}s dimulai ⏳`)
       }
     } else {
-      setRestTimerActive(false)
-      setShowFloatingTimer(false)
+      stopRestCountdown(false)
       showToast(`Set "${exName}" direset kembali ke 0/${totalSets}.`)
     }
   }
@@ -2268,8 +2408,7 @@ export default function Page() {
     }
     setActiveWorkoutQuest(null)
     setActiveExerciseId(null)
-    setRestTimerActive(false)
-    setShowFloatingTimer(false)
+    stopRestCountdown(false)
     showToast('🎉 Sesi Workout Selesai! Riwayat beban berhasil diperbarui!')
   }
 
@@ -3411,8 +3550,13 @@ export default function Page() {
             <button
               type="button"
               onClick={() => {
-                if (restSecondsLeft === 0) setRestSecondsLeft(restDurationPreset)
-                setRestTimerActive(!restTimerActive)
+                if (restSecondsLeft === 0) {
+                  startRestCountdown(restDurationPreset || 60)
+                } else if (restTimerActive) {
+                  pauseRestCountdown()
+                } else {
+                  resumeRestCountdown()
+                }
               }}
               style={{
                 height: '28px',
@@ -3441,7 +3585,7 @@ export default function Page() {
             {/* BUTTON +15s */}
             <button
               type="button"
-              onClick={() => setRestSecondsLeft((s) => s + 15)}
+              onClick={() => extendRestCountdown(15)}
               style={{
                 height: '28px',
                 padding: '0 7px',
@@ -3485,12 +3629,7 @@ export default function Page() {
             {/* BUTTON TUTUP / LEWATI (X) */}
             <button
               type="button"
-              onClick={() => {
-                setRestTimerActive(false)
-                setShowFloatingTimer(false)
-                setRestSecondsLeft(restDurationPreset)
-                showToast('Waktu istirahat dilewati. Siap latihan!')
-              }}
+              onClick={() => stopRestCountdown(true)}
               style={{
                 width: '28px',
                 height: '28px',
@@ -3696,8 +3835,9 @@ export default function Page() {
               onClick={() => {
                 const newSecs = Math.max(5, Number(customTimerSeconds) || 60)
                 setRestDurationPreset(newSecs)
+                stopRestCountdown(false)
                 setRestSecondsLeft(newSecs)
-                setRestTimerActive(false)
+                setShowFloatingTimer(true)
 
                 if (applyTimerToAllExercises && currentWorkoutQuest && activeWorkoutQuest) {
                   const updated = (currentWorkoutQuest.workoutExercises ?? []).map((ex) => ({
@@ -5768,8 +5908,7 @@ export default function Page() {
                         setActiveExerciseId(null)
                         setWorkoutSubPage('overview')
                         setReplacingExerciseId(null)
-                        setRestTimerActive(false)
-                        setShowFloatingTimer(false)
+                        stopRestCountdown(false)
                         setOpenExerciseDropdownId(null)
                       }}
                       style={{
