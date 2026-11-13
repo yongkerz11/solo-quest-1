@@ -49,6 +49,11 @@ import {
   BookOpen,
   Sparkles,
   FastForward,
+  Briefcase,
+  Palette,
+  Moon,
+  Wallet,
+  Sun,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import {
@@ -180,6 +185,21 @@ const CATEGORIES: QuestCategory[] = [
   { name: 'Sosial', oldName: 'Sosial', xp: 15, icon: '🤝' },
   { name: 'Rutinitas & Sehat', oldName: 'Disiplin', xp: 10, icon: '☀️' },
 ]
+
+function renderCategoryIcon(catName: string, size = 16) {
+  const lower = catName.toLowerCase()
+  if (lower.includes('gym')) return <Dumbbell size={size} />
+  if (lower.includes('olahraga') || lower.includes('kekuatan')) return <Zap size={size} />
+  if (lower.includes('kerja') || lower.includes('karir') || lower.includes('fokus')) return <Briefcase size={size} />
+  if (lower.includes('belajar') || lower.includes('pengetahuan')) return <BookOpen size={size} />
+  if (lower.includes('kreativitas')) return <Palette size={size} />
+  if (lower.includes('ibadah') || lower.includes('sholat') || lower.includes('pray')) return <Moon size={size} />
+  if (lower.includes('mindful')) return <Sparkles size={size} />
+  if (lower.includes('keuangan')) return <Wallet size={size} />
+  if (lower.includes('sosial')) return <Users size={size} />
+  if (lower.includes('rutinitas') || lower.includes('sehat') || lower.includes('disiplin')) return <Sun size={size} />
+  return <Activity size={size} />
+}
 
 function findCategory(catName: string): QuestCategory {
   if (!catName) return CATEGORIES[0]
@@ -7079,13 +7099,13 @@ export default function Page() {
                               borderRadius: '11px',
                               padding: '8px 12px',
                               background: isFeatured
-                                ? 'linear-gradient(135deg, rgba(38, 22, 70, 0.95), rgba(22, 14, 44, 0.92))'
+                                ? 'linear-gradient(135deg, rgba(58, 28, 108, 0.92), rgba(26, 15, 52, 0.94))'
                                 : 'rgba(17, 12, 31, 0.85)',
                               border: isFeatured
-                                ? '1px solid rgba(250, 204, 21, 0.6)'
+                                ? '1px solid rgba(192, 132, 252, 0.85)'
                                 : '1px solid rgba(168, 85, 247, 0.22)',
                               boxShadow: isFeatured
-                                ? '0 0 16px rgba(250, 204, 21, 0.16)'
+                                ? '0 0 18px rgba(168, 85, 247, 0.26), inset 0 0 10px rgba(168, 85, 247, 0.08)'
                                 : 'none',
                               display: 'flex',
                               alignItems: 'center',
@@ -7094,23 +7114,23 @@ export default function Page() {
                               transition: 'all 0.2s ease',
                             }}
                           >
-                            {/* Kiri: Icon Squircle + Judul Kategori + Sub-stat Minimalis */}
+                            {/* Kiri: Icon Vektor + Judul Kategori + Sub-stat Minimalis */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
                               <div
                                 style={{
                                   width: '32px',
                                   height: '32px',
                                   borderRadius: '8px',
-                                  background: isFeatured ? 'rgba(250, 204, 21, 0.16)' : 'rgba(168, 85, 247, 0.16)',
-                                  border: isFeatured ? '1px solid rgba(250, 204, 21, 0.45)' : '1px solid rgba(168, 85, 247, 0.3)',
+                                  background: isFeatured ? 'rgba(168, 85, 247, 0.26)' : 'rgba(168, 85, 247, 0.14)',
+                                  border: isFeatured ? '1px solid rgba(192, 132, 252, 0.65)' : '1px solid rgba(168, 85, 247, 0.28)',
+                                  color: isFeatured ? '#e9d5ff' : '#c084fc',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  fontSize: '16px',
                                   flexShrink: 0,
                                 }}
                               >
-                                {m.icon}
+                                {renderCategoryIcon(m.name, 16)}
                               </div>
                               <div style={{ minWidth: 0 }}>
                                 <strong style={{ fontSize: '13px', fontWeight: 800, color: '#ffffff', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -7136,19 +7156,19 @@ export default function Page() {
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '3px',
+                                    gap: '4px',
                                     fontSize: '10px',
                                     fontWeight: 800,
                                     padding: '4px 9px',
                                     borderRadius: '6px',
-                                    background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(161, 98, 7, 0.3))',
-                                    border: '1px solid rgba(250, 204, 21, 0.8)',
-                                    color: '#fef08a',
-                                    boxShadow: '0 0 12px rgba(250, 204, 21, 0.3)',
+                                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(126, 34, 206, 0.48))',
+                                    border: '1px solid rgba(216, 180, 254, 0.85)',
+                                    color: '#f3e8ff',
+                                    boxShadow: '0 0 12px rgba(168, 85, 247, 0.38)',
                                     whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  <span>⭐</span>
+                                  <Check size={11} strokeWidth={3} style={{ color: '#e9d5ff' }} />
                                   <span>Aktif</span>
                                 </div>
                               ) : (
@@ -7189,8 +7209,9 @@ export default function Page() {
                   <div style={{ marginBottom: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Lock size={12} style={{ color: '#c084fc' }} />
                         <span style={{ fontSize: '11px', fontWeight: 800, color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          🔒 Kategori Terkunci
+                          Kategori Terkunci
                         </span>
                         <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff' }}>
                           {lockedMasteries.length}
@@ -7218,7 +7239,22 @@ export default function Page() {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-                            <span style={{ fontSize: '15px', opacity: 0.85, flexShrink: 0 }}>{cat.icon}</span>
+                            <div
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '6px',
+                                background: 'rgba(168, 85, 247, 0.1)',
+                                border: '1px solid rgba(168, 85, 247, 0.22)',
+                                color: '#a78bfa',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {renderCategoryIcon(cat.name, 13)}
+                            </div>
                             <div style={{ minWidth: 0 }}>
                               <div
                                 style={{
