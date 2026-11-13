@@ -1220,6 +1220,7 @@ export default function Page() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'offline'>('idle')
   const [isHistoryPageOpen, setIsHistoryPageOpen] = useState<boolean>(false)
+  const [isMasteryPageOpen, setIsMasteryPageOpen] = useState<boolean>(false)
   const [historyFilter, setHistoryFilter] = useState<'all' | 'gym' | 'other'>('all')
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
 
@@ -1844,25 +1845,33 @@ export default function Page() {
   const levelProgress = levelInfo.progressPct
 
   // Derive Category Mastery (XP & Rank E-S per Kategori)
+  // Aturan ketat: Hanya kategori yang memiliki minimal 1 quest (baik quest aktif terdaftar maupun riwayat selesai) yang ditampilkan
   const categoryMasteries = CATEGORIES.map((cat) => {
     const matchingPersonal = userHistoryItems.filter((item) => findCategory(item.category).name === cat.name)
     const matchingClan = clanCompletedQuestsList.filter((cq) => findCategory(cq.category).name === cat.name)
-    const catXp = matchingPersonal.length * cat.xp + matchingClan.length * cat.xp
+    const personalTasksInCat = userPersonalTasks.filter((t) => findCategory(t.category).name === cat.name)
+    const clanTasksInCat = clanQuests.filter((cq) => findCategory(cq.category).name === cat.name)
+    const totalQuestCount = personalTasksInCat.length + clanTasksInCat.length
     const count = matchingPersonal.length + matchingClan.length
+    const catXp = matchingPersonal.length * cat.xp + matchingClan.length * cat.xp
     const rankInfo = getCategoryRankInfo(catXp)
+    const hasQuest = totalQuestCount > 0 || count > 0 || catXp > 0
     return {
       name: cat.name,
       icon: cat.icon,
       xpPerQuest: cat.xp,
       xp: catXp,
       count,
+      totalQuestCount,
+      hasQuest,
       ...rankInfo,
     }
   })
-  const sRankCategories = categoryMasteries.filter((m) => m.rank === 'S')
-  const topMasteryCategories = [...categoryMasteries]
-    .filter((m) => m.xp > 0)
-    .sort((a, b) => b.xp - a.xp)
+  // Hanya kategori yang sudah mempunyai minimal 1 quest
+  const activeMasteries = categoryMasteries.filter((m) => m.hasQuest)
+  const sRankCategories = activeMasteries.filter((m) => m.rank === 'S')
+  const topMasteryCategories = [...activeMasteries]
+    .sort((a, b) => b.xp - a.xp || b.count - a.count || b.totalQuestCount - a.totalQuestCount)
     .slice(0, 3)
 
   // Derive Personal Records (PR) & Total Volume dari semua gerakan latihan
@@ -4498,6 +4507,7 @@ export default function Page() {
               setActiveWorkoutQuest(null)
               setActiveExerciseId(null)
               setIsHistoryPageOpen(false)
+              setIsMasteryPageOpen(false)
               setActiveTab('home')
             }}
             title="Beranda"
@@ -6948,6 +6958,336 @@ export default function Page() {
                   })()}
                 </div>
               </div>
+            ) : isMasteryPageOpen ? (
+              /* ================================================================
+                 HALAMAN CATEGORY MASTERY (DEDICATED FULL PAGE VIEW)
+                 Hanya menampilkan kategori yang memiliki minimal 1 quest
+                 ================================================================ */
+              <div style={{ animation: 'heroCardAppear 0.35s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                {/* Header Category Mastery */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginBottom: '18px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsMasteryPageOpen(false)}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '11px',
+                        background: '#161126',
+                        border: '1px solid #352754',
+                        color: '#e2d9f3',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      title="Kembali ke Dashboard"
+                    >
+                      <ArrowLeft size={18} />
+                    </button>
+                    <div>
+                      <span className="eyebrow" style={{ color: '#b7a4d5', fontSize: '10.5px', fontWeight: 800, letterSpacing: '0.06em' }}>
+                        SPESIALISASI HUNTER
+                      </span>
+                      <h1 style={{ fontSize: '20px', fontWeight: 900, color: '#f5f2ff', margin: 0, letterSpacing: '-0.02em' }}>
+                        Category Mastery
+                      </h1>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '6px 11px',
+                      borderRadius: '10px',
+                      background: 'rgba(168, 85, 247, 0.16)',
+                      border: '1px solid rgba(168, 85, 247, 0.32)',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      color: '#d8b4fe',
+                    }}
+                  >
+                    <Trophy size={13} />
+                    <span>{activeMasteries.length} Aktif</span>
+                  </div>
+                </div>
+
+                {/* Ringkasan Statistik Mastery */}
+                <section
+                  style={{
+                    padding: '16px 18px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, rgba(28, 20, 52, 0.95), rgba(18, 13, 34, 0.92))',
+                    border: '1px solid rgba(168, 85, 247, 0.28)',
+                    boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.45)',
+                    marginBottom: '18px',
+                  }}
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', textAlign: 'center' }}>
+                    <div style={{ padding: '10px 8px', borderRadius: '11px', background: 'rgba(14, 10, 26, 0.65)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#9a8fb3', textTransform: 'uppercase' }}>Kategori Aktif</div>
+                      <div style={{ fontSize: '18px', fontWeight: 900, color: '#f3f1ff', marginTop: '3px' }}>
+                        {activeMasteries.length} <span style={{ fontSize: '11px', fontWeight: 600, color: '#8e84a2' }}>/ {CATEGORIES.length}</span>
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px 8px', borderRadius: '11px', background: 'rgba(14, 10, 26, 0.65)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#9a8fb3', textTransform: 'uppercase' }}>Total Quest Selesai</div>
+                      <div style={{ fontSize: '18px', fontWeight: 900, color: '#a78bfa', marginTop: '3px' }}>
+                        {activeMasteries.reduce((sum, m) => sum + m.count, 0)}x
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px 8px', borderRadius: '11px', background: 'rgba(14, 10, 26, 0.65)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#9a8fb3', textTransform: 'uppercase' }}>Rank S Tercapai</div>
+                      <div style={{ fontSize: '18px', fontWeight: 900, color: '#fde047', marginTop: '3px' }}>
+                        {sRankCategories.length}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tier Roadmap Strip */}
+                  <div
+                    style={{
+                      marginTop: '14px',
+                      padding: '10px 12px',
+                      borderRadius: '12px',
+                      background: 'rgba(10, 7, 20, 0.7)',
+                      border: '1px solid rgba(168, 85, 247, 0.18)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#c4b5fd', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Jenjang Rank Mastery
+                      </span>
+                      <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Target: Rank S (3.000 XP)</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px', textAlign: 'center' }}>
+                      {[
+                        { rank: 'E', xp: '0' },
+                        { rank: 'D', xp: '100' },
+                        { rank: 'C', xp: '300' },
+                        { rank: 'B', xp: '700' },
+                        { rank: 'A', xp: '1.5k' },
+                        { rank: 'S', xp: '3k' },
+                      ].map((t) => (
+                        <div
+                          key={t.rank}
+                          style={{
+                            padding: '4px 2px',
+                            borderRadius: '6px',
+                            background: t.rank === 'S' ? 'rgba(250, 204, 21, 0.18)' : 'rgba(168, 85, 247, 0.1)',
+                            border: t.rank === 'S' ? '1px solid rgba(250, 204, 21, 0.45)' : '1px solid rgba(168, 85, 247, 0.2)',
+                          }}
+                        >
+                          <div style={{ fontSize: '10.5px', fontWeight: 800, color: t.rank === 'S' ? '#fde047' : '#e9d5ff' }}>
+                            {t.rank}
+                          </div>
+                          <div style={{ fontSize: '8.5px', color: '#9a8fb3' }}>{t.xp} XP</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section Title */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div>
+                    <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#f5f2ff', margin: 0 }}>
+                      Daftar Kategori Aktif
+                    </h2>
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#9a8fb3' }}>
+                      Hanya menampilkan kategori yang memiliki minimal 1 quest terdaftar
+                    </p>
+                  </div>
+                </div>
+
+                {/* Filtered Category Mastery List */}
+                {activeMasteries.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: 'center',
+                      padding: '44px 20px',
+                      background: 'rgba(20, 15, 38, 0.65)',
+                      borderRadius: '16px',
+                      border: '1px dashed rgba(168, 85, 247, 0.3)',
+                      marginBottom: '20px',
+                    }}
+                  >
+                    <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎯</div>
+                    <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#f3f1ff', marginBottom: '6px' }}>
+                      Belum Ada Kategori dengan Quest
+                    </h3>
+                    <p style={{ fontSize: '12px', color: '#9a8fb3', maxWidth: '340px', margin: '0 auto 18px', lineHeight: 1.5 }}>
+                      Kategori akan otomatis muncul di halaman ini segera setelah kamu membuat atau menyelesaikan minimal 1 quest.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMasteryPageOpen(false)
+                        setActiveTab('calendar')
+                      }}
+                      style={{
+                        padding: '10px 20px',
+                        borderRadius: '11px',
+                        background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '12.5px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(124, 58, 237, 0.4)',
+                      }}
+                    >
+                      + Buat Quest Pertama di My Quest
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '10px', marginBottom: '24px' }}>
+                    {activeMasteries.map((m) => {
+                      const isRankS = m.rank === 'S'
+                      const isHighRank = m.rank === 'A' || m.rank === 'B'
+                      return (
+                        <div
+                          key={m.name}
+                          style={{
+                            padding: '14px 15px',
+                            borderRadius: '14px',
+                            background: isRankS
+                              ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.12), rgba(161, 98, 7, 0.18))'
+                              : 'linear-gradient(135deg, rgba(20, 15, 38, 0.9), rgba(26, 18, 50, 0.85))',
+                            border: isRankS
+                              ? '1px solid rgba(250, 204, 21, 0.5)'
+                              : isHighRank
+                              ? '1px solid rgba(168, 85, 247, 0.35)'
+                              : '1px solid rgba(168, 85, 247, 0.2)',
+                            boxShadow: isRankS ? '0 4px 16px rgba(250, 204, 21, 0.12)' : 'none',
+                          }}
+                        >
+                          {/* Header Row */}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '10px',
+                              marginBottom: '10px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                              <div
+                                style={{
+                                  width: '38px',
+                                  height: '38px',
+                                  borderRadius: '11px',
+                                  background: isRankS
+                                    ? 'rgba(250, 204, 21, 0.2)'
+                                    : 'rgba(168, 85, 247, 0.16)',
+                                  border: isRankS
+                                    ? '1px solid rgba(250, 204, 21, 0.45)'
+                                    : '1px solid rgba(168, 85, 247, 0.28)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '18px',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {m.icon}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <strong style={{ fontSize: '13.5px', fontWeight: 800, color: '#f3f1ff' }}>
+                                    {m.name}
+                                  </strong>
+                                  {isRankS && <span style={{ fontSize: '12px' }}>👑</span>}
+                                </div>
+                                <span style={{ fontSize: '10.5px', color: '#9a8fb3', display: 'block', marginTop: '2px' }}>
+                                  +{m.xpPerQuest} XP/quest • {m.count}x selesai ({m.totalQuestCount} quest terdaftar)
+                                </span>
+                              </div>
+                            </div>
+
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '3px 10px',
+                                  borderRadius: '7px',
+                                  fontSize: '11.5px',
+                                  fontWeight: 800,
+                                  background: isRankS
+                                    ? 'rgba(250, 204, 21, 0.22)'
+                                    : isHighRank
+                                    ? 'rgba(168, 85, 247, 0.24)'
+                                    : 'rgba(255, 255, 255, 0.08)',
+                                  color: isRankS ? '#fde047' : isHighRank ? '#d8b4fe' : '#cbd5e1',
+                                  border: isRankS
+                                    ? '1px solid rgba(250, 204, 21, 0.55)'
+                                    : isHighRank
+                                    ? '1px solid rgba(168, 85, 247, 0.35)'
+                                    : '1px solid rgba(255, 255, 255, 0.15)',
+                                }}
+                              >
+                                Rank {m.rank}
+                              </span>
+                              <div style={{ fontSize: '10px', color: '#a79abf', marginTop: '3px', fontWeight: 600 }}>
+                                {m.nextThreshold
+                                  ? `${m.xp.toLocaleString('id-ID')} / ${m.nextThreshold.toLocaleString('id-ID')} XP`
+                                  : `${m.xp.toLocaleString('id-ID')} XP (MAX)`}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div
+                            style={{
+                              height: '6px',
+                              borderRadius: '999px',
+                              background: 'rgba(255, 255, 255, 0.08)',
+                              overflow: 'hidden',
+                              marginBottom: '6px',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: `${m.progressPct}%`,
+                                height: '100%',
+                                borderRadius: '999px',
+                                background: isRankS
+                                  ? 'linear-gradient(90deg, #facc15, #f59e0b)'
+                                  : 'linear-gradient(90deg, #8b5cf6, #c084fc)',
+                                transition: 'width 0.3s ease',
+                              }}
+                            />
+                          </div>
+
+                          {/* Progress Hint */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9.5px', color: '#8e84a2' }}>
+                            <span>
+                              {isRankS
+                                ? '👑 Max Rank S Telah Tercapai!'
+                                : `${m.progressPct}% menuju Rank ${m.nextRank} (kurang ${(m.nextThreshold! - m.xp).toLocaleString('id-ID')} XP)`}
+                            </span>
+                            <span style={{ fontWeight: 600, color: '#c4b5fd' }}>
+                              Total XP Kategori: +{m.xp.toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             ) : (
               /* ================================================================
                  BERANDA UTAMA: UNIFIED HERO BENTO CARD + JADWAL MINGGU INI + HISTORY QUEST
@@ -7239,51 +7579,235 @@ export default function Page() {
                       {isDailyAllClearToday ? `+${DAILY_FULL_CLEAR_BONUS_XP} XP ✓` : `${completedTodayPersonalCount}/${todayPersonalTasks.length}`}
                     </span>
                   </div>
+                </section>
 
-                  {/* Top Category Mastery Strip */}
-                  {topMasteryCategories.length > 0 && (
+                {/* ================================================================
+                    SECTION: CATEGORY MASTERY BENTO CARD (REDESIGNED)
+                    ================================================================ */}
+                <section
+                  onClick={() => setIsMasteryPageOpen(true)}
+                  className="category-mastery-card"
+                  style={{
+                    marginBottom: '20px',
+                    padding: '15px 16px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, rgba(22, 16, 42, 0.95), rgba(28, 19, 52, 0.9))',
+                    border: '1px solid rgba(168, 85, 247, 0.28)',
+                    boxShadow: '0 8px 24px -6px rgba(0, 0, 0, 0.4)',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                  title="Buka Halaman Category Mastery"
+                >
+                  {/* Card Header */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '9px',
+                          background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.15))',
+                          border: '1px solid rgba(168, 85, 247, 0.35)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        🎯
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#a79abf', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                            CATEGORY MASTERY
+                          </span>
+                          {sRankCategories.length > 0 && (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontWeight: 800,
+                                padding: '1px 6px',
+                                borderRadius: '6px',
+                                background: 'rgba(250, 204, 21, 0.2)',
+                                border: '1px solid rgba(250, 204, 21, 0.45)',
+                                color: '#fde047',
+                              }}
+                            >
+                              👑 {sRankCategories.length} Rank S
+                            </span>
+                          )}
+                        </div>
+                        <h2 style={{ fontSize: '14.5px', fontWeight: 800, margin: '2px 0 0', color: '#f5f2ff' }}>
+                          Spesialisasi Hunter
+                        </h2>
+                      </div>
+                    </div>
                     <div
-                      onClick={() => setActiveTab('profile')}
                       style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: '#c4b5fd',
+                        padding: '5px 9px',
+                        borderRadius: '8px',
+                        background: 'rgba(168, 85, 247, 0.12)',
+                        border: '1px solid rgba(168, 85, 247, 0.22)',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span>{activeMasteries.length > 0 ? `${activeMasteries.length} Kategori` : 'Detail'}</span>
+                      <ChevronRight size={13} />
+                    </div>
+                  </div>
+
+                  {/* Card Content: Hanya menampilkan kategori yang memiliki minimal 1 quest */}
+                  {activeMasteries.length === 0 ? (
+                    <div
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: '12px',
+                        background: 'rgba(14, 10, 26, 0.6)',
+                        border: '1px dashed rgba(168, 85, 247, 0.25)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: '8px',
-                        padding: '9px 12px',
-                        borderRadius: '12px',
-                        background: 'rgba(18, 13, 34, 0.85)',
-                        border: '1px solid rgba(168, 85, 247, 0.22)',
-                        cursor: 'pointer',
+                        gap: '12px',
                       }}
-                      title="Lihat semua Rank Kategori di Profile"
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minWidth: 0 }}>
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#9a8fb3', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          {sRankCategories.length > 0 ? '👑 Rank S:' : 'Mastery:'}
-                        </span>
-                        {(sRankCategories.length > 0 ? sRankCategories : topMasteryCategories).map((m) => (
-                          <span
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '20px' }}>📜</span>
+                        <div>
+                          <p style={{ margin: 0, fontSize: '11.5px', fontWeight: 700, color: '#e2d9f3' }}>
+                            Belum ada kategori aktif
+                          </p>
+                          <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#9a8fb3' }}>
+                            Buat quest di My Quest untuk membuka rank mastery
+                          </p>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#c084fc' }}>+ Mulai</span>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          topMasteryCategories.length === 1
+                            ? '1fr'
+                            : topMasteryCategories.length === 2
+                            ? 'repeat(2, 1fr)'
+                            : 'repeat(auto-fit, minmax(115px, 1fr))',
+                        gap: '8px',
+                      }}
+                    >
+                      {topMasteryCategories.map((m) => {
+                        const isRankS = m.rank === 'S'
+                        const isHighRank = m.rank === 'A' || m.rank === 'B'
+                        return (
+                          <div
                             key={m.name}
+                            className="category-mastery-tile"
                             style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '2px 7px',
-                              borderRadius: '7px',
-                              fontSize: '10.5px',
-                              fontWeight: 700,
-                              background: m.rank === 'S' ? 'rgba(250, 204, 21, 0.16)' : 'rgba(139, 92, 246, 0.16)',
-                              border: m.rank === 'S' ? '1px solid rgba(250, 204, 21, 0.45)' : '1px solid rgba(139, 92, 246, 0.32)',
-                              color: m.rank === 'S' ? '#fde047' : '#e9d5ff',
+                              padding: '9px 10px',
+                              borderRadius: '12px',
+                              background: isRankS
+                                ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.14), rgba(161, 98, 7, 0.18))'
+                                : 'rgba(14, 10, 26, 0.65)',
+                              border: isRankS
+                                ? '1px solid rgba(250, 204, 21, 0.45)'
+                                : isHighRank
+                                ? '1px solid rgba(168, 85, 247, 0.3)'
+                                : '1px solid rgba(255, 255, 255, 0.08)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              gap: '6px',
                             }}
                           >
-                            <span>{m.icon}</span>
-                            <span>{m.name}</span>
-                            <span style={{ opacity: 0.9 }}>• {m.rank}</span>
-                          </span>
-                        ))}
-                      </div>
-                      <ChevronRight size={14} style={{ color: '#8e84a2', flexShrink: 0 }} />
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
+                                <span style={{ fontSize: '14px' }}>{m.icon}</span>
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    color: '#f5f2ff',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                  title={m.name}
+                                >
+                                  {m.name}
+                                </span>
+                              </div>
+                              <span
+                                style={{
+                                  flexShrink: 0,
+                                  fontSize: '9.5px',
+                                  fontWeight: 800,
+                                  padding: '1.5px 6px',
+                                  borderRadius: '5px',
+                                  background: isRankS
+                                    ? 'rgba(250, 204, 21, 0.25)'
+                                    : isHighRank
+                                    ? 'rgba(168, 85, 247, 0.25)'
+                                    : 'rgba(255, 255, 255, 0.1)',
+                                  color: isRankS ? '#fde047' : isHighRank ? '#d8b4fe' : '#cbd5e1',
+                                  border: isRankS
+                                    ? '1px solid rgba(250, 204, 21, 0.5)'
+                                    : isHighRank
+                                    ? '1px solid rgba(168, 85, 247, 0.35)'
+                                    : '1px solid rgba(255, 255, 255, 0.14)',
+                                }}
+                              >
+                                {isRankS ? '👑 S' : `Rank ${m.rank}`}
+                              </span>
+                            </div>
+
+                            {/* Progress bar & XP */}
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9px', color: '#9a8fb3', marginBottom: '3px' }}>
+                                <span>{m.count}x selesai</span>
+                                <span>{m.xp} XP</span>
+                              </div>
+                              <div
+                                style={{
+                                  height: '4px',
+                                  borderRadius: '999px',
+                                  background: 'rgba(255, 255, 255, 0.08)',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: `${m.progressPct}%`,
+                                    height: '100%',
+                                    borderRadius: '999px',
+                                    background: isRankS
+                                      ? 'linear-gradient(90deg, #facc15, #f59e0b)'
+                                      : 'linear-gradient(90deg, #8b5cf6, #c084fc)',
+                                    transition: 'width 0.3s ease',
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </section>
@@ -9952,97 +10476,77 @@ export default function Page() {
               </div>
             </section>
 
-            {/* CATEGORY MASTERY (SPESIALISASI RANK E - S PER KATEGORI) */}
-            <section className="clan-card" style={{ marginBottom: '18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div>
-                  <span className="modal-label" style={{ margin: 0 }}>CATEGORY MASTERY</span>
-                  <p style={{ margin: '2px 0 0', fontSize: '10.5px', color: '#9a8fb3' }}>
-                    {sRankCategories.length > 0
-                      ? `👑 Rank S di: ${sRankCategories.map((c) => c.name).join(', ')}`
-                      : 'Kumpulkan XP per kategori untuk mencapai Rank S (3.000 XP/kategori)'}
+            {/* NAVIGASI KE HALAMAN CATEGORY MASTERY (DIPINDAHKAN KE HALAMAN TERSENDIRI) */}
+            <div
+              onClick={() => {
+                setActiveTab('home')
+                setIsMasteryPageOpen(true)
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '13px 15px',
+                borderRadius: '14px',
+                background: 'linear-gradient(135deg, rgba(24, 18, 43, 0.92), rgba(32, 22, 56, 0.88))',
+                border: '1px solid rgba(168, 85, 247, 0.28)',
+                cursor: 'pointer',
+                marginBottom: '18px',
+                transition: 'all 0.2s ease',
+              }}
+              title="Buka Halaman Category Mastery"
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.15))',
+                    border: '1px solid rgba(168, 85, 247, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    flexShrink: 0,
+                  }}
+                >
+                  🎯
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <strong style={{ fontSize: '13.5px', fontWeight: 800, color: '#f3f1ff' }}>
+                      Category Mastery
+                    </strong>
+                    {sRankCategories.length > 0 && (
+                      <span
+                        style={{
+                          fontSize: '9px',
+                          fontWeight: 800,
+                          padding: '1px 5px',
+                          borderRadius: '5px',
+                          background: 'rgba(250, 204, 21, 0.2)',
+                          border: '1px solid rgba(250, 204, 21, 0.45)',
+                          color: '#fde047',
+                        }}
+                      >
+                        👑 {sRankCategories.length} Rank S
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#9a8fb3' }}>
+                    {activeMasteries.length > 0
+                      ? `${activeMasteries.length} kategori aktif terdaftar • Buka halaman mastery`
+                      : 'Lihat spesialisasi & rank kategori hunter'}
                   </p>
                 </div>
               </div>
-              <div style={{ display: 'grid', gap: '8px' }}>
-                {categoryMasteries.map((m) => {
-                  const isRankS = m.rank === 'S'
-                  const isHighRank = m.rank === 'A' || m.rank === 'B'
-                  return (
-                    <div
-                      key={m.name}
-                      style={{
-                        padding: '9px 11px',
-                        borderRadius: '11px',
-                        background: isRankS
-                          ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.12), rgba(161, 98, 7, 0.16))'
-                          : 'rgba(18, 13, 34, 0.85)',
-                        border: isRankS
-                          ? '1px solid rgba(250, 204, 21, 0.45)'
-                          : '1px solid rgba(168, 85, 247, 0.2)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '5px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
-                          <span style={{ fontSize: '15px' }}>{m.icon}</span>
-                          <div>
-                            <strong style={{ fontSize: '12px', color: '#f3f1ff', display: 'block' }}>{m.name}</strong>
-                            <span style={{ fontSize: '9.5px', color: '#8e84a2' }}>
-                              +{m.xpPerQuest} XP/quest • {m.count}x selesai
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '2px 8px',
-                              borderRadius: '6px',
-                              fontSize: '10.5px',
-                              fontWeight: 800,
-                              background: isRankS
-                                ? 'rgba(250, 204, 21, 0.22)'
-                                : isHighRank
-                                ? 'rgba(168, 85, 247, 0.22)'
-                                : 'rgba(255, 255, 255, 0.08)',
-                              color: isRankS ? '#fde047' : isHighRank ? '#d8b4fe' : '#cbd5e1',
-                              border: isRankS
-                                ? '1px solid rgba(250, 204, 21, 0.5)'
-                                : '1px solid rgba(168, 85, 247, 0.28)',
-                            }}
-                          >
-                            Rank {m.rank}
-                          </span>
-                          <div style={{ fontSize: '9.5px', color: '#a79abf', marginTop: '2px' }}>
-                            {m.nextThreshold ? `${m.xp.toLocaleString('id-ID')} / ${m.nextThreshold.toLocaleString('id-ID')} XP` : `${m.xp.toLocaleString('id-ID')} XP (MAX)`}
-                          </div>
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          height: '5px',
-                          borderRadius: '999px',
-                          background: 'rgba(255, 255, 255, 0.07)',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: `${m.progressPct}%`,
-                            height: '100%',
-                            borderRadius: '999px',
-                            background: isRankS
-                              ? 'linear-gradient(90deg, #facc15, #f59e0b)'
-                              : 'linear-gradient(90deg, #8b5cf6, #c084fc)',
-                            transition: 'width 0.3s ease',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#c4b5fd', fontSize: '11.5px', fontWeight: 700, flexShrink: 0 }}>
+                <span>Buka</span>
+                <ChevronRight size={15} />
               </div>
-            </section>
+            </div>
+
 
             <section className="clan-card" style={{ marginBottom: '16px' }}>
               <span className="modal-label">STATUS DATABASE SUPABASE</span>
@@ -10085,6 +10589,7 @@ export default function Page() {
             className={activeTab === key ? 'active' : ''}
             onClick={() => {
               setIsHistoryPageOpen(false)
+              setIsMasteryPageOpen(false)
               setActiveTab(key as typeof activeTab)
             }}
           >

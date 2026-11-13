@@ -743,3 +743,22 @@ button { font: inherit; color: inherit; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(192, 132, 252, 0.7);
 }
+
+/* CATEGORY MASTERY REDESIGN (BENTO CARD & PAGE) */
+.category-mastery-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.category-mastery-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(168, 85, 247, 0.5) !important;
+  box-shadow: 0 10px 30px -4px rgba(124, 58, 237, 0.3) !important;
+}
+.category-mastery-tile {
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.category-mastery-tile:hover {
+  transform: translateY(-1px);
+  border-color: rgba(168, 85, 247, 0.45) !important;
+  background: rgba(24, 17, 44, 0.85) !important;
+}
+
