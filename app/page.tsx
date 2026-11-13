@@ -79,6 +79,7 @@ interface UserProfile {
   email: string
   xp: number
   streak: number
+  dailyBonusDates?: string[]
 }
 
 interface WorkoutSet {
@@ -164,19 +165,25 @@ interface QuestCategory {
 
 const DEFAULT_GYM_EXERCISES: WorkoutExercise[] = []
 
+const DAILY_FULL_CLEAR_BONUS_XP = 40
+const MIN_QUESTS_FOR_DAILY_BONUS = 3
+
 const CATEGORIES: QuestCategory[] = [
-  { name: 'Gym', oldName: 'Gym', xp: 50, icon: '🏋️' },
-  { name: 'Olahraga', oldName: 'Kekuatan', xp: 40, icon: '⚡' },
-  { name: 'Rutinitas', oldName: 'Disiplin', xp: 20, icon: '☀️' },
+  { name: 'Gym', oldName: 'Gym', xp: 35, icon: '🏋️' },
+  { name: 'Olahraga', oldName: 'Kekuatan', xp: 30, icon: '⚡' },
+  { name: 'Kerja / Karir', oldName: 'Fokus', xp: 30, icon: '💼' },
   { name: 'Belajar', oldName: 'Pengetahuan', xp: 25, icon: '📖' },
-  { name: 'Kesehatan', oldName: 'Vitalitas', xp: 15, icon: '💧' },
-  { name: 'Fokus', oldName: 'Fokus', xp: 30, icon: '🎯' },
-  { name: 'Ibadah / Sholat', oldName: 'Pray', xp: 25, icon: '🕌' },
+  { name: 'Kreativitas', oldName: 'Kreativitas', xp: 20, icon: '🎨' },
+  { name: 'Ibadah / Sholat', oldName: 'Pray', xp: 15, icon: '🕌' },
+  { name: 'Mindfulness', oldName: 'Mindfulness', xp: 15, icon: '🧘' },
+  { name: 'Keuangan', oldName: 'Keuangan', xp: 15, icon: '💰' },
+  { name: 'Sosial', oldName: 'Sosial', xp: 15, icon: '🤝' },
+  { name: 'Rutinitas & Sehat', oldName: 'Disiplin', xp: 10, icon: '☀️' },
 ]
 
 function findCategory(catName: string): QuestCategory {
   if (!catName) return CATEGORIES[0]
-  const lower = catName.toLowerCase()
+  const lower = catName.toLowerCase().trim()
   return (
     CATEGORIES.find((c) => c.name.toLowerCase() === lower) ||
     CATEGORIES.find((c) => c.oldName && c.oldName.toLowerCase() === lower) ||
@@ -191,6 +198,18 @@ function findCategory(catName: string): QuestCategory {
     lower.includes('ibadah') ||
     lower.includes('doa')
       ? CATEGORIES.find((c) => c.name.includes('Ibadah')) || CATEGORIES[0]
+      : lower.includes('kerja') || lower.includes('work') || lower.includes('karir') || lower.includes('fokus')
+      ? CATEGORIES.find((c) => c.name.includes('Kerja')) || CATEGORIES[0]
+      : lower.includes('vitalitas') || lower.includes('kesehatan') || lower.includes('sehat') || lower.includes('rutinitas') || lower.includes('disiplin')
+      ? CATEGORIES.find((c) => c.name.includes('Rutinitas')) || CATEGORIES[0]
+      : lower.includes('meditasi') || lower.includes('mindful') || lower.includes('journal')
+      ? CATEGORIES.find((c) => c.name.includes('Mindfulness')) || CATEGORIES[0]
+      : lower.includes('uang') || lower.includes('finansial') || lower.includes('nabung')
+      ? CATEGORIES.find((c) => c.name.includes('Keuangan')) || CATEGORIES[0]
+      : lower.includes('sosial') || lower.includes('keluarga') || lower.includes('teman')
+      ? CATEGORIES.find((c) => c.name.includes('Sosial')) || CATEGORIES[0]
+      : lower.includes('kreatif') || lower.includes('desain') || lower.includes('musik') || lower.includes('tulis')
+      ? CATEGORIES.find((c) => c.name.includes('Kreativitas')) || CATEGORIES[0]
       : CATEGORIES[0])
   )
 }
@@ -209,17 +228,85 @@ function isQuestTimeSkipped(_targetTime?: string, _isDone?: boolean, _schedule?:
   return false
 }
 
+// Sistem Rank Hunter Kompetitif (Tidak mudah naik, butuh konsistensi jangka panjang)
 function getHunterRank(xp: number): string {
-  if (xp >= 2500) return 'S'
-  if (xp >= 1200) return 'A'
-  if (xp >= 700) return 'B'
-  if (xp >= 350) return 'C'
-  if (xp >= 150) return 'D'
+  if (xp >= 14000) return 'S'
+  if (xp >= 7000) return 'A'
+  if (xp >= 3500) return 'B'
+  if (xp >= 1500) return 'C'
+  if (xp >= 500) return 'D'
   return 'E'
 }
 
+// Kurva Level Progresif: Level L -> L+1 butuh (100 + L * 50) XP
+function getHunterLevelInfo(xp: number): {
+  level: number
+  xpIntoLevel: number
+  xpForNextLevel: number
+  nextLevelTotalXp: number
+  progressPct: number
+} {
+  let level = 1
+  let remaining = Math.max(0, xp)
+  let totalThreshold = 0
+
+  while (true) {
+    const needed = 100 + level * 50
+    if (remaining < needed) {
+      totalThreshold += needed
+      const progressPct = Math.min(100, Math.round((remaining / needed) * 100))
+      return {
+        level,
+        xpIntoLevel: remaining,
+        xpForNextLevel: needed,
+        nextLevelTotalXp: totalThreshold,
+        progressPct,
+      }
+    }
+    remaining -= needed
+    totalThreshold += needed
+    level += 1
+  }
+}
+
 function getHunterLevel(xp: number): number {
-  return Math.max(1, Math.floor(xp / 100) + 1)
+  return getHunterLevelInfo(xp).level
+}
+
+// Sistem Rank Category Mastery (Spesialisasi Rank E-S per Kategori)
+function getCategoryRank(catXp: number): string {
+  if (catXp >= 3000) return 'S'
+  if (catXp >= 1500) return 'A'
+  if (catXp >= 700) return 'B'
+  if (catXp >= 300) return 'C'
+  if (catXp >= 100) return 'D'
+  return 'E'
+}
+
+function getCategoryRankInfo(catXp: number): {
+  rank: string
+  nextRank: string | null
+  nextThreshold: number | null
+  progressPct: number
+} {
+  const rank = getCategoryRank(catXp)
+  if (rank === 'S') return { rank: 'S', nextRank: null, nextThreshold: null, progressPct: 100 }
+  const tiers: Array<{ min: number; next: string; target: number }> = [
+    { min: 0, next: 'D', target: 100 },
+    { min: 100, next: 'C', target: 300 },
+    { min: 300, next: 'B', target: 700 },
+    { min: 700, next: 'A', target: 1500 },
+    { min: 1500, next: 'S', target: 3000 },
+  ]
+  const currentTier = tiers.find((t) => catXp < t.target) || tiers[0]
+  const span = currentTier.target - currentTier.min
+  const progressPct = Math.min(100, Math.max(0, Math.round(((catXp - currentTier.min) / span) * 100)))
+  return {
+    rank,
+    nextRank: currentTier.next,
+    nextThreshold: currentTier.target,
+    progressPct,
+  }
 }
 
 // ============================================================================
@@ -1432,20 +1519,23 @@ export default function Page() {
       try {
         const parsed = JSON.parse(saved)
         if (parsed.users?.length) {
-          // Normalisasi akun & sinkronisasi XP riwayat quest yang pernah diselesaikan
+          // Normalisasi akun & sinkronisasi XP riwayat quest berdasarkan bobot kategori resmi
           const normalizedUsers = parsed.users.map((u: any) => {
             const userTasks = (parsed.personalTasks || []).filter(
               (t: any) => t.userId === u.id || (u.username && t.id.includes(u.username))
             )
-            const userHistoryXp = userTasks.reduce(
-              (sum: number, t: any) => sum + ((t.completedDates?.length || (t.done ? 1 : 0)) * (Number(t.xp) || 20)),
-              0
-            )
+            const userHistoryXp = userTasks.reduce((sum: number, t: any) => {
+              const catXp = findCategory(t.category).xp
+              const count = t.completedDates?.length || (t.done ? 1 : 0)
+              return sum + count * catXp
+            }, 0)
             const userDoneClanQuests = (parsed.clanQuests || []).filter((cq: any) => cq.completedByUserIds?.includes(u.id))
-            const clanXp = userDoneClanQuests.reduce((sum: number, cq: any) => sum + (Number(cq.xp) || 20), 0)
-            const earnedXp = userHistoryXp + clanXp
+            const clanXp = userDoneClanQuests.reduce((sum: number, cq: any) => sum + findCategory(cq.category).xp, 0)
+            const bonusDates = Array.isArray(u.dailyBonusDates) ? u.dailyBonusDates : []
+            const bonusXp = bonusDates.length * DAILY_FULL_CLEAR_BONUS_XP
+            const earnedXp = userHistoryXp + clanXp + bonusXp
 
-            return { ...u, xp: Math.max(u.xp || 0, earnedXp) }
+            return { ...u, xp: earnedXp, dailyBonusDates: bonusDates }
           })
           setUsers(normalizedUsers)
         }
@@ -1472,6 +1562,7 @@ export default function Page() {
               ...t,
               category: cat.name,
               icon: cat.icon,
+              xp: cat.xp,
               done: isDoneToday,
               skipped: isSkippedToday,
               completedDates: compDates,
@@ -1490,7 +1581,7 @@ export default function Page() {
             if (exs && exs.length > 0 && exs[0]?.id === 'ex-1' && exs[0]?.name === 'Bench Press') {
               exs = []
             }
-            return { ...cq, category: cat.name, icon: cat.icon, workoutExercises: exs ?? (cat.name.toLowerCase() === 'gym' ? [] : undefined) }
+            return { ...cq, category: cat.name, icon: cat.icon, xp: cat.xp, workoutExercises: exs ?? (cat.name.toLowerCase() === 'gym' ? [] : undefined) }
           })
           setClanQuests(migrated)
         }
@@ -1725,22 +1816,52 @@ export default function Page() {
   const totalHistorySets = userHistoryItems.reduce((acc, item) => acc + item.totalSets, 0)
   const maxHistoryWeight = userHistoryItems.reduce((acc, item) => Math.max(acc, item.maxWeight), 0)
 
-  // Derive Akumulasi XP Valid dari Riwayat Quest & Clan Challenge
-  const historyTotalXp = userHistoryItems.reduce((acc, item) => acc + (Number(item.xp) || 0), 0)
-  const clanCompletedTotalXp = userJoinedClanQuests
-    .filter(
-      (cq) =>
-        cq.completedByUserIds.includes(currentUser.id) ||
-        (currentUser.username && cq.completedByUserIds.includes(currentUser.username))
-    )
-    .reduce((acc, cq) => acc + (Number(cq.xp) || 0), 0)
-  const earnedActivityXp = historyTotalXp + clanCompletedTotalXp
-  const effectiveXp = Math.max(currentUser.xp || 0, earnedActivityXp)
+  // Derive Akumulasi XP Valid dari Riwayat Quest, Daily All-Clear Bonus & Clan Challenge
+  const todayIsoStr = new Date().toISOString().slice(0, 10)
+  const historyTotalXp = userHistoryItems.reduce((acc, item) => acc + findCategory(item.category).xp, 0)
+  const clanCompletedQuestsList = userJoinedClanQuests.filter(
+    (cq) =>
+      cq.completedByUserIds.includes(currentUser.id) ||
+      (currentUser.username && cq.completedByUserIds.includes(currentUser.username))
+  )
+  const clanCompletedTotalXp = clanCompletedQuestsList.reduce((acc, cq) => acc + findCategory(cq.category).xp, 0)
+  const isDailyAllClearEligible = todayPersonalTasks.length >= MIN_QUESTS_FOR_DAILY_BONUS
+  const isDailyAllClearToday = isDailyAllClearEligible && todayPersonalTasks.every((t) => t.done)
+  const userDailyBonusDates = Array.isArray(currentUser.dailyBonusDates) ? currentUser.dailyBonusDates : []
+  const effectiveDailyBonusDates = isDailyAllClearToday
+    ? Array.from(new Set([...userDailyBonusDates, todayIsoStr]))
+    : userDailyBonusDates.filter((d) => d !== todayIsoStr)
+  const dailyBonusTotalXp = effectiveDailyBonusDates.length * DAILY_FULL_CLEAR_BONUS_XP
 
-  const currentLevel = getHunterLevel(effectiveXp)
+  const effectiveXp = historyTotalXp + dailyBonusTotalXp + clanCompletedTotalXp
+
+  const levelInfo = getHunterLevelInfo(effectiveXp)
+  const currentLevel = levelInfo.level
   const currentRank = getHunterRank(effectiveXp)
-  const nextLevelXp = currentLevel * 100
-  const levelProgress = Math.min(100, Math.round(((effectiveXp % 100) / 100) * 100))
+  const nextLevelXp = levelInfo.nextLevelTotalXp
+  const levelProgress = levelInfo.progressPct
+
+  // Derive Category Mastery (XP & Rank E-S per Kategori)
+  const categoryMasteries = CATEGORIES.map((cat) => {
+    const matchingPersonal = userHistoryItems.filter((item) => findCategory(item.category).name === cat.name)
+    const matchingClan = clanCompletedQuestsList.filter((cq) => findCategory(cq.category).name === cat.name)
+    const catXp = matchingPersonal.length * cat.xp + matchingClan.length * cat.xp
+    const count = matchingPersonal.length + matchingClan.length
+    const rankInfo = getCategoryRankInfo(catXp)
+    return {
+      name: cat.name,
+      icon: cat.icon,
+      xpPerQuest: cat.xp,
+      xp: catXp,
+      count,
+      ...rankInfo,
+    }
+  })
+  const sRankCategories = categoryMasteries.filter((m) => m.rank === 'S')
+  const topMasteryCategories = [...categoryMasteries]
+    .filter((m) => m.xp > 0)
+    .sort((a, b) => b.xp - a.xp)
+    .slice(0, 3)
 
   // Derive Personal Records (PR) & Total Volume dari semua gerakan latihan
   const userExerciseRecords = (() => {
@@ -1872,10 +1993,14 @@ export default function Page() {
       if (cloudQuests && cloudQuests.length > 0 && !forcePushLocal) {
         const todayIso = new Date().toISOString().slice(0, 10)
         const normalizedCloudQuests = cloudQuests.map((t: any) => {
+          const cat = findCategory(t.category)
           const compDates = Array.isArray(t.completedDates) ? t.completedDates : []
           const skipDates = Array.isArray(t.skippedDates) ? t.skippedDates : []
           return {
             ...t,
+            category: cat.name,
+            icon: cat.icon,
+            xp: cat.xp,
             done: compDates.includes(todayIso),
             skipped: skipDates.includes(todayIso),
             completedDates: compDates,
@@ -1929,19 +2054,22 @@ export default function Page() {
     })
   }, [timeTick, mounted])
 
-  // Sinkronisasi otomatis XP hunter ke state & profil cloud jika XP riwayat quest lebih tinggi
+  // Sinkronisasi otomatis XP hunter & Daily All-Clear Bonus ke state serta profil cloud
   useEffect(() => {
-    if (mounted && currentUser && effectiveXp > (currentUser.xp || 0)) {
+    if (!mounted || !currentUser) return
+    const prevBonusKey = (currentUser.dailyBonusDates || []).join(',')
+    const nextBonusKey = effectiveDailyBonusDates.join(',')
+    if (currentUser.xp !== effectiveXp || prevBonusKey !== nextBonusKey) {
       setUsers((prev) =>
         prev.map((u) =>
           u.id === currentUser.id || (currentUser.username && u.username === currentUser.username)
-            ? { ...u, xp: effectiveXp }
+            ? { ...u, xp: effectiveXp, dailyBonusDates: effectiveDailyBonusDates }
             : u
         )
       )
       saveCloudProfile({ ...currentUser, xp: effectiveXp })
     }
-  }, [mounted, currentUser?.id, currentUser?.username, effectiveXp])
+  }, [mounted, currentUser?.id, currentUser?.username, effectiveXp, effectiveDailyBonusDates.join(',')])
 
   const currentWorkoutQuest = activeWorkoutQuest
     ? activeWorkoutQuest.type === 'personal'
@@ -2599,21 +2727,46 @@ export default function Page() {
       saveCloudQuest(updatedTask, currentUser.username)
     }
 
-    // UPDATE XP LANGSUNG PER QUEST
-    const taskXp = Number(target.xp) || 20
-    const xpDelta = nextDone ? taskXp : -taskXp
+    // UPDATE XP LANGSUNG PER QUEST (OTOMATIS SESUAI KATEGORI) + CEK DAILY FULL-CLEAR BONUS
+    const taskXp = findCategory(target.category).xp
+    const nextUserTodayTasks = nextTasks.filter(
+      (t) =>
+        (t.userId === currentUser.id ||
+          !t.userId ||
+          (currentUser.username && (t.userId === currentUser.username || t.id.includes(currentUser.username)))) &&
+        isQuestForToday(t.schedule)
+    )
+    const wasAllClear = isDailyAllClearToday
+    const isNowAllClear =
+      nextUserTodayTasks.length >= MIN_QUESTS_FOR_DAILY_BONUS && nextUserTodayTasks.every((t) => t.done)
+    const bonusDelta =
+      !wasAllClear && isNowAllClear
+        ? DAILY_FULL_CLEAR_BONUS_XP
+        : wasAllClear && !isNowAllClear
+        ? -DAILY_FULL_CLEAR_BONUS_XP
+        : 0
+
+    const xpDelta = (nextDone ? taskXp : -taskXp) + bonusDelta
     const nextXp = Math.max(0, effectiveXp + xpDelta)
+    const nextBonusDates = isNowAllClear
+      ? Array.from(new Set([...(currentUser.dailyBonusDates || []), todayIso]))
+      : (currentUser.dailyBonusDates || []).filter((d) => d !== todayIso)
+
     setUsers((curr) =>
       curr.map((u) =>
         u.id === currentUser.id || (currentUser.username && u.username === currentUser.username)
-          ? { ...u, xp: nextXp }
+          ? { ...u, xp: nextXp, dailyBonusDates: nextBonusDates }
           : u
       )
     )
     saveCloudProfile({ ...currentUser, xp: nextXp })
 
-    if (nextDone) {
-      showToast(`Quest "${target.title}" selesai! +${taskXp} XP 🎉`)
+    if (nextDone && !wasAllClear && isNowAllClear) {
+      showToast(`🎉 ALL CLEAR! "${target.title}" (+${taskXp} XP) + Bonus Harian (+${DAILY_FULL_CLEAR_BONUS_XP} XP)!`)
+    } else if (nextDone) {
+      showToast(`Quest "${target.title}" selesai! +${taskXp} XP (${findCategory(target.category).name}) 🎉`)
+    } else if (wasAllClear && !isNowAllClear) {
+      showToast(`Quest "${target.title}" dibatalkan. (-${taskXp} XP & Bonus Harian ditarik)`)
     } else {
       showToast(`Quest "${target.title}" dibatalkan. (-${taskXp} XP)`)
     }
@@ -2751,10 +2904,7 @@ export default function Page() {
       ? buildWorkoutExercisesFromTemplate(chosenTemplateSession)
       : undefined
 
-    const finalXp =
-      typeof questXp === 'number'
-        ? (questXp > 0 ? questXp : (catObj.xp || 50))
-        : (parseInt(questXp, 10) > 0 ? parseInt(questXp, 10) : (catObj.xp || 50))
+    const finalXp = catObj.xp
 
     if (editingPersonalTask) {
       const updatedTask: PersonalTask = {
@@ -3095,10 +3245,7 @@ export default function Page() {
     const catObj = findCategory(questCategory)
     const isGym = catObj.name.toLowerCase() === 'gym'
 
-    const finalXp =
-      typeof questXp === 'number'
-        ? (questXp > 0 ? questXp : (catObj.xp || 50))
-        : (parseInt(questXp, 10) > 0 ? parseInt(questXp, 10) : (catObj.xp || 50))
+    const finalXp = catObj.xp
 
     if (editingClanQuest) {
       setClanQuests((curr) =>
@@ -7033,6 +7180,112 @@ export default function Page() {
                   </div>
                 </section>
 
+                {/* DAILY ALL-CLEAR BONUS & CATEGORY MASTERY HIGHLIGHT */}
+                <section
+                  style={{
+                    display: 'grid',
+                    gap: '10px',
+                    marginBottom: '18px',
+                  }}
+                >
+                  {/* Daily Full-Clear Bonus Banner */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '10px',
+                      padding: '11px 14px',
+                      borderRadius: '14px',
+                      background: isDailyAllClearToday
+                        ? 'linear-gradient(135deg, rgba(22, 101, 52, 0.35), rgba(20, 83, 45, 0.55))'
+                        : 'linear-gradient(135deg, rgba(30, 20, 58, 0.85), rgba(18, 13, 34, 0.95))',
+                      border: isDailyAllClearToday
+                        ? '1px solid rgba(74, 222, 128, 0.45)'
+                        : '1px solid rgba(168, 85, 247, 0.28)',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '14px' }}>{isDailyAllClearToday ? '🏆' : '⚡'}</span>
+                        <strong style={{ fontSize: '12px', color: isDailyAllClearToday ? '#86efac' : '#f3e8ff' }}>
+                          {isDailyAllClearToday
+                            ? 'Daily All-Clear Bonus Aktif!'
+                            : 'Misi All-Clear Harian'}
+                        </strong>
+                      </div>
+                      <p style={{ margin: '2px 0 0', fontSize: '10.5px', color: isDailyAllClearToday ? '#bbf7d0' : '#a79abf' }}>
+                        {isDailyAllClearToday
+                          ? `Semua ${todayPersonalTasks.length} quest hari ini selesai (+${DAILY_FULL_CLEAR_BONUS_XP} XP Bonus diraih)`
+                          : isDailyAllClearEligible
+                          ? `Selesaikan ${todayPersonalTasks.length - completedTodayPersonalCount} quest lagi hari ini untuk +${DAILY_FULL_CLEAR_BONUS_XP} XP Bonus`
+                          : `Jadwalkan min. ${MIN_QUESTS_FOR_DAILY_BONUS} quest hari ini (${todayPersonalTasks.length}/${MIN_QUESTS_FOR_DAILY_BONUS}) untuk buka Bonus +${DAILY_FULL_CLEAR_BONUS_XP} XP`}
+                      </p>
+                    </div>
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        padding: '4px 9px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        background: isDailyAllClearToday ? 'rgba(74, 222, 128, 0.22)' : 'rgba(168, 85, 247, 0.18)',
+                        border: isDailyAllClearToday ? '1px solid rgba(74, 222, 128, 0.5)' : '1px solid rgba(168, 85, 247, 0.35)',
+                        color: isDailyAllClearToday ? '#4ade80' : '#d8b4fe',
+                      }}
+                    >
+                      {isDailyAllClearToday ? `+${DAILY_FULL_CLEAR_BONUS_XP} XP ✓` : `${completedTodayPersonalCount}/${todayPersonalTasks.length}`}
+                    </span>
+                  </div>
+
+                  {/* Top Category Mastery Strip */}
+                  {topMasteryCategories.length > 0 && (
+                    <div
+                      onClick={() => setActiveTab('profile')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        padding: '9px 12px',
+                        borderRadius: '12px',
+                        background: 'rgba(18, 13, 34, 0.85)',
+                        border: '1px solid rgba(168, 85, 247, 0.22)',
+                        cursor: 'pointer',
+                      }}
+                      title="Lihat semua Rank Kategori di Profile"
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minWidth: 0 }}>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#9a8fb3', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {sRankCategories.length > 0 ? '👑 Rank S:' : 'Mastery:'}
+                        </span>
+                        {(sRankCategories.length > 0 ? sRankCategories : topMasteryCategories).map((m) => (
+                          <span
+                            key={m.name}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 7px',
+                              borderRadius: '7px',
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              background: m.rank === 'S' ? 'rgba(250, 204, 21, 0.16)' : 'rgba(139, 92, 246, 0.16)',
+                              border: m.rank === 'S' ? '1px solid rgba(250, 204, 21, 0.45)' : '1px solid rgba(139, 92, 246, 0.32)',
+                              color: m.rank === 'S' ? '#fde047' : '#e9d5ff',
+                            }}
+                          >
+                            <span>{m.icon}</span>
+                            <span>{m.name}</span>
+                            <span style={{ opacity: 0.9 }}>• {m.rank}</span>
+                          </span>
+                        ))}
+                      </div>
+                      <ChevronRight size={14} style={{ color: '#8e84a2', flexShrink: 0 }} />
+                    </div>
+                  )}
+                </section>
+
                 {/* SECTION 1: JADWAL & KONSISTENSI MINGGU INI (INTERACTIVE 7-DAY STRIP UNTUK SEMUA QUEST) */}
                 <section className="weekly-strip-card" style={{ marginBottom: '20px' }}>
                   <div
@@ -8971,30 +9224,26 @@ export default function Page() {
                         })}
                       </div>
 
-                      <label className="modal-label">BOBOT XP QUEST (KONTRIBUSI KE TOTAL REWARD LIST)</label>
-                      <input
-                        type="number"
-                        className="modal-input"
-                        value={questXp}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          if (val === '') {
-                            setQuestXp('')
-                          } else {
-                            const parsed = parseInt(val, 10)
-                            setQuestXp(isNaN(parsed) ? '' : parsed)
-                          }
+                      <label className="modal-label">REWARD XP OTOMATIS (BERDASARKAN KATEGORI)</label>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          background: 'rgba(139, 92, 246, 0.12)',
+                          border: '1px solid rgba(168, 85, 247, 0.3)',
+                          marginBottom: '12px',
                         }}
-                        onBlur={() => {
-                          if (questXp === '' || Number(questXp) < 5) {
-                            setQuestXp(findCategory(questCategory).xp || 50)
-                          }
-                        }}
-                        min={5}
-                        max={1000}
-                        placeholder="50"
-                      />
+                      >
+                        <span style={{ fontSize: '12px', color: '#e2d9f3', fontWeight: 600 }}>
+                          {findCategory(questCategory).icon} {findCategory(questCategory).name}
+                        </span>
+                        <span style={{ fontSize: '13px', color: '#c084fc', fontWeight: 800 }}>
+                          +{findCategory(questCategory).xp} XP
+                        </span>
+                      </div>
 
                       <div className="modal-actions" style={{ marginTop: '20px' }}>
                         <button
@@ -9697,6 +9946,98 @@ export default function Page() {
               </div>
             </section>
 
+            {/* CATEGORY MASTERY (SPESIALISASI RANK E - S PER KATEGORI) */}
+            <section className="clan-card" style={{ marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div>
+                  <span className="modal-label" style={{ margin: 0 }}>CATEGORY MASTERY</span>
+                  <p style={{ margin: '2px 0 0', fontSize: '10.5px', color: '#9a8fb3' }}>
+                    {sRankCategories.length > 0
+                      ? `👑 Rank S di: ${sRankCategories.map((c) => c.name).join(', ')}`
+                      : 'Kumpulkan XP per kategori untuk mencapai Rank S (3.000 XP/kategori)'}
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gap: '8px' }}>
+                {categoryMasteries.map((m) => {
+                  const isRankS = m.rank === 'S'
+                  const isHighRank = m.rank === 'A' || m.rank === 'B'
+                  return (
+                    <div
+                      key={m.name}
+                      style={{
+                        padding: '9px 11px',
+                        borderRadius: '11px',
+                        background: isRankS
+                          ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.12), rgba(161, 98, 7, 0.16))'
+                          : 'rgba(18, 13, 34, 0.85)',
+                        border: isRankS
+                          ? '1px solid rgba(250, 204, 21, 0.45)'
+                          : '1px solid rgba(168, 85, 247, 0.2)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '5px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                          <span style={{ fontSize: '15px' }}>{m.icon}</span>
+                          <div>
+                            <strong style={{ fontSize: '12px', color: '#f3f1ff', display: 'block' }}>{m.name}</strong>
+                            <span style={{ fontSize: '9.5px', color: '#8e84a2' }}>
+                              +{m.xpPerQuest} XP/quest • {m.count}x selesai
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '10.5px',
+                              fontWeight: 800,
+                              background: isRankS
+                                ? 'rgba(250, 204, 21, 0.22)'
+                                : isHighRank
+                                ? 'rgba(168, 85, 247, 0.22)'
+                                : 'rgba(255, 255, 255, 0.08)',
+                              color: isRankS ? '#fde047' : isHighRank ? '#d8b4fe' : '#cbd5e1',
+                              border: isRankS
+                                ? '1px solid rgba(250, 204, 21, 0.5)'
+                                : '1px solid rgba(168, 85, 247, 0.28)',
+                            }}
+                          >
+                            Rank {m.rank}
+                          </span>
+                          <div style={{ fontSize: '9.5px', color: '#a79abf', marginTop: '2px' }}>
+                            {m.nextThreshold ? `${m.xp.toLocaleString('id-ID')} / ${m.nextThreshold.toLocaleString('id-ID')} XP` : `${m.xp.toLocaleString('id-ID')} XP (MAX)`}
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          height: '5px',
+                          borderRadius: '999px',
+                          background: 'rgba(255, 255, 255, 0.07)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${m.progressPct}%`,
+                            height: '100%',
+                            borderRadius: '999px',
+                            background: isRankS
+                              ? 'linear-gradient(90deg, #facc15, #f59e0b)'
+                              : 'linear-gradient(90deg, #8b5cf6, #c084fc)',
+                            transition: 'width 0.3s ease',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
             <section className="clan-card" style={{ marginBottom: '16px' }}>
               <span className="modal-label">STATUS DATABASE SUPABASE</span>
               <p style={{ margin: '4px 0 10px', fontSize: '11px', color: '#b7a4d5', lineHeight: 1.5 }}>
@@ -9930,30 +10271,26 @@ export default function Page() {
                 })}
               </div>
 
-              <label className="modal-label">BOBOT XP QUEST (KONTRIBUSI KE TOTAL REWARD LIST)</label>
-              <input
-                type="number"
-                className="modal-input"
-                value={questXp}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const val = e.target.value
-                  if (val === '') {
-                    setQuestXp('')
-                  } else {
-                    const parsed = parseInt(val, 10)
-                    setQuestXp(isNaN(parsed) ? '' : parsed)
-                  }
+              <label className="modal-label">REWARD XP OTOMATIS (BERDASARKAN KATEGORI)</label>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  background: 'rgba(139, 92, 246, 0.12)',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  marginBottom: '12px',
                 }}
-                onBlur={() => {
-                  if (questXp === '' || Number(questXp) < 5) {
-                    setQuestXp(findCategory(questCategory).xp || 50)
-                  }
-                }}
-                min={5}
-                max={500}
-                placeholder="50"
-              />
+              >
+                <span style={{ fontSize: '12px', color: '#e2d9f3', fontWeight: 600 }}>
+                  {findCategory(questCategory).icon} {findCategory(questCategory).name}
+                </span>
+                <span style={{ fontSize: '13px', color: '#c084fc', fontWeight: 800 }}>
+                  +{findCategory(questCategory).xp} XP
+                </span>
+              </div>
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setIsPersonalModalOpen(false)}>
                   Batal
