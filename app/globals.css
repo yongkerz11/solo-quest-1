@@ -306,10 +306,10 @@ button { font: inherit; color: inherit; }
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  margin-top: 16px;
-  padding-top: 14px;
+  margin-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid rgba(168, 85, 247, 0.16);
 }
 .hero-dock-item {

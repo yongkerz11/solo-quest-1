@@ -7421,8 +7421,9 @@ export default function Page() {
                     </div>
                   </div>
 
-                  {/* Integrated 3-Column Bento Stats Dock */}
+                  {/* Integrated 4-Item Bento Stats Dock (2x2 Grid) */}
                   <div className="hero-stats-dock">
+                    {/* 1. Streak */}
                     <div className="hero-dock-item">
                       <div
                         className="hero-dock-icon"
@@ -7440,6 +7441,7 @@ export default function Page() {
                       </div>
                     </div>
 
+                    {/* 2. History */}
                     <div
                       className="hero-dock-item clickable"
                       onClick={() => setIsHistoryPageOpen(true)}
@@ -7457,10 +7459,34 @@ export default function Page() {
                       </div>
                       <div>
                         <strong>{userHistoryItems.length} Quest</strong>
-                        <span>History</span>
+                        <span>Riwayat ›</span>
                       </div>
                     </div>
 
+                    {/* 3. Category Mastery (Seamless Hunter Stat) */}
+                    <div
+                      className="hero-dock-item clickable"
+                      onClick={() => setIsMasteryPageOpen(true)}
+                      title="Buka Halaman Category Mastery"
+                    >
+                      <div
+                        className="hero-dock-icon"
+                        style={{
+                          background: 'rgba(168, 85, 247, 0.18)',
+                          border: '1px solid rgba(168, 85, 247, 0.36)',
+                          color: '#c084fc',
+                          fontSize: '13px',
+                        }}
+                      >
+                        🎯
+                      </div>
+                      <div>
+                        <strong>{unlockedMasteries.length} Kategori</strong>
+                        <span>Mastery ›</span>
+                      </div>
+                    </div>
+
+                    {/* 4. Clan */}
                     <div
                       className="hero-dock-item clickable"
                       onClick={() => setActiveTab('clan')}
@@ -7469,134 +7495,72 @@ export default function Page() {
                       <div
                         className="hero-dock-icon"
                         style={{
-                          background: 'rgba(168, 85, 247, 0.16)',
-                          border: '1px solid rgba(168, 85, 247, 0.34)',
-                          color: '#c084fc',
+                          background: 'rgba(99, 102, 241, 0.14)',
+                          border: '1px solid rgba(99, 102, 241, 0.3)',
+                          color: '#a5b4fc',
                         }}
                       >
                         <Shield size={14} />
                       </div>
                       <div>
                         <strong>{userJoinedClanIds.length} Clan</strong>
-                        <span>Komunitas</span>
+                        <span>Komunitas ›</span>
                       </div>
                     </div>
                   </div>
-                </section>
 
-                {/* DAILY ALL-CLEAR BONUS & CATEGORY MASTERY HIGHLIGHT */}
-                                {/* ================================================================
-                    SECTION: CATEGORY MASTERY COMPACT HUD (SLEEK & COMPACT)
-                    ================================================================ */}
-                <section
-                  onClick={() => setIsMasteryPageOpen(true)}
-                  className="category-mastery-card"
-                  style={{
-                    marginBottom: '16px',
-                    padding: '9px 12px',
-                    borderRadius: '13px',
-                    background: 'linear-gradient(135deg, rgba(20, 15, 36, 0.95), rgba(26, 18, 46, 0.9))',
-                    border: '1px solid rgba(168, 85, 247, 0.25)',
-                    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.35)',
-                    cursor: 'pointer',
-                  }}
-                  title="Buka Halaman Category Mastery"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '7px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '13px' }}>🎯</span>
-                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#c4b5fd', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                        CATEGORY MASTERY
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '9px',
-                          fontWeight: 700,
-                          padding: '1px 6px',
-                          borderRadius: '5px',
-                          background: 'rgba(168, 85, 247, 0.16)',
-                          color: '#d8b4fe',
-                          border: '1px solid rgba(168, 85, 247, 0.25)',
-                        }}
-                      >
-                        {unlockedMasteries.length} Terbuka
-                      </span>
-                      {sRankCategories.length > 0 && (
-                        <span
-                          style={{
-                            fontSize: '9px',
-                            fontWeight: 800,
-                            padding: '1px 5px',
-                            borderRadius: '5px',
-                            background: 'rgba(250, 204, 21, 0.2)',
-                            color: '#fde047',
-                          }}
-                        >
-                          👑 {sRankCategories.length} S
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10.5px', fontWeight: 700, color: '#a79abf' }}>
-                      <span>Detail</span>
-                      <ChevronRight size={13} />
-                    </div>
-                  </div>
-
-                  {/* Compact horizontal chip row */}
-                  {unlockedMasteries.length === 0 ? (
-                    <div style={{ fontSize: '11px', color: '#9a8fb3', padding: '4px 0' }}>
-                      Belum ada kategori terbuka • Buat quest untuk membuka mastery
-                    </div>
-                  ) : (
+                  {/* Natural Active Categories Inline Strip (Tanpa Card Terpisah) */}
+                  {unlockedMasteries.length > 0 && (
                     <div
+                      onClick={() => setIsMasteryPageOpen(true)}
                       style={{
+                        marginTop: '11px',
+                        paddingTop: '9px',
+                        borderTop: '1px solid rgba(168, 85, 247, 0.12)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        overflowX: 'auto',
-                        paddingBottom: '2px',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        cursor: 'pointer',
                       }}
-                      className="custom-scrollbar"
+                      title="Lihat Detail Category Mastery"
                     >
-                      {unlockedMasteries.map((m) => (
-                        <div
-                          key={m.name}
-                          style={{
-                            flex: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            padding: '4px 8px',
-                            borderRadius: '7px',
-                            background: m.rank === 'S' ? 'rgba(250, 204, 21, 0.14)' : 'rgba(12, 9, 22, 0.7)',
-                            border: m.rank === 'S' ? '1px solid rgba(250, 204, 21, 0.45)' : '1px solid rgba(168, 85, 247, 0.2)',
-                          }}
-                        >
-                          <span style={{ fontSize: '12px' }}>{m.icon}</span>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#f3f1ff', whiteSpace: 'nowrap' }}>
-                            {m.name}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '9px',
-                              fontWeight: 800,
-                              padding: '1px 5px',
-                              borderRadius: '4px',
-                              background: m.rank === 'S' ? 'rgba(250, 204, 21, 0.22)' : 'rgba(168, 85, 247, 0.22)',
-                              color: m.rank === 'S' ? '#fde047' : '#d8b4fe',
-                            }}
-                          >
-                            {m.rank === 'S' ? '👑 S' : m.rank}
-                          </span>
-                          <span style={{ fontSize: '9px', color: '#9a8fb3', fontWeight: 600 }}>
-                            {m.xp} XP
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 800, color: '#a79abf', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                          Mastery:
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+                          {unlockedMasteries.map((m) => (
+                            <span
+                              key={m.name}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                color: '#d8b4fe',
+                                background: m.rank === 'S' ? 'rgba(250, 204, 21, 0.15)' : 'rgba(168, 85, 247, 0.12)',
+                                border: m.rank === 'S' ? '1px solid rgba(250, 204, 21, 0.4)' : '1px solid rgba(168, 85, 247, 0.2)',
+                                padding: '2px 6px',
+                                borderRadius: '5px',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <span>{m.icon}</span>
+                              <span>{m.name}</span>
+                              <span style={{ fontSize: '9px', fontWeight: 800, color: m.rank === 'S' ? '#fde047' : '#c084fc' }}>• {m.rank}</span>
+                            </span>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#a79abf', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
+                        <span>Lihat</span>
+                        <ChevronRight size={12} />
+                      </div>
                     </div>
                   )}
                 </section>
-
 
                 {/* SECTION 1: JADWAL & KONSISTENSI MINGGU INI (INTERACTIVE 7-DAY STRIP UNTUK SEMUA QUEST) */}
                 <section className="weekly-strip-card" style={{ marginBottom: '20px' }}>
