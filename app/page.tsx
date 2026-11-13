@@ -7443,7 +7443,7 @@ export default function Page() {
                         </div>
                       </div>
 
-                      {/* 1 Category Mastery Pill di Bawah Rank Badge (Format 2 Baris Elegan) */}
+                      {/* 1 Category Mastery Pill di Bawah Rank Badge (Format 2 Baris Tanpa Icon) */}
                       {featuredCategory ? (
                         <button
                           type="button"
@@ -7455,7 +7455,7 @@ export default function Page() {
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            padding: '4px 8px',
+                            padding: '4px 6px',
                             borderRadius: '8px',
                             background: 'rgba(168, 85, 247, 0.14)',
                             border: '1px solid rgba(168, 85, 247, 0.32)',
@@ -7467,30 +7467,21 @@ export default function Page() {
                           }}
                           title="Buka Category Mastery (Kategori dengan XP tertinggi atau pilihanmu)"
                         >
-                          {/* Baris 1: Icon + Nama Kategori (Tanpa terpotong Kerja...) */}
-                          <div
+                          {/* Baris 1: Nama Kategori Murni (Tanpa Icon) */}
+                          <span
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '4px',
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              color: '#f3f1ff',
+                              lineHeight: 1.2,
+                              textAlign: 'center',
+                              display: 'block',
                               width: '100%',
-                              lineHeight: 1.15,
+                              wordBreak: 'break-word',
                             }}
                           >
-                            <span style={{ fontSize: '11px', flexShrink: 0 }}>{featuredCategory.icon}</span>
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                color: '#f3f1ff',
-                                lineHeight: 1.15,
-                                wordBreak: 'break-word',
-                              }}
-                            >
-                              {featuredCategory.name}
-                            </span>
-                          </div>
+                            {featuredCategory.name}
+                          </span>
 
                           {/* Baris 2: XP + Panah Navigasi */}
                           <div
@@ -7520,7 +7511,7 @@ export default function Page() {
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            padding: '4px 8px',
+                            padding: '4px 6px',
                             borderRadius: '8px',
                             background: 'rgba(168, 85, 247, 0.12)',
                             border: '1px solid rgba(168, 85, 247, 0.28)',
@@ -7532,10 +7523,9 @@ export default function Page() {
                           }}
                           title="Buka Category Mastery"
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', fontWeight: 700 }}>
-                            <span>🎯</span>
-                            <span>Mastery</span>
-                          </div>
+                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#f3f1ff' }}>
+                            Mastery
+                          </span>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', marginTop: '2px', fontSize: '9.5px', color: '#c084fc', fontWeight: 800 }}>
                             <span>0 XP</span>
                             <ChevronRight size={10} style={{ color: '#a79abf' }} />
