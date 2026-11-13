@@ -316,10 +316,14 @@ button { font: inherit; color: inherit; }
 }
 .hero-dock-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 9px 10px;
-  border-radius: 13px;
+  justify-content: center;
+  text-align: center;
+  gap: 3px;
+  padding: 9px 4px;
+  min-height: 82px;
+  border-radius: 12px;
   background: rgba(11, 8, 22, 0.58);
   border: 1px solid rgba(139, 92, 246, 0.18);
   transition: all 0.2s ease;
@@ -333,26 +337,33 @@ button { font: inherit; color: inherit; }
   border-color: rgba(168, 85, 247, 0.42);
 }
 .hero-dock-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  margin-bottom: 2px;
 }
 .hero-dock-item strong {
   display: block;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 800;
   color: #ffffff;
-  line-height: 1.15;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .hero-dock-item span {
-  display: block;
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 10.5px;
   font-weight: 600;
   color: #b7a9ce;
-  margin-top: 2px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 /* HISTORY QUEST CARDS & SHOW MORE BUTTON */

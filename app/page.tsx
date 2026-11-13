@@ -7443,7 +7443,7 @@ export default function Page() {
                         </div>
                       </div>
 
-                      {/* 1 Category Mastery Pill di Bawah Rank Badge */}
+                      {/* 1 Category Mastery Pill di Bawah Rank Badge (Format 2 Baris Elegan) */}
                       {featuredCategory ? (
                         <button
                           type="button"
@@ -7451,31 +7451,63 @@ export default function Page() {
                           className="rank-mastery-pill"
                           style={{
                             marginTop: '6px',
-                            display: 'inline-flex',
+                            display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '4px',
-                            padding: '3px 8px',
-                            borderRadius: '7px',
+                            padding: '4px 8px',
+                            borderRadius: '8px',
                             background: 'rgba(168, 85, 247, 0.14)',
                             border: '1px solid rgba(168, 85, 247, 0.32)',
                             color: '#e9d5ff',
-                            fontSize: '10.5px',
-                            fontWeight: 700,
                             cursor: 'pointer',
-                            maxWidth: '124px',
+                            width: '106px',
+                            textAlign: 'center',
                             transition: 'all 0.2s ease',
                           }}
                           title="Buka Category Mastery (Kategori dengan XP tertinggi atau pilihanmu)"
                         >
-                          <span style={{ fontSize: '11px', flexShrink: 0 }}>{featuredCategory.icon}</span>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '58px' }}>
-                            {featuredCategory.name}
-                          </span>
-                          <span style={{ color: '#c084fc', fontWeight: 800, whiteSpace: 'nowrap', fontSize: '10px' }}>
-                            {featuredCategory.xp} XP
-                          </span>
-                          <ChevronRight size={10} style={{ color: '#a79abf', flexShrink: 0 }} />
+                          {/* Baris 1: Icon + Nama Kategori (Tanpa terpotong Kerja...) */}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              width: '100%',
+                              lineHeight: 1.15,
+                            }}
+                          >
+                            <span style={{ fontSize: '11px', flexShrink: 0 }}>{featuredCategory.icon}</span>
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                color: '#f3f1ff',
+                                lineHeight: 1.15,
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {featuredCategory.name}
+                            </span>
+                          </div>
+
+                          {/* Baris 2: XP + Panah Navigasi */}
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '2px',
+                              marginTop: '2px',
+                              lineHeight: 1,
+                            }}
+                          >
+                            <span style={{ color: '#c084fc', fontWeight: 800, fontSize: '9.5px', whiteSpace: 'nowrap' }}>
+                              {featuredCategory.xp} XP
+                            </span>
+                            <ChevronRight size={10} style={{ color: '#a79abf', flexShrink: 0 }} />
+                          </div>
                         </button>
                       ) : (
                         <button
@@ -7484,26 +7516,30 @@ export default function Page() {
                           className="rank-mastery-pill"
                           style={{
                             marginTop: '6px',
-                            display: 'inline-flex',
+                            display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '4px',
-                            padding: '3px 8px',
-                            borderRadius: '7px',
+                            padding: '4px 8px',
+                            borderRadius: '8px',
                             background: 'rgba(168, 85, 247, 0.12)',
                             border: '1px solid rgba(168, 85, 247, 0.28)',
                             color: '#e9d5ff',
-                            fontSize: '10.5px',
-                            fontWeight: 700,
                             cursor: 'pointer',
-                            maxWidth: '124px',
+                            width: '106px',
+                            textAlign: 'center',
                             transition: 'all 0.2s ease',
                           }}
                           title="Buka Category Mastery"
                         >
-                          <span style={{ fontSize: '11px' }}>🎯</span>
-                          <span>Mastery</span>
-                          <ChevronRight size={10} style={{ color: '#a79abf' }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', fontWeight: 700 }}>
+                            <span>🎯</span>
+                            <span>Mastery</span>
+                          </div>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', marginTop: '2px', fontSize: '9.5px', color: '#c084fc', fontWeight: 800 }}>
+                            <span>0 XP</span>
+                            <ChevronRight size={10} style={{ color: '#a79abf' }} />
+                          </div>
                         </button>
                       )}
                     </div>
@@ -7521,12 +7557,10 @@ export default function Page() {
                           color: '#ff9d61',
                         }}
                       >
-                        <Flame size={14} />
+                        <Flame size={13} />
                       </div>
-                      <div>
-                        <strong>{currentUser.streak} Hari</strong>
-                        <span>Streak</span>
-                      </div>
+                      <strong>{currentUser.streak} Hari</strong>
+                      <span>Streak</span>
                     </div>
 
                     {/* 2. History */}
@@ -7543,12 +7577,12 @@ export default function Page() {
                           color: '#4ade80',
                         }}
                       >
-                        <Activity size={14} />
+                        <Activity size={13} />
                       </div>
-                      <div>
-                        <strong>{userHistoryItems.length} Quest</strong>
-                        <span>Riwayat ›</span>
-                      </div>
+                      <strong>{userHistoryItems.length} Quest</strong>
+                      <span>
+                        Riwayat <ChevronRight size={10} style={{ opacity: 0.7, flexShrink: 0 }} />
+                      </span>
                     </div>
 
                     {/* 3. Clan */}
@@ -7565,12 +7599,12 @@ export default function Page() {
                           color: '#a5b4fc',
                         }}
                       >
-                        <Shield size={14} />
+                        <Shield size={13} />
                       </div>
-                      <div>
-                        <strong>{userJoinedClanIds.length} Clan</strong>
-                        <span>Komunitas ›</span>
-                      </div>
+                      <strong>{userJoinedClanIds.length} Clan</strong>
+                      <span>
+                        Komunitas <ChevronRight size={10} style={{ opacity: 0.7, flexShrink: 0 }} />
+                      </span>
                     </div>
                   </div>
                 </section>
