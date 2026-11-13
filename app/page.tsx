@@ -750,23 +750,24 @@ function QuestCard({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '4px 9px',
-                borderRadius: '8px',
-                fontSize: '11px',
+                gap: '5px',
+                padding: '6px 12px',
+                minHeight: '34px',
+                borderRadius: '9px',
+                fontSize: '11.5px',
                 fontWeight: 800,
                 letterSpacing: '0.03em',
                 background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
-                border: '1px solid rgba(168, 85, 247, 0.6)',
+                border: '1px solid rgba(168, 85, 247, 0.65)',
                 color: '#ffffff',
                 cursor: 'pointer',
-                boxShadow: '0 2px 10px rgba(124, 58, 237, 0.35)',
+                boxShadow: '0 2px 12px rgba(124, 58, 237, 0.4)',
                 transition: 'all 0.15s ease',
               }}
               title="Mulai Workout"
               aria-label="Mulai Workout"
             >
-              <Play size={10} fill="#ffffff" />
+              <Play size={11} fill="#ffffff" />
               <span>Start</span>
             </button>
           )}
@@ -782,26 +783,27 @@ function QuestCard({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '3px',
-                padding: '4px 7px',
-                borderRadius: '8px',
-                fontSize: '10.5px',
+                gap: '4px',
+                padding: '6px 11px',
+                minHeight: '34px',
+                borderRadius: '9px',
+                fontSize: '11.5px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 background: isSkipped
-                  ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(153, 27, 27, 0.4))'
-                  : 'rgba(255, 255, 255, 0.05)',
+                  ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(153, 27, 27, 0.45))'
+                  : 'rgba(255, 255, 255, 0.08)',
                 border: isSkipped
-                  ? '1px solid rgba(239, 68, 68, 0.6)'
-                  : '1px solid rgba(255, 255, 255, 0.18)',
-                color: isSkipped ? '#fca5a5' : '#94a3b8',
-                boxShadow: isSkipped ? '0 0 10px rgba(239, 68, 68, 0.2)' : 'none',
+                  ? '1px solid rgba(248, 113, 113, 0.7)'
+                  : '1px solid rgba(168, 85, 247, 0.35)',
+                color: isSkipped ? '#fecaca' : '#e2e8f0',
+                boxShadow: isSkipped ? '0 0 10px rgba(239, 68, 68, 0.25)' : 'none',
                 transition: 'all 0.15s ease',
               }}
               title={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
               aria-label={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
             >
-              <FastForward size={11} />
+              <FastForward size={12} />
               <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
             </button>
           )}
@@ -7931,16 +7933,18 @@ export default function Page() {
                       type="button"
                       onClick={() => setQuestScheduleTab('today')}
                       style={{
-                        padding: '7px 12px',
-                        borderRadius: '8px',
-                        border: questScheduleTab === 'today' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
+                        flex: 1,
+                        padding: '9px 14px',
+                        minHeight: '38px',
+                        borderRadius: '9px',
+                        border: questScheduleTab === 'today' ? '1px solid rgba(168, 85, 247, 0.55)' : '1px solid transparent',
                         background:
                           questScheduleTab === 'today'
-                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
+                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.45), rgba(88, 28, 135, 0.55))'
                             : 'transparent',
-                        color: questScheduleTab === 'today' ? '#f3f1ff' : '#827896',
-                        fontSize: '11.5px',
-                        fontWeight: 700,
+                        color: questScheduleTab === 'today' ? '#ffffff' : '#b7a9ce',
+                        fontSize: '12px',
+                        fontWeight: 800,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -7952,11 +7956,11 @@ export default function Page() {
                       <span>Today</span>
                       <span
                         style={{
-                          fontSize: '10px',
-                          padding: '1px 6px',
+                          fontSize: '10.5px',
+                          padding: '1px 7px',
                           borderRadius: '999px',
-                          background: questScheduleTab === 'today' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
-                          color: questScheduleTab === 'today' ? '#e9d5ff' : '#827896',
+                          background: questScheduleTab === 'today' ? 'rgba(168, 85, 247, 0.45)' : 'rgba(255, 255, 255, 0.08)',
+                          color: questScheduleTab === 'today' ? '#f3e8ff' : '#b7a9ce',
                           fontWeight: 800,
                         }}
                       >
@@ -7967,16 +7971,18 @@ export default function Page() {
                       type="button"
                       onClick={() => setQuestScheduleTab('upcoming')}
                       style={{
-                        padding: '7px 12px',
-                        borderRadius: '8px',
-                        border: questScheduleTab === 'upcoming' ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid transparent',
+                        flex: 1,
+                        padding: '9px 14px',
+                        minHeight: '38px',
+                        borderRadius: '9px',
+                        border: questScheduleTab === 'upcoming' ? '1px solid rgba(168, 85, 247, 0.55)' : '1px solid transparent',
                         background:
                           questScheduleTab === 'upcoming'
-                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.35), rgba(88, 28, 135, 0.45))'
+                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.45), rgba(88, 28, 135, 0.55))'
                             : 'transparent',
-                        color: questScheduleTab === 'upcoming' ? '#f3f1ff' : '#827896',
-                        fontSize: '11.5px',
-                        fontWeight: 700,
+                        color: questScheduleTab === 'upcoming' ? '#ffffff' : '#b7a9ce',
+                        fontSize: '12px',
+                        fontWeight: 800,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -7988,11 +7994,11 @@ export default function Page() {
                       <span>Upcoming</span>
                       <span
                         style={{
-                          fontSize: '10px',
-                          padding: '1px 6px',
+                          fontSize: '10.5px',
+                          padding: '1px 7px',
                           borderRadius: '999px',
-                          background: questScheduleTab === 'upcoming' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.06)',
-                          color: questScheduleTab === 'upcoming' ? '#e9d5ff' : '#827896',
+                          background: questScheduleTab === 'upcoming' ? 'rgba(168, 85, 247, 0.45)' : 'rgba(255, 255, 255, 0.08)',
+                          color: questScheduleTab === 'upcoming' ? '#f3e8ff' : '#b7a9ce',
                           fontWeight: 800,
                         }}
                       >
@@ -8010,13 +8016,13 @@ export default function Page() {
                       <div
                         style={{
                           background: isAllDone
-                            ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(22, 101, 52, 0.2))'
-                            : 'linear-gradient(135deg, rgba(37, 20, 68, 0.65), rgba(18, 14, 30, 0.85))',
+                            ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.14), rgba(22, 101, 52, 0.25))'
+                            : 'linear-gradient(135deg, rgba(37, 20, 68, 0.75), rgba(18, 14, 30, 0.92))',
                           border: isAllDone
-                            ? '1px solid rgba(74, 222, 128, 0.35)'
-                            : '1px solid rgba(139, 92, 246, 0.25)',
-                          borderRadius: '12px',
-                          padding: '10px 14px',
+                            ? '1px solid rgba(74, 222, 128, 0.45)'
+                            : '1px solid rgba(168, 85, 247, 0.35)',
+                          borderRadius: '14px',
+                          padding: '11px 14px',
                           marginBottom: '12px',
                           display: 'flex',
                           alignItems: 'center',
@@ -8027,18 +8033,18 @@ export default function Page() {
                         <div>
                           <div
                             style={{
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              color: isAllDone ? '#86efac' : '#c084fc',
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              color: isAllDone ? '#86efac' : '#d8b4fe',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '5px',
+                              gap: '6px',
                             }}
                           >
-                            <Zap size={13} />
+                            <Zap size={14} />
                             {isAllDone ? 'DAILY REWARD DIPEROLEH!' : 'DAILY REWARD LIST'}
                           </div>
-                          <div style={{ fontSize: '10px', color: '#8e84a2', marginTop: '2px' }}>
+                          <div style={{ fontSize: '11px', color: isAllDone ? '#bbf7d0' : '#c4b5de', marginTop: '2px', lineHeight: 1.4 }}>
                             {isAllDone
                               ? `Seluruh (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
                               : `Dapatkan XP untuk setiap quest yang kamu selesaikan (${completedTodayPersonalCount}/${todayPersonalTasks.length} selesai)`}
@@ -8046,13 +8052,13 @@ export default function Page() {
                         </div>
                         <div
                           style={{
-                            fontSize: '12px',
-                            fontWeight: 800,
-                            color: isAllDone ? '#4ade80' : '#d5beff',
-                            background: isAllDone ? 'rgba(74, 222, 128, 0.2)' : 'rgba(168, 85, 247, 0.18)',
-                            padding: '4px 10px',
+                            fontSize: '12.5px',
+                            fontWeight: 900,
+                            color: isAllDone ? '#4ade80' : '#f3e8ff',
+                            background: isAllDone ? 'rgba(74, 222, 128, 0.22)' : 'rgba(168, 85, 247, 0.22)',
+                            padding: '5px 11px',
                             borderRadius: '8px',
-                            border: isAllDone ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.3)',
+                            border: isAllDone ? '1px solid rgba(74, 222, 128, 0.5)' : '1px solid rgba(168, 85, 247, 0.4)',
                             whiteSpace: 'nowrap',
                           }}
                         >
