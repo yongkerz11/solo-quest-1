@@ -6984,22 +6984,22 @@ export default function Page() {
               </div>
             ) : isMasteryPageOpen ? (
               /* ================================================================
-                 HALAMAN CATEGORY MASTERY (PREMIUM RPG SPECIALIZATION VIEW)
+                 HALAMAN CATEGORY MASTERY (COMPACT & HIGH-CONTRAST VIEW)
                  Hanya kategori dengan minimal 1 quest yang aktif; kategori lain terkunci
                  ================================================================ */
               <div style={{ animation: 'heroCardAppear 0.35s cubic-bezier(0.16, 1, 0.3, 1)' }}>
                 {/* 1. Header Bar: Navigasi Kembali, Judul, & Counter Badge */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <button
                       type="button"
                       onClick={() => setIsMasteryPageOpen(false)}
                       style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '10px',
-                        background: 'rgba(26, 18, 48, 0.9)',
-                        border: '1px solid rgba(168, 85, 247, 0.35)',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '9px',
+                        background: 'rgba(26, 18, 48, 0.95)',
+                        border: '1px solid rgba(168, 85, 247, 0.45)',
                         color: '#f3e8ff',
                         display: 'flex',
                         alignItems: 'center',
@@ -7012,10 +7012,10 @@ export default function Page() {
                       <ArrowLeft size={16} />
                     </button>
                     <div>
-                      <span className="eyebrow" style={{ color: '#c084fc', fontSize: '9.5px', fontWeight: 800, letterSpacing: '0.08em' }}>
+                      <span className="eyebrow" style={{ color: '#c084fc', fontSize: '9px', fontWeight: 800, letterSpacing: '0.08em' }}>
                         SPESIALISASI HUNTER
                       </span>
-                      <h1 style={{ fontSize: '18px', fontWeight: 900, color: '#f5f2ff', margin: '1px 0 0', letterSpacing: '-0.02em' }}>
+                      <h1 style={{ fontSize: '17px', fontWeight: 900, color: '#f5f2ff', margin: 0, letterSpacing: '-0.02em' }}>
                         Category Mastery
                       </h1>
                     </div>
@@ -7025,154 +7025,42 @@ export default function Page() {
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      padding: '4px 10px',
-                      borderRadius: '8px',
-                      background: 'rgba(168, 85, 247, 0.12)',
-                      border: '1px solid rgba(168, 85, 247, 0.28)',
-                      fontSize: '10.5px',
+                      gap: '5px',
+                      padding: '3px 9px',
+                      borderRadius: '7px',
+                      background: 'rgba(168, 85, 247, 0.16)',
+                      border: '1px solid rgba(168, 85, 247, 0.35)',
+                      fontSize: '10px',
                       fontWeight: 800,
                     }}
                   >
                     <span style={{ color: '#4ade80' }}>● {unlockedMasteries.length} Aktif</span>
-                    <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
-                    <span style={{ color: '#94a3b8' }}>{lockedMasteries.length} Terkunci</span>
+                    <span style={{ color: 'rgba(255,255,255,0.25)' }}>|</span>
+                    <span style={{ color: '#cbd5e1' }}>{lockedMasteries.length} Terkunci</span>
                   </div>
                 </div>
 
-                {/* 2. SPOTLIGHT HERO CARD: Kategori yang Saat Ini Tampil di Dashboard */}
-                {featuredCategory && (
-                  <div
-                    style={{
-                      position: 'relative',
-                      overflow: 'hidden',
-                      borderRadius: '14px',
-                      padding: '14px 16px',
-                      marginBottom: '20px',
-                      background: 'linear-gradient(135deg, rgba(38, 22, 70, 0.85) 0%, rgba(20, 13, 40, 0.95) 100%)',
-                      border: '1px solid rgba(168, 85, 247, 0.45)',
-                      boxShadow: '0 8px 24px rgba(147, 51, 234, 0.18)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '-20px',
-                        right: '-20px',
-                        width: '120px',
-                        height: '120px',
-                        background: 'radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, transparent 70%)',
-                        pointerEvents: 'none',
-                      }}
-                    />
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                        <div
-                          style={{
-                            width: '44px',
-                            height: '44px',
-                            borderRadius: '12px',
-                            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.15))',
-                            border: '1px solid rgba(168, 85, 247, 0.4)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '22px',
-                            flexShrink: 0,
-                            boxShadow: '0 0 14px rgba(168, 85, 247, 0.25)',
-                          }}
-                        >
-                          {featuredCategory.icon}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <div
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '9.5px',
-                              fontWeight: 800,
-                              letterSpacing: '0.06em',
-                              color: '#facc15',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            <span>⭐</span>
-                            <span>Tampil di Dashboard</span>
-                          </div>
-                          <h2
-                            style={{
-                              fontSize: '16px',
-                              fontWeight: 800,
-                              color: '#ffffff',
-                              margin: '2px 0 3px',
-                              letterSpacing: '-0.01em',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {featuredCategory.name}
-                          </h2>
-                          <div style={{ fontSize: '11px', color: '#b7a9ce' }}>
-                            +{featuredCategory.xpPerQuest} XP/quest • {featuredCategory.count}x selesai ({featuredCategory.totalQuestCount} terdaftar)
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div
-                          style={{
-                            fontSize: '20px',
-                            fontWeight: 900,
-                            color: '#f3e8ff',
-                            letterSpacing: '-0.02em',
-                            textShadow: '0 0 16px rgba(192, 132, 252, 0.6)',
-                          }}
-                        >
-                          {featuredCategory.xp.toLocaleString('id-ID')}
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: '#c084fc', marginLeft: '3px' }}>XP</span>
-                        </div>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            marginTop: '3px',
-                            fontSize: '9px',
-                            fontWeight: 700,
-                            color: '#a79abf',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                          }}
-                        >
-                          Pilihan Utama
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. SECTION 1: DAFTAR KATEGORI AKTIF */}
-                <div style={{ marginBottom: '22px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                {/* 2. SECTION 1: DAFTAR KATEGORI AKTIF (COMPACT SINGLE ROW & HIGHLIGHTED BUTTONS) */}
+                <div style={{ marginBottom: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#f3f1ff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#f3f1ff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         Kategori Aktif
                       </span>
-                      <span style={{ fontSize: '9.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '5px', background: 'rgba(168, 85, 247, 0.22)', color: '#d8b4fe' }}>
+                      <span style={{ fontSize: '9.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '5px', background: 'rgba(168, 85, 247, 0.25)', color: '#e9d5ff' }}>
                         {unlockedMasteries.length}
                       </span>
                     </div>
-                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>
-                      Pilih kategori untuk ditampilkan di Dashboard
+                    <span style={{ fontSize: '10px', color: '#c4b5fd', fontWeight: 600 }}>
+                      Pilih 1 untuk tampil di Dashboard
                     </span>
                   </div>
 
                   {unlockedMasteries.length === 0 ? (
                     <div
                       style={{
-                        padding: '20px 16px',
-                        borderRadius: '12px',
+                        padding: '18px 14px',
+                        borderRadius: '11px',
                         background: 'rgba(14, 10, 26, 0.65)',
                         border: '1px dashed rgba(168, 85, 247, 0.25)',
                         textAlign: 'center',
@@ -7181,123 +7069,108 @@ export default function Page() {
                       <p style={{ margin: 0, fontSize: '12px', color: '#c4b5fd', fontWeight: 700 }}>
                         Belum ada kategori aktif
                       </p>
-                      <p style={{ margin: '4px 0 0', fontSize: '10.5px', color: '#8e84a2' }}>
+                      <p style={{ margin: '4px 0 0', fontSize: '10px', color: '#a79abf' }}>
                         Buat minimal 1 quest pada kategori di bawah untuk mengaktifkannya
                       </p>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gap: '9px' }}>
+                    <div style={{ display: 'grid', gap: '7px' }}>
                       {unlockedMasteries.map((m) => {
                         const isFeatured = featuredCategory?.name === m.name
                         return (
                           <div
                             key={m.name}
                             style={{
-                              borderRadius: '12px',
-                              padding: '12px 14px',
+                              borderRadius: '11px',
+                              padding: '9px 12px',
                               background: isFeatured
-                                ? 'linear-gradient(135deg, rgba(28, 18, 52, 0.95), rgba(19, 13, 36, 0.92))'
-                                : 'rgba(17, 12, 31, 0.82)',
+                                ? 'linear-gradient(135deg, rgba(38, 22, 70, 0.95), rgba(22, 14, 44, 0.92))'
+                                : 'rgba(17, 12, 31, 0.85)',
                               border: isFeatured
-                                ? '1px solid rgba(168, 85, 247, 0.55)'
-                                : '1px solid rgba(168, 85, 247, 0.2)',
-                              boxShadow: isFeatured ? '0 4px 18px rgba(168, 85, 247, 0.16)' : 'none',
+                                ? '1px solid rgba(250, 204, 21, 0.6)'
+                                : '1px solid rgba(168, 85, 247, 0.22)',
+                              boxShadow: isFeatured
+                                ? '0 0 16px rgba(250, 204, 21, 0.16)'
+                                : 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '10px',
                               transition: 'all 0.2s ease',
                             }}
                           >
-                            {/* Row 1: Icon, Title, and XP */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '9px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                                <div
-                                  style={{
-                                    width: '34px',
-                                    height: '34px',
-                                    borderRadius: '9px',
-                                    background: isFeatured ? 'rgba(168, 85, 247, 0.22)' : 'rgba(255, 255, 255, 0.05)',
-                                    border: isFeatured ? '1px solid rgba(168, 85, 247, 0.38)' : '1px solid rgba(255, 255, 255, 0.1)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '18px',
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  {m.icon}
-                                </div>
-                                <div style={{ minWidth: 0 }}>
-                                  <strong style={{ fontSize: '13.5px', fontWeight: 800, color: '#ffffff', display: 'block' }}>
+                            {/* Kiri: Icon Squircle + Judul Kategori + Sub-stat */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                              <div
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  background: isFeatured ? 'rgba(250, 204, 21, 0.16)' : 'rgba(168, 85, 247, 0.16)',
+                                  border: isFeatured ? '1px solid rgba(250, 204, 21, 0.45)' : '1px solid rgba(168, 85, 247, 0.3)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '16px',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {m.icon}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <strong style={{ fontSize: '13px', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {m.name}
                                   </strong>
-                                  <span style={{ fontSize: '10px', color: '#9a8fb3', display: 'block', marginTop: '1px' }}>
-                                    {m.totalQuestCount} quest terdaftar
+                                  <span
+                                    style={{
+                                      fontSize: '9.5px',
+                                      fontWeight: 700,
+                                      color: '#c4b5fd',
+                                      padding: '1px 5px',
+                                      borderRadius: '4px',
+                                      background: 'rgba(168, 85, 247, 0.16)',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    +{m.xpPerQuest} XP
                                   </span>
                                 </div>
-                              </div>
-
-                              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                <div style={{ fontSize: '14.5px', fontWeight: 900, color: '#c084fc', textShadow: '0 0 10px rgba(192, 132, 252, 0.4)' }}>
-                                  {m.xp.toLocaleString('id-ID')} <span style={{ fontSize: '10px', fontWeight: 700 }}>XP</span>
+                                <div style={{ fontSize: '10px', color: '#c4b5fd', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {m.count}x selesai • {m.totalQuestCount} quest terdaftar
                                 </div>
                               </div>
                             </div>
 
-                            {/* Row 2: Badges & Dashboard Selector Button */}
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '8px',
-                                paddingTop: '8px',
-                                borderTop: '1px solid rgba(168, 85, 247, 0.12)',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <span
-                                  style={{
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    padding: '2px 7px',
-                                    borderRadius: '5px',
-                                    background: 'rgba(168, 85, 247, 0.12)',
-                                    color: '#d8b4fe',
-                                    border: '1px solid rgba(168, 85, 247, 0.22)',
-                                  }}
-                                >
-                                  +{m.xpPerQuest} XP/quest
+                            {/* Kanan: XP Score + Highlighted Action Button / Golden Active Badge */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                              <div style={{ textAlign: 'right' }}>
+                                <span style={{ fontSize: '13.5px', fontWeight: 900, color: '#f3e8ff', letterSpacing: '-0.01em', textShadow: '0 0 10px rgba(192, 132, 252, 0.5)' }}>
+                                  {m.xp.toLocaleString('id-ID')}
                                 </span>
-                                <span
-                                  style={{
-                                    fontSize: '10px',
-                                    fontWeight: 600,
-                                    padding: '2px 7px',
-                                    borderRadius: '5px',
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    color: '#cbd5e1',
-                                  }}
-                                >
-                                  ✓ {m.count}x selesai
-                                </span>
+                                <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#c084fc', marginLeft: '2px' }}>XP</span>
                               </div>
 
                               {isFeatured ? (
-                                <span
+                                <div
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '4px',
-                                    fontSize: '9.5px',
+                                    gap: '3px',
+                                    fontSize: '10px',
                                     fontWeight: 800,
                                     padding: '4px 9px',
                                     borderRadius: '6px',
-                                    background: 'rgba(168, 85, 247, 0.26)',
-                                    border: '1px solid rgba(168, 85, 247, 0.55)',
-                                    color: '#f3e8ff',
+                                    background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(161, 98, 7, 0.3))',
+                                    border: '1px solid rgba(250, 204, 21, 0.8)',
+                                    color: '#fef08a',
+                                    boxShadow: '0 0 12px rgba(250, 204, 21, 0.3)',
                                     whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  ⭐ Aktif di Dashboard
-                                </span>
+                                  <span>⭐</span>
+                                  <span>Aktif</span>
+                                </div>
                               ) : (
                                 <button
                                   type="button"
@@ -7305,21 +7178,22 @@ export default function Page() {
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '4px 9px',
+                                    gap: '3px',
+                                    padding: '4px 10px',
                                     borderRadius: '6px',
-                                    background: 'rgba(255, 255, 255, 0.06)',
-                                    border: '1px solid rgba(255, 255, 255, 0.18)',
-                                    color: '#cbd5e1',
-                                    fontSize: '9.5px',
-                                    fontWeight: 700,
+                                    background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.45), rgba(124, 58, 237, 0.38))',
+                                    border: '1px solid rgba(192, 132, 252, 0.8)',
+                                    color: '#ffffff',
+                                    fontSize: '10px',
+                                    fontWeight: 800,
                                     cursor: 'pointer',
                                     whiteSpace: 'nowrap',
+                                    boxShadow: '0 2px 10px rgba(147, 51, 234, 0.35)',
                                     transition: 'all 0.15s ease',
                                   }}
                                   title={`Pilih ${m.name} untuk ditampilkan di Dashboard`}
                                 >
-                                  <span>Tampilkan di Dashboard</span>
+                                  <span>+ Pasang</span>
                                 </button>
                               )}
                             </div>
@@ -7330,29 +7204,29 @@ export default function Page() {
                   )}
                 </div>
 
-                {/* 4. SECTION 2: KATEGORI TERKUNCI (GRID 2 KOLOM RAMPING) */}
+                {/* 3. SECTION 2: KATEGORI TERKUNCI (GRID 2 KOLOM RAMPING DENGAN TOMBOL HIGHLIGHTED) */}
                 {lockedMasteries.length > 0 && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <div style={{ marginBottom: '10px' }}>
+                  <div style={{ marginBottom: '22px' }}>
+                    <div style={{ marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: '#9a8fb3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 800, color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             🔒 Kategori Terkunci
                           </span>
-                          <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.08)', color: '#cbd5e1' }}>
+                          <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff' }}>
                             {lockedMasteries.length}
                           </span>
                         </div>
-                        <span style={{ fontSize: '9.5px', color: '#7c7291' }}>
+                        <span style={{ fontSize: '9.5px', color: '#c4b5fd', fontWeight: 600 }}>
                           Buat 1 quest untuk unlock
                         </span>
                       </div>
-                      <p style={{ margin: '3px 0 0', fontSize: '10.5px', color: '#8e84a2' }}>
+                      <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#c4b5fd' }}>
                         Kategori ini belum memiliki quest. Klik <strong>+ Quest</strong> untuk membukanya.
                       </p>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '7px' }}>
                       {lockedMasteries.map((cat) => (
                         <div
                           key={cat.name}
@@ -7360,22 +7234,22 @@ export default function Page() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            gap: '8px',
-                            padding: '8px 10px',
-                            borderRadius: '10px',
-                            background: 'rgba(12, 9, 22, 0.65)',
-                            border: '1px dashed rgba(255, 255, 255, 0.12)',
+                            gap: '6px',
+                            padding: '7px 9px',
+                            borderRadius: '9px',
+                            background: 'rgba(12, 9, 22, 0.7)',
+                            border: '1px dashed rgba(168, 85, 247, 0.25)',
                             transition: 'all 0.2s ease',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <span style={{ fontSize: '16px', opacity: 0.75, flexShrink: 0 }}>{cat.icon}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                            <span style={{ fontSize: '15px', opacity: 0.85, flexShrink: 0 }}>{cat.icon}</span>
                             <div style={{ minWidth: 0 }}>
                               <div
                                 style={{
                                   fontSize: '11px',
                                   fontWeight: 700,
-                                  color: '#cbd5e1',
+                                  color: '#f1f5f9',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
@@ -7383,7 +7257,7 @@ export default function Page() {
                               >
                                 {cat.name}
                               </div>
-                              <div style={{ fontSize: '9px', color: '#716785', marginTop: '1px' }}>
+                              <div style={{ fontSize: '9px', color: '#c4b5fd', marginTop: '1px', fontWeight: 600 }}>
                                 +{cat.xpPerQuest} XP
                               </div>
                             </div>
@@ -7399,20 +7273,21 @@ export default function Page() {
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '3px',
-                              padding: '4px 7px',
+                              padding: '4px 8px',
                               borderRadius: '6px',
-                              background: 'rgba(168, 85, 247, 0.14)',
-                              border: '1px solid rgba(168, 85, 247, 0.3)',
-                              color: '#d8b4fe',
+                              background: 'rgba(168, 85, 247, 0.22)',
+                              border: '1px solid rgba(192, 132, 252, 0.65)',
+                              color: '#ffffff',
                               fontSize: '9.5px',
-                              fontWeight: 700,
+                              fontWeight: 800,
                               cursor: 'pointer',
                               flexShrink: 0,
+                              boxShadow: '0 2px 6px rgba(168, 85, 247, 0.2)',
                               transition: 'all 0.15s ease',
                             }}
                             title={`Buat quest baru di kategori ${cat.name}`}
                           >
-                            <Plus size={10} />
+                            <Plus size={10} style={{ strokeWidth: 3 }} />
                             <span>Quest</span>
                           </button>
                         </div>
