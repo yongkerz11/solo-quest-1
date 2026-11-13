@@ -7208,13 +7208,13 @@ export default function Page() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ fontSize: '14px' }}>{isDailyAllClearToday ? '🏆' : '⚡'}</span>
-                        <strong style={{ fontSize: '12px', color: isDailyAllClearToday ? '#86efac' : '#f3e8ff' }}>
+                        <strong style={{ fontSize: '13px', color: isDailyAllClearToday ? '#86efac' : '#f5edff' }}>
                           {isDailyAllClearToday
                             ? 'Daily All-Clear Bonus Aktif!'
                             : 'Misi All-Clear Harian'}
                         </strong>
                       </div>
-                      <p style={{ margin: '2px 0 0', fontSize: '10.5px', color: isDailyAllClearToday ? '#bbf7d0' : '#a79abf' }}>
+                      <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: isDailyAllClearToday ? '#bbf7d0' : '#c4b5de', lineHeight: 1.4 }}>
                         {isDailyAllClearToday
                           ? `Semua ${todayPersonalTasks.length} quest hari ini selesai (+${DAILY_FULL_CLEAR_BONUS_XP} XP Bonus diraih)`
                           : isDailyAllClearEligible
