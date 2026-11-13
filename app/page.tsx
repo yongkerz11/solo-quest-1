@@ -234,15 +234,15 @@ const INITIAL_USERS: UserProfile[] = [
 
 const INITIAL_PERSONAL_TASKS: PersonalTask[] = [
   // Milik Sung Jin-Woo
-  { id: 'pt-1', userId: 'u-jinwoo', title: 'Bangun sebelum 06:00', category: 'Disiplin', xp: 20, icon: '☼', done: true, schedule: ['Everyday'] },
-  { id: 'pt-2', userId: 'u-jinwoo', title: 'Workout 30 menit', category: 'Kekuatan', xp: 40, icon: 'ϟ', done: true, schedule: ['Everyday'] },
+  { id: 'pt-1', userId: 'u-jinwoo', title: 'Bangun sebelum 06:00', category: 'Disiplin', xp: 20, icon: '☼', done: false, schedule: ['Everyday'] },
+  { id: 'pt-2', userId: 'u-jinwoo', title: 'Workout 30 menit', category: 'Kekuatan', xp: 40, icon: 'ϟ', done: false, schedule: ['Everyday'] },
   { id: 'pt-3', userId: 'u-jinwoo', title: 'Baca 10 halaman', category: 'Pengetahuan', xp: 25, icon: '▤', done: false, schedule: ['Mon', 'Wed', 'Fri'] },
   { id: 'pt-4', userId: 'u-jinwoo', title: 'Minum 2L air putih', category: 'Vitalitas', xp: 15, icon: '◒', done: false, schedule: ['Everyday'] },
   // Milik Cha Hae-In (Berbeda dengan Jin-Woo)
-  { id: 'pt-5', userId: 'u-cha', title: 'Latihan Swordsmanship 1 Jam', category: 'Kekuatan', xp: 50, icon: 'ϟ', done: true, schedule: ['Mon', 'Tue', 'Thu'] },
+  { id: 'pt-5', userId: 'u-cha', title: 'Latihan Swordsmanship 1 Jam', category: 'Kekuatan', xp: 50, icon: 'ϟ', done: false, schedule: ['Mon', 'Tue', 'Thu'] },
   { id: 'pt-6', userId: 'u-cha', title: 'Meditasi Fokus Mana', category: 'Disiplin', xp: 30, icon: '☼', done: false, schedule: ['Everyday'] },
   // Milik Igris
-  { id: 'pt-7', userId: 'u-igris', title: 'Jaga Gerbang Dungeon Pagi', category: 'Disiplin', xp: 35, icon: '☼', done: true, schedule: ['Everyday'] },
+  { id: 'pt-7', userId: 'u-igris', title: 'Jaga Gerbang Dungeon Pagi', category: 'Disiplin', xp: 35, icon: '☼', done: false, schedule: ['Everyday'] },
 ]
 
 const INITIAL_CLANS: Clan[] = [
@@ -684,40 +684,7 @@ function QuestCard({
             </button>
           )}
 
-          {/* BUTTON CENTANG */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (!disabled) onToggle()
-            }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '3px',
-              padding: '4px 8px',
-              borderRadius: '8px',
-              fontSize: '10.5px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              background: done
-                ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(22, 101, 52, 0.4))'
-                : 'rgba(168, 85, 247, 0.16)',
-              border: done
-                ? '1px solid rgba(74, 222, 128, 0.6)'
-                : '1px solid rgba(168, 85, 247, 0.4)',
-              color: done ? '#4ade80' : '#e9d5ff',
-              boxShadow: done ? '0 0 10px rgba(34, 197, 94, 0.25)' : 'none',
-              transition: 'all 0.15s ease',
-            }}
-            title={done ? 'Batalkan centang selesai' : 'Centang selesai (+XP)'}
-            aria-label={done ? 'Batalkan centang selesai' : 'Centang selesai (+XP)'}
-          >
-            <Check size={12} strokeWidth={done ? 3 : 2.5} />
-            <span>{done ? 'Selesai' : 'Centang'}</span>
-          </button>
-
-          {/* BUTTON SKIP */}
+          {/* BUTTON SKIP (1 TOMBOL TINDAKAN DI KANAN KARENA CENTANG SUDAH ADA DI KOTAK KIRI) */}
           {!done && onSkip && (
             <button
               type="button"
@@ -1484,13 +1451,33 @@ export default function Page() {
         }
         if (parsed.currentUserId) setCurrentUserId(parsed.currentUserId)
         if (parsed.personalTasks) {
+          const todayIso = new Date().toISOString().slice(0, 10)
           const migrated = parsed.personalTasks.map((t: any) => {
             const cat = findCategory(t.category)
             let exs = t.workoutExercises
             if (exs && exs.length > 0 && exs[0]?.id === 'ex-1' && exs[0]?.name === 'Bench Press' && !t.done) {
               exs = []
             }
-            return { ...t, category: cat.name, icon: cat.icon, workoutExercises: exs ?? (cat.name.toLowerCase() === 'gym' ? [] : undefined) }
+            const compDates = Array.isArray(t.completedDates) ? t.completedDates : []
+            const skipDates = Array.isArray(t.skippedDates) ? t.skippedDates : []
+
+            // SINKRONISASI RESET HARIAN:
+            // Quest HANYA bernilai done/selesai HARI INI jika tanggal hari ini (todayIso)
+            // benar-benar ada di dalam completedDates!
+            // Quest yang selesai kemarin (atau hari sebelumnya) otomatis TIDAK tercentang di hari baru.
+            const isDoneToday = compDates.includes(todayIso)
+            const isSkippedToday = skipDates.includes(todayIso)
+
+            return {
+              ...t,
+              category: cat.name,
+              icon: cat.icon,
+              done: isDoneToday,
+              skipped: isSkippedToday,
+              completedDates: compDates,
+              skippedDates: skipDates,
+              workoutExercises: exs ?? (cat.name.toLowerCase() === 'gym' ? [] : undefined),
+            }
           })
           setPersonalTasks(migrated)
         }
@@ -1595,7 +1582,7 @@ export default function Page() {
   }, [users, currentUserId, personalTasks, clans, clanMembers, clanQuests, mounted])
 
   // Derived Current User Data & Today / Upcoming Schedule Helpers
-  const [, setTimeTick] = useState<number>(0)
+  const [timeTick, setTimeTick] = useState<number>(0)
   useEffect(() => {
     const timer = setInterval(() => setTimeTick(Date.now()), 15000)
     return () => clearInterval(timer)
@@ -1883,11 +1870,23 @@ export default function Page() {
       }
 
       if (cloudQuests && cloudQuests.length > 0 && !forcePushLocal) {
+        const todayIso = new Date().toISOString().slice(0, 10)
+        const normalizedCloudQuests = cloudQuests.map((t: any) => {
+          const compDates = Array.isArray(t.completedDates) ? t.completedDates : []
+          const skipDates = Array.isArray(t.skippedDates) ? t.skippedDates : []
+          return {
+            ...t,
+            done: compDates.includes(todayIso),
+            skipped: skipDates.includes(todayIso),
+            completedDates: compDates,
+            skippedDates: skipDates,
+          }
+        })
         setPersonalTasks((prev) => {
           const otherTasks = prev.filter(
             (t) => t.userId !== currentUser.id && (!currentUser.username || !t.id.includes(currentUser.username))
           )
-          return [...otherTasks, ...cloudQuests]
+          return [...otherTasks, ...normalizedCloudQuests]
         })
         setCloudSyncStatus('synced')
       } else {
@@ -1908,6 +1907,27 @@ export default function Page() {
       syncWithCloud()
     }
   }, [mounted, currentUser?.id, currentUser?.username])
+
+  // Reset harian otomatis ketika berganti hari / tengah malam (midnight rollover)
+  useEffect(() => {
+    if (!mounted) return
+    const todayIso = new Date().toISOString().slice(0, 10)
+    setPersonalTasks((prev) => {
+      let changed = false
+      const updated = prev.map((t) => {
+        const compDates = Array.isArray(t.completedDates) ? t.completedDates : []
+        const skipDates = Array.isArray(t.skippedDates) ? t.skippedDates : []
+        const isDoneToday = compDates.includes(todayIso)
+        const isSkippedToday = skipDates.includes(todayIso)
+        if (t.done !== isDoneToday || t.skipped !== isSkippedToday) {
+          changed = true
+          return { ...t, done: isDoneToday, skipped: isSkippedToday }
+        }
+        return t
+      })
+      return changed ? updated : prev
+    })
+  }, [timeTick, mounted])
 
   // Sinkronisasi otomatis XP hunter ke state & profil cloud jika XP riwayat quest lebih tinggi
   useEffect(() => {
@@ -7112,6 +7132,43 @@ export default function Page() {
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                <span
+                                  className={`task-checkbox ${task.done ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
+                                  onClick={() => handleTogglePersonal(task.id)}
+                                  role="button"
+                                  tabIndex={0}
+                                  style={{
+                                    width: '20px',
+                                    height: '20px',
+                                    borderRadius: '6px',
+                                    border: task.done
+                                      ? '1px solid #4ade80'
+                                      : isSkipped
+                                      ? '1px solid #ef4444'
+                                      : '1px solid rgba(168, 85, 247, 0.45)',
+                                    background: task.done
+                                      ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 101, 52, 0.5))'
+                                      : isSkipped
+                                      ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(153, 27, 27, 0.4))'
+                                      : 'rgba(24, 18, 42, 0.7)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    flexShrink: 0,
+                                    color: task.done ? '#4ade80' : isSkipped ? '#f87171' : 'transparent',
+                                    boxShadow: task.done ? '0 0 10px rgba(34, 197, 94, 0.3)' : 'none',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                  title={task.done ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
+                                  aria-label={task.done ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
+                                >
+                                  {task.done ? (
+                                    <Check size={13} strokeWidth={3} />
+                                  ) : isSkipped ? (
+                                    <FastForward size={11} color="#f87171" strokeWidth={2.5} />
+                                  ) : null}
+                                </span>
                                 <span style={{ fontSize: '15px' }}>{task.icon}</span>
                                 <div style={{ minWidth: 0 }}>
                                   <strong
@@ -7177,28 +7234,6 @@ export default function Page() {
                                     <span>Start</span>
                                   </button>
                                 )}
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleTogglePersonal(task.id)}
-                                  style={{
-                                    padding: '4px 8px',
-                                    borderRadius: '7px',
-                                    background: task.done ? 'rgba(74, 222, 128, 0.2)' : 'rgba(168, 85, 247, 0.15)',
-                                    border: task.done ? '1px solid rgba(74, 222, 128, 0.5)' : '1px solid rgba(168, 85, 247, 0.35)',
-                                    color: task.done ? '#4ade80' : '#d8b4fe',
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '3px',
-                                  }}
-                                  title={task.done ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
-                                >
-                                  <Check size={10} strokeWidth={2.5} />
-                                  <span>{task.done ? 'Selesai' : 'Centang'}</span>
-                                </button>
 
                                 {!task.done && (
                                   <button
