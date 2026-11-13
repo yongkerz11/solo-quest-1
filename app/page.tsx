@@ -1465,21 +1465,20 @@ export default function Page() {
       try {
         const parsed = JSON.parse(saved)
         if (parsed.users?.length) {
-          // Normalisasi akun baru agar mulai dari Level 1 (0 XP) jika belum menyelesaikan quest
+          // Normalisasi akun & sinkronisasi XP riwayat quest yang pernah diselesaikan
           const normalizedUsers = parsed.users.map((u: any) => {
-            const userDoneTasks = (parsed.personalTasks || []).filter((t: any) => t.userId === u.id && t.done)
+            const userTasks = (parsed.personalTasks || []).filter(
+              (t: any) => t.userId === u.id || (u.username && t.id.includes(u.username))
+            )
+            const userHistoryXp = userTasks.reduce(
+              (sum: number, t: any) => sum + ((t.completedDates?.length || (t.done ? 1 : 0)) * (Number(t.xp) || 20)),
+              0
+            )
             const userDoneClanQuests = (parsed.clanQuests || []).filter((cq: any) => cq.completedByUserIds?.includes(u.id))
-            const earnedXp =
-              userDoneTasks.reduce((sum: number, t: any) => sum + (Number(t.xp) || 0), 0) +
-              userDoneClanQuests.reduce((sum: number, cq: any) => sum + (Number(cq.xp) || 0), 0)
+            const clanXp = userDoneClanQuests.reduce((sum: number, cq: any) => sum + (Number(cq.xp) || 20), 0)
+            const earnedXp = userHistoryXp + clanXp
 
-            if (u.xp === 100 && userDoneTasks.length === 0 && userDoneClanQuests.length === 0 && (u.id.startsWith('hunter-') || u.username === 'yongzz')) {
-              return { ...u, xp: 0, streak: 0 }
-            }
-            if (u.xp === 0 && earnedXp > 0) {
-              return { ...u, xp: earnedXp }
-            }
-            return u
+            return { ...u, xp: Math.max(u.xp || 0, earnedXp) }
           })
           setUsers(normalizedUsers)
         }
@@ -1548,9 +1547,6 @@ export default function Page() {
           )
           if (found) {
             setCurrentUserId(found.id)
-            if (found.xp === 100 && (found.id.startsWith('hunter-') || found.username === 'yongzz')) {
-              return prev.map((u) => (u.id === found.id ? { ...u, xp: 0, streak: 0 } : u))
-            }
             return prev
           }
           const newUser: UserProfile = {
@@ -1614,23 +1610,29 @@ export default function Page() {
   }
 
   const currentUser = users.find((u) => u.id === currentUserId) || users[0]
-  const userPersonalTasks = personalTasks.filter((t) => t.userId === currentUser.id)
+  const userPersonalTasks = personalTasks.filter(
+    (t) =>
+      t.userId === currentUser.id ||
+      (currentUser.username && (t.userId === currentUser.username || t.id.includes(currentUser.username))) ||
+      (!t.userId && currentUser.username === 'yongzz')
+  )
   const todayPersonalTasks = userPersonalTasks.filter((t) => isQuestForToday(t.schedule))
   const upcomingPersonalTasks = userPersonalTasks.filter((t) => !isQuestForToday(t.schedule))
   const completedPersonalCount = userPersonalTasks.filter((t) => t.done).length
   const completedTodayPersonalCount = todayPersonalTasks.filter((t) => t.done).length
-  const userJoinedMemberships = clanMembers.filter((cm) => cm.userId === currentUser.id)
+  const userJoinedMemberships = clanMembers.filter(
+    (cm) => cm.userId === currentUser.id || (currentUser.username && cm.userId === currentUser.username)
+  )
   const userJoinedClanIds = userJoinedMemberships.map((cm) => cm.clanId)
   const userJoinedClanQuests = clanQuests.filter((cq) => userJoinedClanIds.includes(cq.clanId))
-  const completedClanQuestsCount = userJoinedClanQuests.filter((cq) => cq.completedByUserIds.includes(currentUser.id)).length
+  const completedClanQuestsCount = userJoinedClanQuests.filter(
+    (cq) =>
+      cq.completedByUserIds.includes(currentUser.id) ||
+      (currentUser.username && cq.completedByUserIds.includes(currentUser.username))
+  ).length
   const totalConsistencyTasks = userPersonalTasks.length + userJoinedClanQuests.length
   const totalCompletedConsistencyTasks = completedPersonalCount + completedClanQuestsCount
   const consistencyRate = totalConsistencyTasks > 0 ? Math.round((totalCompletedConsistencyTasks / totalConsistencyTasks) * 100) : 100
-
-  const currentLevel = getHunterLevel(currentUser.xp)
-  const currentRank = getHunterRank(currentUser.xp)
-  const nextLevelXp = currentLevel * 100
-  const levelProgress = Math.min(100, Math.round(((currentUser.xp % 100) / 100) * 100))
 
   // Derive History Quest Logs dari seluruh aktivitas latihan & penyelesaian quest user
   const userHistoryItems = (() => {
@@ -1735,6 +1737,23 @@ export default function Page() {
 
   const totalHistorySets = userHistoryItems.reduce((acc, item) => acc + item.totalSets, 0)
   const maxHistoryWeight = userHistoryItems.reduce((acc, item) => Math.max(acc, item.maxWeight), 0)
+
+  // Derive Akumulasi XP Valid dari Riwayat Quest & Clan Challenge
+  const historyTotalXp = userHistoryItems.reduce((acc, item) => acc + (Number(item.xp) || 0), 0)
+  const clanCompletedTotalXp = userJoinedClanQuests
+    .filter(
+      (cq) =>
+        cq.completedByUserIds.includes(currentUser.id) ||
+        (currentUser.username && cq.completedByUserIds.includes(currentUser.username))
+    )
+    .reduce((acc, cq) => acc + (Number(cq.xp) || 0), 0)
+  const earnedActivityXp = historyTotalXp + clanCompletedTotalXp
+  const effectiveXp = Math.max(currentUser.xp || 0, earnedActivityXp)
+
+  const currentLevel = getHunterLevel(effectiveXp)
+  const currentRank = getHunterRank(effectiveXp)
+  const nextLevelXp = currentLevel * 100
+  const levelProgress = Math.min(100, Math.round(((effectiveXp % 100) / 100) * 100))
 
   // Derive Personal Records (PR) & Total Volume dari semua gerakan latihan
   const userExerciseRecords = (() => {
@@ -1849,13 +1868,18 @@ export default function Page() {
       if (cloudProfile) {
         setUsers((prev) =>
           prev.map((u) =>
-            u.id === currentUser.id
-              ? { ...u, xp: Math.max(u.xp, cloudProfile.xp), streak: Math.max(u.streak, cloudProfile.streak) }
+            u.id === currentUser.id || (currentUser.username && u.username === currentUser.username)
+              ? {
+                  ...u,
+                  ...cloudProfile,
+                  xp: Math.max(u.xp || 0, cloudProfile.xp || 0, effectiveXp),
+                  streak: Math.max(u.streak || 0, cloudProfile.streak || 0),
+                }
               : u
           )
         )
       } else if (currentUser) {
-        saveCloudProfile(currentUser)
+        saveCloudProfile({ ...currentUser, xp: effectiveXp })
       }
 
       if (cloudQuests && cloudQuests.length > 0 && !forcePushLocal) {
@@ -1884,6 +1908,20 @@ export default function Page() {
       syncWithCloud()
     }
   }, [mounted, currentUser?.id, currentUser?.username])
+
+  // Sinkronisasi otomatis XP hunter ke state & profil cloud jika XP riwayat quest lebih tinggi
+  useEffect(() => {
+    if (mounted && currentUser && effectiveXp > (currentUser.xp || 0)) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id || (currentUser.username && u.username === currentUser.username)
+            ? { ...u, xp: effectiveXp }
+            : u
+        )
+      )
+      saveCloudProfile({ ...currentUser, xp: effectiveXp })
+    }
+  }, [mounted, currentUser?.id, currentUser?.username, effectiveXp])
 
   const currentWorkoutQuest = activeWorkoutQuest
     ? activeWorkoutQuest.type === 'personal'
@@ -2503,7 +2541,15 @@ export default function Page() {
   // ============================================================================
 
   const handleTogglePersonal = (taskId: string) => {
-    const target = personalTasks.find((t) => t.id === taskId && t.userId === currentUser.id)
+    const target =
+      personalTasks.find(
+        (t) =>
+          t.id === taskId &&
+          (t.userId === currentUser.id ||
+            !t.userId ||
+            (currentUser.username && t.userId === currentUser.username) ||
+            (currentUser.username && t.id.includes(currentUser.username)))
+      ) || personalTasks.find((t) => t.id === taskId)
     if (!target) return
     const nextDone = !target.done
 
@@ -2534,24 +2580,35 @@ export default function Page() {
     }
 
     // UPDATE XP LANGSUNG PER QUEST
-    const xpDelta = nextDone ? target.xp : -target.xp
-    const nextXp = Math.max(0, currentUser.xp + xpDelta)
+    const taskXp = Number(target.xp) || 20
+    const xpDelta = nextDone ? taskXp : -taskXp
+    const nextXp = Math.max(0, effectiveXp + xpDelta)
     setUsers((curr) =>
       curr.map((u) =>
-        u.id === currentUser.id ? { ...u, xp: nextXp } : u
+        u.id === currentUser.id || (currentUser.username && u.username === currentUser.username)
+          ? { ...u, xp: nextXp }
+          : u
       )
     )
     saveCloudProfile({ ...currentUser, xp: nextXp })
 
     if (nextDone) {
-      showToast(`Quest "${target.title}" selesai! +${target.xp} XP 🎉`)
+      showToast(`Quest "${target.title}" selesai! +${taskXp} XP 🎉`)
     } else {
-      showToast(`Quest "${target.title}" dibatalkan. (-${target.xp} XP)`)
+      showToast(`Quest "${target.title}" dibatalkan. (-${taskXp} XP)`)
     }
   }
 
   const handleSkipPersonal = (taskId: string) => {
-    const target = personalTasks.find((t) => t.id === taskId && t.userId === currentUser.id)
+    const target =
+      personalTasks.find(
+        (t) =>
+          t.id === taskId &&
+          (t.userId === currentUser.id ||
+            !t.userId ||
+            (currentUser.username && t.userId === currentUser.username) ||
+            (currentUser.username && t.id.includes(currentUser.username)))
+      ) || personalTasks.find((t) => t.id === taskId)
     if (!target) return
 
     const todayIso = new Date().toISOString().slice(0, 10)
@@ -2585,9 +2642,14 @@ export default function Page() {
     }
 
     if (wasDone) {
-      const nextXp = Math.max(0, currentUser.xp - target.xp)
+      const taskXp = Number(target.xp) || 20
+      const nextXp = Math.max(0, effectiveXp - taskXp)
       setUsers((curr) =>
-        curr.map((u) => (u.id === currentUser.id ? { ...u, xp: nextXp } : u))
+        curr.map((u) =>
+          u.id === currentUser.id || (currentUser.username && u.username === currentUser.username)
+            ? { ...u, xp: nextXp }
+            : u
+        )
       )
       saveCloudProfile({ ...currentUser, xp: nextXp })
     }
@@ -2889,13 +2951,16 @@ export default function Page() {
 
     setClanQuests(nextClanQuests)
 
-    const xpDelta = nextDone ? quest.xp : -quest.xp
-    const nextXp = Math.max(0, currentUser.xp + xpDelta)
+    const questXp = Number(quest.xp) || 20
+    const xpDelta = nextDone ? questXp : -questXp
+    const nextXp = Math.max(0, effectiveXp + xpDelta)
 
     // Update User Personal XP
     setUsers((curr) =>
       curr.map((u) =>
-        u.id === currentUser.id ? { ...u, xp: nextXp } : u
+        u.id === currentUser.id || (currentUser.username && u.username === currentUser.username)
+          ? { ...u, xp: nextXp }
+          : u
       )
     )
     saveCloudProfile({ ...currentUser, xp: nextXp })
@@ -2950,10 +3015,15 @@ export default function Page() {
     setClanQuests(nextClanQuests)
 
     if (wasDone) {
-      const xpDelta = -quest.xp
-      const nextXp = Math.max(0, currentUser.xp + xpDelta)
+      const questXp = Number(quest.xp) || 20
+      const xpDelta = -questXp
+      const nextXp = Math.max(0, effectiveXp + xpDelta)
       setUsers((curr) =>
-        curr.map((u) => (u.id === currentUser.id ? { ...u, xp: nextXp } : u))
+        curr.map((u) =>
+          u.id === currentUser.id || (currentUser.username && u.username === currentUser.username)
+            ? { ...u, xp: nextXp }
+            : u
+        )
       )
       saveCloudProfile({ ...currentUser, xp: nextXp })
       setClanMembers((curr) =>
@@ -6467,7 +6537,7 @@ export default function Page() {
                     }}
                   >
                     <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#d8b4fe' }}>
-                      {currentUser.xp.toLocaleString('id-ID')} XP
+                      {effectiveXp.toLocaleString('id-ID')} XP
                     </strong>
                     <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Total XP</span>
                   </div>
@@ -6732,14 +6802,14 @@ export default function Page() {
                               fill="currentColor"
                               style={{ display: 'inline', color: '#c084fc', marginRight: '4px', verticalAlign: '-1px' }}
                             />
-                            {currentUser.xp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
+                            {effectiveXp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
                           </span>
                           <span style={{ color: '#e9d5ff', fontWeight: 800 }}>{levelProgress}%</span>
                         </div>
                         <div className="hero-xp-track">
                           <span
                             className="hero-xp-fill"
-                            style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : 6, levelProgress)}%` }}
+                            style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : (effectiveXp > 0 ? 5 : 0), levelProgress)}%` }}
                           />
                         </div>
                       </div>
@@ -9496,6 +9566,11 @@ export default function Page() {
                 </div>
                 <div className="rank-list">
                   {[...users]
+                    .map((u) =>
+                      u.id === currentUser.id || (currentUser.username && u.username === currentUser.username)
+                        ? { ...u, xp: effectiveXp }
+                        : u
+                    )
                     .sort((a, b) => b.xp - a.xp)
                     .map((u, idx) => (
                       <div
@@ -9570,7 +9645,7 @@ export default function Page() {
 
             <section className="level-card profile-card" style={{ marginBottom: '18px' }}>
               <strong>Level {currentLevel} Hunter</strong>
-              <span>{currentUser.xp.toLocaleString('id-ID')} total XP</span>
+              <span>{effectiveXp.toLocaleString('id-ID')} total XP</span>
               <div className="profile-stats">
                 <div>
                   <b>{completedPersonalCount}</b>
@@ -10407,7 +10482,7 @@ export default function Page() {
                     {currentUser.username}
                   </div>
                   <div style={{ fontSize: '11px', color: '#a79abf' }}>
-                    Rank {currentRank} • Level {currentLevel} • {currentUser.xp} XP
+                    Rank {currentRank} • Level {currentLevel} • {effectiveXp.toLocaleString('id-ID')} XP
                   </div>
                   <div style={{ fontSize: '10px', color: '#6e6284', marginTop: '2px' }}>
                     {currentUser.email}
