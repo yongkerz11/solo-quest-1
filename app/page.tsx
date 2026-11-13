@@ -6984,11 +6984,11 @@ export default function Page() {
               </div>
             ) : isMasteryPageOpen ? (
               /* ================================================================
-                 HALAMAN CATEGORY MASTERY (COMPACT & HIGH-CONTRAST VIEW)
+                 HALAMAN CATEGORY MASTERY (MINIMALIST & HIGH-CONTRAST VIEW)
                  Hanya kategori dengan minimal 1 quest yang aktif; kategori lain terkunci
                  ================================================================ */
               <div style={{ animation: 'heroCardAppear 0.35s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-                {/* 1. Header Bar: Navigasi Kembali, Judul, & Counter Badge */}
+                {/* 1. Header Bar */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <button
@@ -7040,37 +7040,32 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* 2. SECTION 1: DAFTAR KATEGORI AKTIF (COMPACT SINGLE ROW & HIGHLIGHTED BUTTONS) */}
-                <div style={{ marginBottom: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#f3f1ff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Kategori Aktif
-                      </span>
-                      <span style={{ fontSize: '9.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '5px', background: 'rgba(168, 85, 247, 0.25)', color: '#e9d5ff' }}>
-                        {unlockedMasteries.length}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '10px', color: '#c4b5fd', fontWeight: 600 }}>
-                      Pilih 1 untuk tampil di Dashboard
+                {/* 2. SECTION 1: KATEGORI AKTIF (MINIMALIST SINGLE ROW) */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#f3f1ff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Kategori Aktif
+                    </span>
+                    <span style={{ fontSize: '9.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '5px', background: 'rgba(168, 85, 247, 0.25)', color: '#e9d5ff' }}>
+                      {unlockedMasteries.length}
                     </span>
                   </div>
 
                   {unlockedMasteries.length === 0 ? (
                     <div
                       style={{
-                        padding: '18px 14px',
+                        padding: '16px 14px',
                         borderRadius: '11px',
                         background: 'rgba(14, 10, 26, 0.65)',
                         border: '1px dashed rgba(168, 85, 247, 0.25)',
                         textAlign: 'center',
                       }}
                     >
-                      <p style={{ margin: 0, fontSize: '12px', color: '#c4b5fd', fontWeight: 700 }}>
+                      <p style={{ margin: 0, fontSize: '11.5px', color: '#c4b5fd', fontWeight: 700 }}>
                         Belum ada kategori aktif
                       </p>
-                      <p style={{ margin: '4px 0 0', fontSize: '10px', color: '#a79abf' }}>
-                        Buat minimal 1 quest pada kategori di bawah untuk mengaktifkannya
+                      <p style={{ margin: '3px 0 0', fontSize: '10px', color: '#a79abf' }}>
+                        Buat minimal 1 quest untuk mengaktifkannya
                       </p>
                     </div>
                   ) : (
@@ -7082,7 +7077,7 @@ export default function Page() {
                             key={m.name}
                             style={{
                               borderRadius: '11px',
-                              padding: '9px 12px',
+                              padding: '8px 12px',
                               background: isFeatured
                                 ? 'linear-gradient(135deg, rgba(38, 22, 70, 0.95), rgba(22, 14, 44, 0.92))'
                                 : 'rgba(17, 12, 31, 0.85)',
@@ -7099,7 +7094,7 @@ export default function Page() {
                               transition: 'all 0.2s ease',
                             }}
                           >
-                            {/* Kiri: Icon Squircle + Judul Kategori + Sub-stat */}
+                            {/* Kiri: Icon Squircle + Judul Kategori + Sub-stat Minimalis */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
                               <div
                                 style={{
@@ -7118,31 +7113,16 @@ export default function Page() {
                                 {m.icon}
                               </div>
                               <div style={{ minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <strong style={{ fontSize: '13px', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {m.name}
-                                  </strong>
-                                  <span
-                                    style={{
-                                      fontSize: '9.5px',
-                                      fontWeight: 700,
-                                      color: '#c4b5fd',
-                                      padding: '1px 5px',
-                                      borderRadius: '4px',
-                                      background: 'rgba(168, 85, 247, 0.16)',
-                                      whiteSpace: 'nowrap',
-                                    }}
-                                  >
-                                    +{m.xpPerQuest} XP
-                                  </span>
-                                </div>
-                                <div style={{ fontSize: '10px', color: '#c4b5fd', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  {m.count}x selesai • {m.totalQuestCount} quest terdaftar
+                                <strong style={{ fontSize: '13px', fontWeight: 800, color: '#ffffff', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {m.name}
+                                </strong>
+                                <div style={{ fontSize: '10px', color: '#c4b5fd', marginTop: '1px', whiteSpace: 'nowrap' }}>
+                                  {m.count}x selesai • {m.totalQuestCount} quest
                                 </div>
                               </div>
                             </div>
 
-                            {/* Kanan: XP Score + Highlighted Action Button / Golden Active Badge */}
+                            {/* Kanan: Total XP + Tombol Aksi */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                               <div style={{ textAlign: 'right' }}>
                                 <span style={{ fontSize: '13.5px', fontWeight: 900, color: '#f3e8ff', letterSpacing: '-0.01em', textShadow: '0 0 10px rgba(192, 132, 252, 0.5)' }}>
@@ -7204,26 +7184,21 @@ export default function Page() {
                   )}
                 </div>
 
-                {/* 3. SECTION 2: KATEGORI TERKUNCI (GRID 2 KOLOM RAMPING DENGAN TOMBOL HIGHLIGHTED) */}
+                {/* 3. SECTION 2: KATEGORI TERKUNCI (MINIMALIST GRID) */}
                 {lockedMasteries.length > 0 && (
-                  <div style={{ marginBottom: '22px' }}>
-                    <div style={{ marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            🔒 Kategori Terkunci
-                          </span>
-                          <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff' }}>
-                            {lockedMasteries.length}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '9.5px', color: '#c4b5fd', fontWeight: 600 }}>
-                          Buat 1 quest untuk unlock
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          🔒 Kategori Terkunci
+                        </span>
+                        <span style={{ fontSize: '9px', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff' }}>
+                          {lockedMasteries.length}
                         </span>
                       </div>
-                      <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#c4b5fd' }}>
-                        Kategori ini belum memiliki quest. Klik <strong>+ Quest</strong> untuk membukanya.
-                      </p>
+                      <span style={{ fontSize: '9.5px', color: '#c4b5fd', fontWeight: 600 }}>
+                        Buat 1 quest untuk unlock
+                      </span>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '7px' }}>
