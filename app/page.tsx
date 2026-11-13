@@ -1221,6 +1221,7 @@ export default function Page() {
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'offline'>('idle')
   const [isHistoryPageOpen, setIsHistoryPageOpen] = useState<boolean>(false)
   const [isMasteryPageOpen, setIsMasteryPageOpen] = useState<boolean>(false)
+  const [featuredCategoryName, setFeaturedCategoryName] = useState<string | null>(null)
   const [historyFilter, setHistoryFilter] = useState<'all' | 'gym' | 'other'>('all')
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
 
@@ -1517,6 +1518,8 @@ export default function Page() {
   // Load persisted data from localStorage + check Supabase session
   useEffect(() => {
     setMounted(true)
+    const savedFeaturedCat = localStorage.getItem('solo_featured_mastery_cat')
+    if (savedFeaturedCat) setFeaturedCategoryName(savedFeaturedCat)
     const saved = localStorage.getItem('solo_community_v1')
     if (saved) {
       try {
@@ -1878,6 +1881,13 @@ export default function Page() {
   const sRankCategories = unlockedMasteries.filter((m) => m.rank === 'S')
   const topMasteryCategories = [...unlockedMasteries]
     .sort((a, b) => b.xp - a.xp || b.count - a.count || b.totalQuestCount - a.totalQuestCount)
+  const featuredCategory = (() => {
+    if (featuredCategoryName) {
+      const found = unlockedMasteries.find((c) => c.name === featuredCategoryName)
+      if (found) return found
+    }
+    return topMasteryCategories[0] || null
+  })()
 
   // Derive Personal Records (PR) & Total Volume dari semua gerakan latihan
   const userExerciseRecords = (() => {
@@ -3428,6 +3438,14 @@ export default function Page() {
     )
     setIsPreferencesModalOpen(false)
     showToast('Pengaturan Hunter berhasil disimpan!')
+  }
+
+  const handleSelectFeaturedCategory = (catName: string) => {
+    setFeaturedCategoryName(catName)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('solo_featured_mastery_cat', catName)
+    }
+    showToast('⭐ ' + catName + ' sekarang ditampilkan di Dashboard!')
   }
 
   const handleSignOut = async () => {
@@ -7028,27 +7046,30 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Compact Tier Strip (1 baris ramping) */}
+                {/* Info Pilihan Tampilan Dashboard */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '6px',
-                    padding: '6px 10px',
-                    borderRadius: '9px',
-                    background: 'rgba(16, 12, 28, 0.75)',
-                    border: '1px solid rgba(168, 85, 247, 0.18)',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(168, 85, 247, 0.09)',
+                    border: '1px solid rgba(168, 85, 247, 0.24)',
                     marginBottom: '14px',
-                    fontSize: '9.5px',
-                    color: '#9a8fb3',
+                    fontSize: '11px',
+                    color: '#d8b4fe',
                   }}
                 >
-                  <span style={{ fontWeight: 800, color: '#c4b5fd', textTransform: 'uppercase' }}>
-                    Jenjang:
-                  </span>
-                  <span style={{ fontWeight: 600 }}>
-                    E (0) → D (100) → C (300) → B (700) → A (1.5k) → <b style={{ color: '#fde047' }}>👑 S (3k XP)</b>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '13px' }}>⭐</span>
+                    <span>
+                      Tampil di Dashboard: <strong>{featuredCategory ? `${featuredCategory.icon} ${featuredCategory.name} (${featuredCategory.xp} XP)` : 'Belum ada'}</strong>
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '9.5px', color: '#a79abf' }}>
+                    Pilih kategori di bawah
                   </span>
                 </div>
 
@@ -7064,7 +7085,7 @@ export default function Page() {
                       </span>
                     </div>
                     <span style={{ fontSize: '9.5px', color: '#8e84a2' }}>
-                      Kategori yang memiliki quest
+                      Hanya kategori dengan minimal 1 quest
                     </span>
                   </div>
 
@@ -7088,81 +7109,84 @@ export default function Page() {
                   ) : (
                     <div style={{ display: 'grid', gap: '6px' }}>
                       {unlockedMasteries.map((m) => {
-                        const isRankS = m.rank === 'S'
-                        const isHighRank = m.rank === 'A' || m.rank === 'B'
+                        const isFeatured = featuredCategory?.name === m.name
                         return (
                           <div
                             key={m.name}
                             style={{
-                              padding: '8px 11px',
-                              borderRadius: '10px',
-                              background: isRankS
-                                ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.12), rgba(161, 98, 7, 0.14))'
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '10px',
+                              padding: '10px 12px',
+                              borderRadius: '11px',
+                              background: isFeatured
+                                ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.16), rgba(88, 28, 135, 0.16))'
                                 : 'rgba(18, 13, 34, 0.85)',
-                              border: isRankS
-                                ? '1px solid rgba(250, 204, 21, 0.45)'
-                                : isHighRank
-                                ? '1px solid rgba(168, 85, 247, 0.32)'
-                                : '1px solid rgba(168, 85, 247, 0.2)',
+                              border: isFeatured
+                                ? '1px solid rgba(168, 85, 247, 0.5)'
+                                : '1px solid rgba(168, 85, 247, 0.18)',
+                              boxShadow: isFeatured ? '0 0 16px rgba(168, 85, 247, 0.15)' : 'none',
+                              transition: 'all 0.2s ease',
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                <span style={{ fontSize: '16px' }}>{m.icon}</span>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <strong style={{ fontSize: '12px', fontWeight: 700, color: '#f3f1ff', whiteSpace: 'nowrap' }}>
-                                      {m.name}
-                                    </strong>
-                                    {isRankS && <span style={{ fontSize: '10px' }}>👑</span>}
-                                  </div>
-                                  <span style={{ fontSize: '9.5px', color: '#8e84a2' }}>
-                                    +{m.xpPerQuest} XP/quest • {m.count}x selesai ({m.totalQuestCount} quest terdaftar)
-                                  </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                              <span style={{ fontSize: '20px', flexShrink: 0 }}>{m.icon}</span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <strong style={{ fontSize: '13px', fontWeight: 800, color: '#f3f1ff', whiteSpace: 'nowrap' }}>
+                                    {m.name}
+                                  </strong>
+                                  {isFeatured && (
+                                    <span
+                                      style={{
+                                        fontSize: '9px',
+                                        fontWeight: 800,
+                                        padding: '1px 6px',
+                                        borderRadius: '5px',
+                                        background: 'rgba(168, 85, 247, 0.28)',
+                                        border: '1px solid rgba(168, 85, 247, 0.55)',
+                                        color: '#e9d5ff',
+                                      }}
+                                    >
+                                      ⭐ Tampil di Dashboard
+                                    </span>
+                                  )}
                                 </div>
-                              </div>
-                              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                <span
-                                  style={{
-                                    display: 'inline-block',
-                                    padding: '1.5px 7px',
-                                    borderRadius: '5px',
-                                    fontSize: '10px',
-                                    fontWeight: 800,
-                                    background: isRankS ? 'rgba(250, 204, 21, 0.2)' : isHighRank ? 'rgba(168, 85, 247, 0.22)' : 'rgba(255, 255, 255, 0.08)',
-                                    color: isRankS ? '#fde047' : isHighRank ? '#d8b4fe' : '#cbd5e1',
-                                    border: isRankS ? '1px solid rgba(250, 204, 21, 0.45)' : '1px solid rgba(168, 85, 247, 0.28)',
-                                  }}
-                                >
-                                  {isRankS ? '👑 Rank S' : `Rank ${m.rank}`}
+                                <span style={{ fontSize: '10px', color: '#9a8fb3', display: 'block', marginTop: '2px' }}>
+                                  +{m.xpPerQuest} XP/quest • {m.count}x selesai ({m.totalQuestCount} quest terdaftar)
                                 </span>
-                                <div style={{ fontSize: '9px', color: '#a79abf', marginTop: '2px', fontWeight: 600 }}>
-                                  {m.nextThreshold ? `${m.xp.toLocaleString('id-ID')} / ${m.nextThreshold.toLocaleString('id-ID')} XP` : `${m.xp.toLocaleString('id-ID')} XP (MAX)`}
-                                </div>
                               </div>
                             </div>
 
-                            {/* Slim Progress Bar */}
-                            <div
-                              style={{
-                                height: '3.5px',
-                                borderRadius: '999px',
-                                background: 'rgba(255, 255, 255, 0.07)',
-                                overflow: 'hidden',
-                                marginTop: '6px',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: `${m.progressPct}%`,
-                                  height: '100%',
-                                  borderRadius: '999px',
-                                  background: isRankS
-                                    ? 'linear-gradient(90deg, #facc15, #f59e0b)'
-                                    : 'linear-gradient(90deg, #8b5cf6, #c084fc)',
-                                  transition: 'width 0.3s ease',
-                                }}
-                              />
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px', flexShrink: 0 }}>
+                              <div style={{ fontSize: '13.5px', fontWeight: 900, color: '#c084fc' }}>
+                                {m.xp.toLocaleString('id-ID')} XP
+                              </div>
+                              {!isFeatured ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectFeaturedCategory(m.name)}
+                                  style={{
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    background: 'rgba(255, 255, 255, 0.06)',
+                                    border: '1px solid rgba(255, 255, 255, 0.16)',
+                                    color: '#d8b4fe',
+                                    fontSize: '9.5px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                  title={`Tampilkan ${m.name} di bawah rank badge pada Dashboard`}
+                                >
+                                  Tampilkan di Dashboard
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: '9px', color: '#a79abf', fontWeight: 600 }}>
+                                  Aktif di Rank Badge
+                                </span>
+                              )}
                             </div>
                           </div>
                         )
@@ -7286,142 +7310,206 @@ export default function Page() {
                       </div>
                     </div>
 
-                    {/* SHADOW MONARCH WINGED HEXAGONAL SVG RANK EMBLEM */}
-                    <div
-                      className="rank-hex-emblem"
-                      onClick={() => setActiveTab('rank')}
-                      title="Lihat Peringkat Hunter"
-                    >
-                      <div className="rank-hex-float">
-                        <svg
-                          className="rank-hex-svg"
-                          viewBox="0 0 106 102"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <defs>
-                            <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
-                              <stop offset="0%" stopColor="#e9d5ff" />
-                              <stop offset="45%" stopColor="#9333ea" />
-                              <stop offset="100%" stopColor="#4c1d95" />
-                            </linearGradient>
-                            <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
-                              <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
-                              <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
-                              <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
-                            </radialGradient>
-                            <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
-                              <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
-                            </linearGradient>
-                          </defs>
+                    {/* SHADOW MONARCH WINGED HEXAGONAL SVG RANK EMBLEM + 1 CATEGORY MASTERY PILL */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                      <div
+                        className="rank-hex-emblem"
+                        onClick={() => setActiveTab('rank')}
+                        title="Lihat Peringkat Hunter"
+                      >
+                        <div className="rank-hex-float">
+                          <svg
+                            className="rank-hex-svg"
+                            viewBox="0 0 106 102"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <defs>
+                              <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stopColor="#e9d5ff" />
+                                <stop offset="45%" stopColor="#9333ea" />
+                                <stop offset="100%" stopColor="#4c1d95" />
+                              </linearGradient>
+                              <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
+                                <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
+                                <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
+                                <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
+                              </radialGradient>
+                              <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
+                                <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
+                              </linearGradient>
+                            </defs>
 
-                          {/* 1. Cincin Orbit Luar Berputar Halus */}
-                          <g className="rank-svg-orbit-cw">
-                            <circle
-                              cx="53"
-                              cy="51"
-                              r="47"
-                              stroke="rgba(168, 85, 247, 0.25)"
-                              strokeWidth="1"
-                              strokeDasharray="6 6"
+                            {/* 1. Cincin Orbit Luar Berputar Halus */}
+                            <g className="rank-svg-orbit-cw">
+                              <circle
+                                cx="53"
+                                cy="51"
+                                r="47"
+                                stroke="rgba(168, 85, 247, 0.25)"
+                                strokeWidth="1"
+                                strokeDasharray="6 6"
+                              />
+                              <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
+                              <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
+                            </g>
+
+                            {/* 2. Busur Energi Dalam Berputar Berlawanan */}
+                            <g className="rank-svg-orbit-ccw">
+                              <circle
+                                cx="53"
+                                cy="51"
+                                r="43"
+                                stroke="rgba(216, 180, 254, 0.35)"
+                                strokeWidth="1.2"
+                                strokeDasharray="24 66"
+                                strokeLinecap="round"
+                              />
+                            </g>
+
+                            {/* 3. Sayap Geometris Kiri & Kanan (Shadow Blades) */}
+                            <g className="rank-svg-wings">
+                              <path
+                                d="M15 34 L3 25 L8 42 L15 46 Z"
+                                fill="url(#wingGrad)"
+                              />
+                              <path
+                                d="M15 50 L1 47 L7 60 L15 62 Z"
+                                fill="url(#wingGrad)"
+                                opacity="0.75"
+                              />
+                              <path
+                                d="M91 34 L103 25 L98 42 L91 46 Z"
+                                fill="url(#wingGrad)"
+                              />
+                              <path
+                                d="M91 50 L105 47 L99 60 L91 62 Z"
+                                fill="url(#wingGrad)"
+                                opacity="0.75"
+                              />
+                            </g>
+
+                            {/* 4. Bingkai Perisai Heksagonal Utama */}
+                            <polygon
+                              points="53,8 90,28 90,74 53,94 16,74 16,28"
+                              fill="url(#hexCoreGrad)"
+                              stroke="url(#hexOuterGrad)"
+                              strokeWidth="2"
+                              strokeLinejoin="round"
                             />
-                            <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
-                            <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
-                          </g>
 
-                          {/* 2. Busur Energi Dalam Berputar Berlawanan */}
-                          <g className="rank-svg-orbit-ccw">
-                            <circle
-                              cx="53"
-                              cy="51"
-                              r="43"
-                              stroke="rgba(216, 180, 254, 0.35)"
-                              strokeWidth="1.2"
-                              strokeDasharray="24 66"
+                            {/* 5. Aliran Cahaya Laser Mengelilingi Garis Heksagon (Halo + Inti Tanpa CPU Filter) */}
+                            <polygon
+                              className="rank-svg-laser-glow"
+                              pathLength={100}
+                              points="53,8 90,28 90,74 53,94 16,74 16,28"
+                              fill="none"
+                              stroke="rgba(216, 180, 254, 0.42)"
+                              strokeWidth="5"
                               strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
-                          </g>
-
-                          {/* 3. Sayap Geometris Kiri & Kanan (Shadow Blades) */}
-                          <g className="rank-svg-wings">
-                            {/* Sayap Kiri */}
-                            <path
-                              d="M15 34 L3 25 L8 42 L15 46 Z"
-                              fill="url(#wingGrad)"
+                            <polygon
+                              className="rank-svg-laser-border"
+                              pathLength={100}
+                              points="53,8 90,28 90,74 53,94 16,74 16,28"
+                              fill="none"
+                              stroke="#f3e8ff"
+                              strokeWidth="2.2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
-                            <path
-                              d="M15 50 L1 47 L7 60 L15 62 Z"
-                              fill="url(#wingGrad)"
-                              opacity="0.75"
+
+                            {/* 6. Garis Dalam Heksagon Presisi */}
+                            <polygon
+                              points="53,13 85,31 85,71 53,89 21,71 21,31"
+                              fill="none"
+                              stroke="rgba(192, 132, 252, 0.28)"
+                              strokeWidth="1"
                             />
-                            {/* Sayap Kanan */}
-                            <path
-                              d="M91 34 L103 25 L98 42 L91 46 Z"
-                              fill="url(#wingGrad)"
-                            />
-                            <path
-                              d="M91 50 L105 47 L99 60 L91 62 Z"
-                              fill="url(#wingGrad)"
-                              opacity="0.75"
-                            />
-                          </g>
 
-                          {/* 4. Bingkai Perisai Heksagonal Utama */}
-                          <polygon
-                            points="53,8 90,28 90,74 53,94 16,74 16,28"
-                            fill="url(#hexCoreGrad)"
-                            stroke="url(#hexOuterGrad)"
-                            strokeWidth="2"
-                            strokeLinejoin="round"
-                          />
+                            {/* 7. Ornamen Berlian Puncak & Bawah */}
+                            <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
+                            <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
+                          </svg>
 
-                          {/* 5. Aliran Cahaya Laser Mengelilingi Garis Heksagon (Halo + Inti Tanpa CPU Filter) */}
-                          <polygon
-                            className="rank-svg-laser-glow"
-                            pathLength={100}
-                            points="53,8 90,28 90,74 53,94 16,74 16,28"
-                            fill="none"
-                            stroke="rgba(216, 180, 254, 0.42)"
-                            strokeWidth="5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <polygon
-                            className="rank-svg-laser-border"
-                            pathLength={100}
-                            points="53,8 90,28 90,74 53,94 16,74 16,28"
-                            fill="none"
-                            stroke="#f3e8ff"
-                            strokeWidth="2.2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-
-                          {/* 6. Garis Dalam Heksagon Presisi */}
-                          <polygon
-                            points="53,13 85,31 85,71 53,89 21,71 21,31"
-                            fill="none"
-                            stroke="rgba(192, 132, 252, 0.28)"
-                            strokeWidth="1"
-                          />
-
-                          {/* 7. Ornamen Berlian Puncak & Bawah */}
-                          <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
-                          <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
-                        </svg>
-
-                        {/* Teks Rank di Tengah Perisai Heksagon */}
-                        <div className="rank-hex-content">
-                          <span className="rank-hex-label">RANK</span>
-                          <strong className="rank-hex-letter">{currentRank}</strong>
-                          <span className="rank-hex-sub">HUNTER</span>
+                          {/* Teks Rank di Tengah Perisai Heksagon */}
+                          <div className="rank-hex-content">
+                            <span className="rank-hex-label">RANK</span>
+                            <strong className="rank-hex-letter">{currentRank}</strong>
+                            <span className="rank-hex-sub">HUNTER</span>
+                          </div>
                         </div>
                       </div>
+
+                      {/* 1 Category Mastery Pill di Bawah Rank Badge */}
+                      {featuredCategory ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsMasteryPageOpen(true)}
+                          className="rank-mastery-pill"
+                          style={{
+                            marginTop: '6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '7px',
+                            background: 'rgba(168, 85, 247, 0.14)',
+                            border: '1px solid rgba(168, 85, 247, 0.32)',
+                            color: '#e9d5ff',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            maxWidth: '124px',
+                            transition: 'all 0.2s ease',
+                          }}
+                          title="Buka Category Mastery (Kategori dengan XP tertinggi atau pilihanmu)"
+                        >
+                          <span style={{ fontSize: '11px', flexShrink: 0 }}>{featuredCategory.icon}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '58px' }}>
+                            {featuredCategory.name}
+                          </span>
+                          <span style={{ color: '#c084fc', fontWeight: 800, whiteSpace: 'nowrap', fontSize: '10px' }}>
+                            {featuredCategory.xp} XP
+                          </span>
+                          <ChevronRight size={10} style={{ color: '#a79abf', flexShrink: 0 }} />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsMasteryPageOpen(true)}
+                          className="rank-mastery-pill"
+                          style={{
+                            marginTop: '6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '7px',
+                            background: 'rgba(168, 85, 247, 0.12)',
+                            border: '1px solid rgba(168, 85, 247, 0.28)',
+                            color: '#e9d5ff',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            maxWidth: '124px',
+                            transition: 'all 0.2s ease',
+                          }}
+                          title="Buka Category Mastery"
+                        >
+                          <span style={{ fontSize: '11px' }}>🎯</span>
+                          <span>Mastery</span>
+                          <ChevronRight size={10} style={{ color: '#a79abf' }} />
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  {/* Integrated 4-Item Bento Stats Dock (2x2 Grid) */}
+                  {/* Integrated 3-Item Bento Stats Dock */}
                   <div className="hero-stats-dock">
                     {/* 1. Streak */}
                     <div className="hero-dock-item">
@@ -7463,30 +7551,7 @@ export default function Page() {
                       </div>
                     </div>
 
-                    {/* 3. Category Mastery (Seamless Hunter Stat) */}
-                    <div
-                      className="hero-dock-item clickable"
-                      onClick={() => setIsMasteryPageOpen(true)}
-                      title="Buka Halaman Category Mastery"
-                    >
-                      <div
-                        className="hero-dock-icon"
-                        style={{
-                          background: 'rgba(168, 85, 247, 0.18)',
-                          border: '1px solid rgba(168, 85, 247, 0.36)',
-                          color: '#c084fc',
-                          fontSize: '13px',
-                        }}
-                      >
-                        🎯
-                      </div>
-                      <div>
-                        <strong>{unlockedMasteries.length} Kategori</strong>
-                        <span>Mastery ›</span>
-                      </div>
-                    </div>
-
-                    {/* 4. Clan */}
+                    {/* 3. Clan */}
                     <div
                       className="hero-dock-item clickable"
                       onClick={() => setActiveTab('clan')}
@@ -7508,58 +7573,6 @@ export default function Page() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Natural Active Categories Inline Strip (Tanpa Card Terpisah) */}
-                  {unlockedMasteries.length > 0 && (
-                    <div
-                      onClick={() => setIsMasteryPageOpen(true)}
-                      style={{
-                        marginTop: '11px',
-                        paddingTop: '9px',
-                        borderTop: '1px solid rgba(168, 85, 247, 0.12)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '8px',
-                        cursor: 'pointer',
-                      }}
-                      title="Lihat Detail Category Mastery"
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 800, color: '#a79abf', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-                          Mastery:
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-                          {unlockedMasteries.map((m) => (
-                            <span
-                              key={m.name}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '3px',
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                color: '#d8b4fe',
-                                background: m.rank === 'S' ? 'rgba(250, 204, 21, 0.15)' : 'rgba(168, 85, 247, 0.12)',
-                                border: m.rank === 'S' ? '1px solid rgba(250, 204, 21, 0.4)' : '1px solid rgba(168, 85, 247, 0.2)',
-                                padding: '2px 6px',
-                                borderRadius: '5px',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              <span>{m.icon}</span>
-                              <span>{m.name}</span>
-                              <span style={{ fontSize: '9px', fontWeight: 800, color: m.rank === 'S' ? '#fde047' : '#c084fc' }}>• {m.rank}</span>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#a79abf', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
-                        <span>Lihat</span>
-                        <ChevronRight size={12} />
-                      </div>
-                    </div>
-                  )}
                 </section>
 
                 {/* SECTION 1: JADWAL & KONSISTENSI MINGGU INI (INTERACTIVE 7-DAY STRIP UNTUK SEMUA QUEST) */}

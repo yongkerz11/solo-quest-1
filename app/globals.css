@@ -293,7 +293,9 @@ button { font: inherit; color: inherit; }
     0 0 24px rgba(168, 85, 247, 0.65),
     0 2px 4px rgba(9, 5, 20, 0.9);
 }
-.rank-hex-sub {
+.rank-mastery-pill { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+  .rank-mastery-pill:hover { background: rgba(168, 85, 247, 0.25) !important; border-color: rgba(168, 85, 247, 0.55) !important; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(168, 85, 247, 0.25); }
+  .rank-hex-sub {
   margin-top: 2px;
   font-size: 9.5px;
   font-weight: 800;
@@ -306,7 +308,7 @@ button { font: inherit; color: inherit; }
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-top: 14px;
   padding-top: 12px;
