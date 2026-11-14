@@ -796,7 +796,7 @@ function QuestCard({
                 {xp !== undefined && (
                   <span
                     style={{
-                      color: done ? '#4ade80' : '#c084fc',
+                      color: done ? '#d8b4fe' : '#c084fc',
                       fontWeight: 700,
                       flexShrink: 0,
                     }}
@@ -5143,8 +5143,8 @@ export default function Page() {
                                 style={{
                                   fontSize: '9.5px',
                                   fontWeight: 800,
-                                  color: diffFromPrev > 0 ? '#4ade80' : '#f87171',
-                                  background: diffFromPrev > 0 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                  color: diffFromPrev > 0 ? '#d8b4fe' : '#f87171',
+                                  background: diffFromPrev > 0 ? 'rgba(192, 132, 252, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                                   padding: '2px 5px',
                                   borderRadius: '5px',
                                   lineHeight: 1,
@@ -6923,9 +6923,10 @@ export default function Page() {
                               style={{
                                 fontSize: '11px',
                                 fontWeight: 800,
-                                color: '#4ade80',
-                                background: 'rgba(74, 222, 128, 0.14)',
-                                border: '1px solid rgba(74, 222, 128, 0.32)',
+                                color: '#f3e8ff',
+                                background: 'rgba(168, 85, 247, 0.2)',
+                                border: '1px solid rgba(192, 132, 252, 0.48)',
+                                boxShadow: '0 0 10px rgba(168, 85, 247, 0.18)',
                                 padding: '4px 9px',
                                 borderRadius: '8px',
                                 whiteSpace: 'nowrap',
@@ -7077,7 +7078,7 @@ export default function Page() {
                       fontWeight: 800,
                     }}
                   >
-                    <span style={{ color: '#4ade80' }}>● {unlockedMasteries.length} Aktif</span>
+                    <span style={{ color: '#d8b4fe' }}>● {unlockedMasteries.length} Aktif</span>
                     <span style={{ color: 'rgba(255,255,255,0.25)' }}>|</span>
                     <span style={{ color: '#cbd5e1' }}>{lockedMasteries.length} Terkunci</span>
                   </div>
@@ -7598,9 +7599,9 @@ export default function Page() {
                       <div
                         className="hero-dock-icon"
                         style={{
-                          background: 'rgba(255, 157, 97, 0.14)',
-                          border: '1px solid rgba(255, 157, 97, 0.3)',
-                          color: '#ff9d61',
+                          background: 'rgba(168, 85, 247, 0.16)',
+                          border: '1px solid rgba(192, 132, 252, 0.35)',
+                          color: '#d8b4fe',
                         }}
                       >
                         <Flame size={13} />
@@ -7618,9 +7619,9 @@ export default function Page() {
                       <div
                         className="hero-dock-icon"
                         style={{
-                          background: 'rgba(74, 222, 128, 0.14)',
-                          border: '1px solid rgba(74, 222, 128, 0.3)',
-                          color: '#4ade80',
+                          background: 'rgba(168, 85, 247, 0.16)',
+                          border: '1px solid rgba(192, 132, 252, 0.35)',
+                          color: '#d8b4fe',
                         }}
                       >
                         <Activity size={13} />
@@ -7640,9 +7641,9 @@ export default function Page() {
                       <div
                         className="hero-dock-icon"
                         style={{
-                          background: 'rgba(99, 102, 241, 0.14)',
-                          border: '1px solid rgba(99, 102, 241, 0.3)',
-                          color: '#a5b4fc',
+                          background: 'rgba(168, 85, 247, 0.16)',
+                          border: '1px solid rgba(192, 132, 252, 0.35)',
+                          color: '#d8b4fe',
                         }}
                       >
                         <Shield size={13} />
@@ -7725,7 +7726,7 @@ export default function Page() {
                           borderRadius: '13px',
                           background: 'rgba(10, 8, 19, 0.72)',
                           border: allDoneForDay
-                            ? '1px solid rgba(74, 222, 128, 0.28)'
+                            ? '1px solid rgba(192, 132, 252, 0.28)'
                             : '1px solid rgba(139, 92, 246, 0.18)',
                         }}
                       >
@@ -7745,7 +7746,7 @@ export default function Page() {
                             style={{
                               fontSize: '10px',
                               fontWeight: allDoneForDay ? 700 : 500,
-                              color: allDoneForDay ? '#4ade80' : '#b8add1',
+                              color: allDoneForDay ? '#d8b4fe' : '#b8add1',
                             }}
                           >
                             {allDoneForDay
@@ -7786,12 +7787,12 @@ export default function Page() {
                                     height: '20px',
                                     borderRadius: '6px',
                                     border: task.done
-                                      ? '1px solid #4ade80'
+                                      ? '1px solid #d8b4fe'
                                       : isSkipped
                                       ? '1px solid #ef4444'
                                       : '1px solid rgba(168, 85, 247, 0.45)',
                                     background: task.done
-                                      ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 101, 52, 0.5))'
+                                      ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(107, 33, 168, 0.5))'
                                       : isSkipped
                                       ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(153, 27, 27, 0.4))'
                                       : 'rgba(24, 18, 42, 0.7)',
@@ -7800,8 +7801,8 @@ export default function Page() {
                                     justifyContent: 'center',
                                     cursor: 'pointer',
                                     flexShrink: 0,
-                                    color: task.done ? '#4ade80' : isSkipped ? '#f87171' : 'transparent',
-                                    boxShadow: task.done ? '0 0 10px rgba(34, 197, 94, 0.3)' : 'none',
+                                    color: task.done ? '#d8b4fe' : isSkipped ? '#f87171' : 'transparent',
+                                    boxShadow: task.done ? '0 0 10px rgba(168, 85, 247, 0.3)' : 'none',
                                     transition: 'all 0.15s ease',
                                   }}
                                   title={task.done ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
@@ -8018,9 +8019,10 @@ export default function Page() {
                                 style={{
                                   fontSize: '10.5px',
                                   fontWeight: 800,
-                                  color: '#4ade80',
-                                  background: 'rgba(74, 222, 128, 0.12)',
-                                  border: '1px solid rgba(74, 222, 128, 0.28)',
+                                  color: '#f3e8ff',
+                                  background: 'rgba(168, 85, 247, 0.2)',
+                                  border: '1px solid rgba(192, 132, 252, 0.48)',
+                                  boxShadow: '0 0 10px rgba(168, 85, 247, 0.18)',
                                   padding: '3px 8px',
                                   borderRadius: '8px',
                                 }}
@@ -8407,10 +8409,10 @@ export default function Page() {
                       <div
                         style={{
                           background: isAllDone
-                            ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.14), rgba(22, 101, 52, 0.25))'
+                            ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.14), rgba(107, 33, 168, 0.25))'
                             : 'linear-gradient(135deg, rgba(37, 20, 68, 0.75), rgba(18, 14, 30, 0.92))',
                           border: isAllDone
-                            ? '1px solid rgba(74, 222, 128, 0.45)'
+                            ? '1px solid rgba(192, 132, 252, 0.45)'
                             : '1px solid rgba(168, 85, 247, 0.35)',
                           borderRadius: '14px',
                           padding: '11px 14px',
@@ -8445,11 +8447,11 @@ export default function Page() {
                           style={{
                             fontSize: '12.5px',
                             fontWeight: 900,
-                            color: isAllDone ? '#4ade80' : '#f3e8ff',
-                            background: isAllDone ? 'rgba(74, 222, 128, 0.22)' : 'rgba(168, 85, 247, 0.22)',
+                            color: isAllDone ? '#d8b4fe' : '#f3e8ff',
+                            background: isAllDone ? 'rgba(192, 132, 252, 0.22)' : 'rgba(168, 85, 247, 0.22)',
                             padding: '5px 11px',
                             borderRadius: '8px',
-                            border: isAllDone ? '1px solid rgba(74, 222, 128, 0.5)' : '1px solid rgba(168, 85, 247, 0.4)',
+                            border: isAllDone ? '1px solid rgba(192, 132, 252, 0.5)' : '1px solid rgba(168, 85, 247, 0.4)',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -9167,7 +9169,7 @@ export default function Page() {
                               style={{
                                 height: '100%',
                                 width: `${pct}%`,
-                                background: pct === 100 ? '#10b981' : 'linear-gradient(90deg, #7c3aed, #c084fc)',
+                                background: pct === 100 ? '#a855f7' : 'linear-gradient(90deg, #7c3aed, #c084fc)',
                                 borderRadius: '999px',
                                 transition: 'width 0.3s ease',
                               }}
@@ -9205,7 +9207,7 @@ export default function Page() {
                               justifyContent: 'space-between',
                               fontSize: '11px',
                               fontWeight: 800,
-                              color: '#4ade80',
+                              color: '#d8b4fe',
                               marginBottom: '10px',
                               letterSpacing: '0.04em',
                             }}
@@ -9242,8 +9244,8 @@ export default function Page() {
                                       alignItems: 'center',
                                       justifyContent: 'space-between',
                                       padding: '9px 12px',
-                                      background: isMe ? 'rgba(74, 222, 128, 0.08)' : '#0d0a18',
-                                      border: isMe ? '1px solid rgba(74, 222, 128, 0.35)' : '1px solid #1f1a2e',
+                                      background: isMe ? 'rgba(192, 132, 252, 0.08)' : '#0d0a18',
+                                      border: isMe ? '1px solid rgba(192, 132, 252, 0.35)' : '1px solid #1f1a2e',
                                       borderRadius: '10px',
                                     }}
                                   >
@@ -9269,7 +9271,7 @@ export default function Page() {
                                       <div>
                                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#f3f1ff', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                           {mUser?.username || 'Hunter'}
-                                          {isMe && <span style={{ fontSize: '10px', color: '#4ade80' }}>(Kamu)</span>}
+                                          {isMe && <span style={{ fontSize: '10px', color: '#d8b4fe' }}>(Kamu)</span>}
                                           {isLeader && (
                                             <span className="clan-badge leader" style={{ fontSize: '8px', padding: '1px 5px' }}>
                                               LEADER
@@ -9286,9 +9288,9 @@ export default function Page() {
                                       style={{
                                         fontSize: '10px',
                                         fontWeight: 700,
-                                        color: '#4ade80',
-                                        background: 'rgba(74, 222, 128, 0.12)',
-                                        border: '1px solid rgba(74, 222, 128, 0.3)',
+                                        color: '#d8b4fe',
+                                        background: 'rgba(192, 132, 252, 0.12)',
+                                        border: '1px solid rgba(192, 132, 252, 0.3)',
                                         padding: '3px 8px',
                                         borderRadius: '6px',
                                       }}
@@ -9332,10 +9334,10 @@ export default function Page() {
                                 padding: '14px',
                                 textAlign: 'center',
                                 fontSize: '11px',
-                                color: '#4ade80',
-                                background: 'rgba(74, 222, 128, 0.06)',
+                                color: '#d8b4fe',
+                                background: 'rgba(192, 132, 252, 0.06)',
                                 borderRadius: '10px',
-                                border: '1px solid rgba(74, 222, 128, 0.25)',
+                                border: '1px solid rgba(192, 132, 252, 0.25)',
                                 fontWeight: 600,
                               }}
                             >
@@ -9998,10 +10000,10 @@ export default function Page() {
                           <div
                             style={{
                               background: isAllDone
-                                ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(22, 101, 52, 0.2))'
+                                ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(107, 33, 168, 0.2))'
                                 : 'linear-gradient(135deg, rgba(37, 20, 68, 0.65), rgba(18, 14, 30, 0.85))',
                               border: isAllDone
-                                ? '1px solid rgba(74, 222, 128, 0.35)'
+                                ? '1px solid rgba(192, 132, 252, 0.35)'
                                 : '1px solid rgba(139, 92, 246, 0.25)',
                               borderRadius: '12px',
                               padding: '10px 14px',
@@ -10036,11 +10038,11 @@ export default function Page() {
                               style={{
                                 fontSize: '12px',
                                 fontWeight: 800,
-                                color: isAllDone ? '#4ade80' : '#d5beff',
-                                background: isAllDone ? 'rgba(74, 222, 128, 0.2)' : 'rgba(168, 85, 247, 0.18)',
+                                color: isAllDone ? '#d8b4fe' : '#d5beff',
+                                background: isAllDone ? 'rgba(192, 132, 252, 0.2)' : 'rgba(168, 85, 247, 0.18)',
                                 padding: '4px 10px',
                                 borderRadius: '8px',
-                                border: isAllDone ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(168, 85, 247, 0.3)',
+                                border: isAllDone ? '1px solid rgba(192, 132, 252, 0.4)' : '1px solid rgba(168, 85, 247, 0.3)',
                                 whiteSpace: 'nowrap',
                               }}
                             >
