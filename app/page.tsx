@@ -1267,6 +1267,7 @@ export default function Page() {
   const [featuredCategoryName, setFeaturedCategoryName] = useState<string | null>(null)
   const [historyFilter, setHistoryFilter] = useState<'all' | 'gym' | 'other'>('all')
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
+  const [showCompletedDayQuests, setShowCompletedDayQuests] = useState<boolean>(false)
 
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
@@ -7692,7 +7693,10 @@ export default function Page() {
                         <button
                           key={day.code}
                           type="button"
-                          onClick={() => setSelectedWeekDay(day.code)}
+                          onClick={() => {
+                            setSelectedWeekDay(day.code)
+                            setShowCompletedDayQuests(false)
+                          }}
                           className={`week-day-pill ${isSelected ? 'selected' : ''} ${day.isToday ? 'today-ring' : ''}`}
                         >
                           <span className="week-day-name">{day.shortLabel}</span>
@@ -7707,7 +7711,7 @@ export default function Page() {
                     })}
                   </div>
 
-                  {/* Preview Quest pada Hari yang Dipilih (Hanya menampilkan quest yang belum selesai; yang sudah selesai pindah ke History di bawah) */}
+                  {/* Preview Quest pada Hari yang Dipilih (Default menyembunyikan yang sudah selesai; tap badge ✓ X/X Selesai untuk lihat/tutup) */}
                   {(() => {
                     const totalDayTasks = activeScheduleDayObj.scheduledTasks.length
                     const remainingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
@@ -7717,7 +7721,11 @@ export default function Page() {
                           (activeScheduleDayObj.isToday && t.done)
                         )
                     )
+                    const completedDayCount = totalDayTasks - remainingDayTasks.length
                     const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
+                    const visibleDayTasks = showCompletedDayQuests
+                      ? activeScheduleDayObj.scheduledTasks
+                      : remainingDayTasks
 
                     return (
                       <div
@@ -7731,11 +7739,18 @@ export default function Page() {
                         }}
                       >
                         <div
+                          onClick={() => {
+                            if (completedDayCount > 0) {
+                              setShowCompletedDayQuests((prev) => !prev)
+                            }
+                          }}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            marginBottom: remainingDayTasks.length > 0 ? '8px' : '0',
+                            marginBottom: visibleDayTasks.length > 0 ? '8px' : '0',
+                            cursor: completedDayCount > 0 ? 'pointer' : 'default',
+                            userSelect: 'none',
                           }}
                         >
                           <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#c4b5fd' }}>
@@ -7747,28 +7762,41 @@ export default function Page() {
                               fontSize: '10px',
                               fontWeight: allDoneForDay ? 700 : 500,
                               color: allDoneForDay ? '#e9d5ff' : '#b8add1',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
                               ...(allDoneForDay
                                 ? {
                                     padding: '2px 8px',
                                     borderRadius: '999px',
-                                    background: 'rgba(168, 85, 247, 0.16)',
-                                    border: '1px solid rgba(192, 132, 252, 0.35)',
+                                    background: showCompletedDayQuests
+                                      ? 'rgba(168, 85, 247, 0.28)'
+                                      : 'rgba(168, 85, 247, 0.16)',
+                                    border: '1px solid rgba(192, 132, 252, 0.38)',
                                   }
                                 : {}),
                             }}
                           >
-                            {allDoneForDay
-                              ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
-                              : remainingDayTasks.length > 0
-                              ? `${remainingDayTasks.length} Quest Tersisa`
-                              : 'Belum Ada Jadwal'}
+                            <span>
+                              {allDoneForDay
+                                ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
+                                : remainingDayTasks.length > 0
+                                ? `${remainingDayTasks.length} Quest Tersisa`
+                                : 'Belum Ada Jadwal'}
+                            </span>
+                            {completedDayCount > 0 &&
+                              (showCompletedDayQuests ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
                           </span>
                         </div>
 
-                        {remainingDayTasks.length > 0 && (
+                        {visibleDayTasks.length > 0 && (
                           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '6px' }}>
-                            {remainingDayTasks.slice(0, 4).map((task) => {
+                            {visibleDayTasks.slice(0, 4).map((task) => {
                           const isGym = task.category.toLowerCase() === 'gym'
+                          const isDoneOnDay = Boolean(
+                            task.completedDates?.includes(activeScheduleDayObj.isoDate) ||
+                              (activeScheduleDayObj.isToday && task.done)
+                          )
                           const isSkipped = Boolean(task.skipped || task.skippedDates?.includes(new Date().toISOString().slice(0, 10)))
                           return (
                             <div
@@ -7780,13 +7808,13 @@ export default function Page() {
                                 gap: '8px',
                                 padding: '7px 9px',
                                 borderRadius: '10px',
-                                background: isSkipped && !task.done ? 'rgba(45, 18, 28, 0.85)' : 'rgba(24, 18, 42, 0.85)',
-                                border: isSkipped && !task.done ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(168, 85, 247, 0.22)',
+                                background: isSkipped && !isDoneOnDay ? 'rgba(45, 18, 28, 0.85)' : 'rgba(24, 18, 42, 0.85)',
+                                border: isSkipped && !isDoneOnDay ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(168, 85, 247, 0.22)',
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                                 <span
-                                  className={`task-checkbox ${task.done ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
+                                  className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
                                   onClick={() => handleTogglePersonal(task.id)}
                                   role="button"
                                   tabIndex={0}
@@ -7794,12 +7822,12 @@ export default function Page() {
                                     width: '20px',
                                     height: '20px',
                                     borderRadius: '6px',
-                                    border: task.done
+                                    border: isDoneOnDay
                                       ? '1px solid #d8b4fe'
                                       : isSkipped
                                       ? '1px solid #ef4444'
                                       : '1px solid rgba(168, 85, 247, 0.45)',
-                                    background: task.done
+                                    background: isDoneOnDay
                                       ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(107, 33, 168, 0.5))'
                                       : isSkipped
                                       ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(153, 27, 27, 0.4))'
@@ -7809,14 +7837,14 @@ export default function Page() {
                                     justifyContent: 'center',
                                     cursor: 'pointer',
                                     flexShrink: 0,
-                                    color: task.done ? '#d8b4fe' : isSkipped ? '#f87171' : 'transparent',
-                                    boxShadow: task.done ? '0 0 10px rgba(168, 85, 247, 0.3)' : 'none',
+                                    color: isDoneOnDay ? '#d8b4fe' : isSkipped ? '#f87171' : 'transparent',
+                                    boxShadow: isDoneOnDay ? '0 0 10px rgba(168, 85, 247, 0.3)' : 'none',
                                     transition: 'all 0.15s ease',
                                   }}
-                                  title={task.done ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
-                                  aria-label={task.done ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
+                                  title={isDoneOnDay ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
+                                  aria-label={isDoneOnDay ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
                                 >
-                                  {task.done ? (
+                                  {isDoneOnDay ? (
                                     <Check size={13} strokeWidth={3} />
                                   ) : isSkipped ? (
                                     <FastForward size={11} color="#f87171" strokeWidth={2.5} />
@@ -7837,7 +7865,7 @@ export default function Page() {
                                     }}
                                   >
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
-                                    {isSkipped && !task.done && (
+                                    {isSkipped && !isDoneOnDay && (
                                       <span
                                         style={{
                                           fontSize: '8.5px',
@@ -7853,15 +7881,15 @@ export default function Page() {
                                       </span>
                                     )}
                                   </strong>
-                                  <span style={{ fontSize: '9.5px', color: isSkipped && !task.done ? '#fca5a5' : '#b8add1' }}>
+                                  <span style={{ fontSize: '9.5px', color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1' }}>
                                     {task.category}
-                                    {isSkipped && !task.done ? ' • (Dilewati)' : ` • +${task.xp} XP`}
+                                    {isSkipped && !isDoneOnDay ? ' • (Dilewati)' : ` • +${task.xp} XP`}
                                   </span>
                                 </div>
                               </div>
 
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                {isGym && !task.done && !isSkipped && (
+                                {isGym && !isDoneOnDay && !isSkipped && (
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -7888,7 +7916,7 @@ export default function Page() {
                                   </button>
                                 )}
 
-                                {!task.done && (
+                                {!isDoneOnDay && (
                                   <button
                                     type="button"
                                     onClick={() => handleSkipPersonal(task.id)}
