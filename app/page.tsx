@@ -85,6 +85,7 @@ interface UserProfile {
   xp: number
   streak: number
   dailyBonusDates?: string[]
+  avatarUrl?: string
 }
 
 interface WorkoutSet {
@@ -4577,42 +4578,118 @@ export default function Page() {
     <main className="app-shell">
       <div className="phone-frame">
         {/* TOPBAR */}
-        <header className="topbar" style={{ marginBottom: '16px' }}>
-          <div
-            className="brand-mark"
+        <header className="topbar" style={{ marginBottom: '18px', gap: '12px' }}>
+          <button
+            type="button"
             onClick={() => {
               setActiveWorkoutQuest(null)
               setActiveExerciseId(null)
               setIsHistoryPageOpen(false)
               setIsMasteryPageOpen(false)
-              setActiveTab('home')
+              setIsQuestProgramPageOpen(false)
+              setIsPersonalModalOpen(false)
+              setActiveTab('profile')
             }}
-            title="Beranda"
+            title="Lihat Profil Hunter"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              minHeight: '44px',
+              padding: '2px 10px 2px 2px',
+              borderRadius: '999px',
+              background: 'transparent',
+              border: '1px solid transparent',
+              cursor: 'pointer',
+              textAlign: 'left',
+              minWidth: 0,
+            }}
           >
-            <Swords size={17} strokeWidth={2.5} />
-          </div>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button
-              type="button"
-              className="user-pill"
-              onClick={() => setIsAuthModalOpen(true)}
-              title="Ganti / Tambah Akun Hunter"
-            >
-              <UserRound size={12} />
-              {currentUser.username}
-            </button>
-            <button
-              type="button"
-              className="user-pill"
-              onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
-              title="Pengaturan & Konsistensi"
+            <div
               style={{
-                background: isSettingsMenuOpen ? '#361c6b' : '#1d1433',
-                borderColor: isSettingsMenuOpen ? '#a855f7' : '#452e75',
-                color: isSettingsMenuOpen ? '#ffffff' : '#d5beff',
+                width: '42px',
+                height: '42px',
+                borderRadius: '999px',
+                overflow: 'hidden',
+                flexShrink: 0,
+                display: 'grid',
+                placeItems: 'center',
+                background: 'linear-gradient(135deg, #7c3aed, #38bdf8)',
+                border: '1.5px solid rgba(168, 85, 247, 0.75)',
+                boxShadow: '0 0 16px rgba(124, 58, 237, 0.32)',
+                color: '#ffffff',
+                fontSize: '15px',
+                fontWeight: 900,
+                letterSpacing: '0.02em',
               }}
             >
-              <Settings size={13} />
+              {currentUser.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.username}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
+              )}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: 800,
+                  color: '#f5f2ff',
+                  lineHeight: 1.15,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '180px',
+                }}
+              >
+                {currentUser.username}
+              </span>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '10.5px',
+                  fontWeight: 700,
+                  color: '#67e8f9',
+                  marginTop: '2px',
+                  lineHeight: 1.1,
+                }}
+              >
+                Lv.{currentLevel} • Rank {currentRank}
+              </span>
+            </div>
+          </button>
+
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
+              title="Pengaturan & Konsistensi"
+              aria-label="Pengaturan & Konsistensi"
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '14px',
+                display: 'grid',
+                placeItems: 'center',
+                background: isSettingsMenuOpen ? '#361c6b' : '#18112b',
+                border: isSettingsMenuOpen
+                  ? '1px solid #a855f7'
+                  : '1px solid rgba(141, 98, 239, 0.48)',
+                color: isSettingsMenuOpen ? '#ffffff' : '#d5beff',
+                cursor: 'pointer',
+                flexShrink: 0,
+                boxShadow: isSettingsMenuOpen
+                  ? '0 0 18px rgba(168, 85, 247, 0.4)'
+                  : '0 0 14px rgba(124, 58, 237, 0.16)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Settings size={20} strokeWidth={2.1} />
             </button>
 
             {/* POPUP DROPDOWN MENU */}
@@ -10799,10 +10876,76 @@ export default function Page() {
         {activeTab === 'profile' && (
           <>
             <section className="hero compact">
-              <div>
-                <p className="eyebrow">HUNTER PROFILE</p>
-                <h1>{currentUser.username}</h1>
-                <p className="quest-date" style={{ marginTop: '4px' }}>{currentUser.email}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                <label
+                  title="Ganti Foto Profil"
+                  style={{
+                    width: '54px',
+                    height: '54px',
+                    borderRadius: '999px',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    display: 'grid',
+                    placeItems: 'center',
+                    background: 'linear-gradient(135deg, #7c3aed, #38bdf8)',
+                    border: '2px solid rgba(168, 85, 247, 0.8)',
+                    color: '#ffffff',
+                    fontSize: '20px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    position: 'relative',
+                  }}
+                >
+                  {currentUser.avatarUrl ? (
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt={currentUser.username}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      const reader = new FileReader()
+                      reader.onload = () => {
+                        const img = new Image()
+                        img.onload = () => {
+                          const canvas = document.createElement('canvas')
+                          canvas.width = 160
+                          canvas.height = 160
+                          const ctx = canvas.getContext('2d')
+                          if (!ctx) return
+                          const minDim = Math.min(img.width, img.height)
+                          const sx = (img.width - minDim) / 2
+                          const sy = (img.height - minDim) / 2
+                          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 160, 160)
+                          const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+                          const updatedUser = { ...currentUser, avatarUrl: dataUrl }
+                          setUsers((prev) =>
+                            prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
+                          )
+                          saveCloudProfile(updatedUser)
+                          showToast('Foto profil berhasil diperbarui!')
+                        }
+                        if (typeof reader.result === 'string') img.src = reader.result
+                      }
+                      reader.readAsDataURL(file)
+                    }}
+                  />
+                </label>
+                <div style={{ minWidth: 0 }}>
+                  <p className="eyebrow">HUNTER PROFILE • TAP FOTO UNTUK GANTI</p>
+                  <h1 style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {currentUser.username}
+                  </h1>
+                  <p className="quest-date" style={{ marginTop: '4px' }}>{currentUser.email}</p>
+                </div>
               </div>
               <div className="rank-badge">
                 <span>RANK</span>
