@@ -764,20 +764,20 @@ function QuestCard({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              flexWrap: 'wrap',
+              columnGap: '4px',
+              rowGap: '1px',
               marginTop: '2px',
               fontSize: '10.5px',
+              lineHeight: 1.35,
               color: isSkipped && !done ? '#fca5a5' : '#b8add1',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
             }}
           >
             {isSkipped && !done ? (
               <span>Dilewati hari ini • 0 XP</span>
             ) : (
               <>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span>
                   {meta}
                   {schedule && schedule.length > 0
                     ? ` • ${schedule.includes('Everyday') ? 'Everyday' : schedule.join(', ')}`
