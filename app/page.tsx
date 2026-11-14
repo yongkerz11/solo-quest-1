@@ -8446,10 +8446,10 @@ export default function Page() {
                       <div
                         style={{
                           background: isAllDone
-                            ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.14), rgba(107, 33, 168, 0.25))'
+                            ? 'linear-gradient(135deg, rgba(14, 116, 144, 0.18), rgba(88, 28, 135, 0.28))'
                             : 'linear-gradient(135deg, rgba(37, 20, 68, 0.75), rgba(18, 14, 30, 0.92))',
                           border: isAllDone
-                            ? '1px solid rgba(192, 132, 252, 0.45)'
+                            ? '1px solid rgba(56, 189, 248, 0.38)'
                             : '1px solid rgba(168, 85, 247, 0.35)',
                           borderRadius: '14px',
                           padding: '11px 14px',
@@ -8465,7 +8465,7 @@ export default function Page() {
                             style={{
                               fontSize: '12px',
                               fontWeight: 800,
-                              color: isAllDone ? '#86efac' : '#d8b4fe',
+                              color: isAllDone ? '#67e8f9' : '#d8b4fe',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '6px',
@@ -8474,7 +8474,7 @@ export default function Page() {
                             <Zap size={14} />
                             {isAllDone ? 'DAILY REWARD DIPEROLEH!' : 'DAILY REWARD LIST'}
                           </div>
-                          <div style={{ fontSize: '11px', color: isAllDone ? '#bbf7d0' : '#c4b5de', marginTop: '2px', lineHeight: 1.4 }}>
+                          <div style={{ fontSize: '11px', color: isAllDone ? '#bae6fd' : '#c4b5de', marginTop: '2px', lineHeight: 1.4 }}>
                             {isAllDone
                               ? `Seluruh (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
                               : `Dapatkan XP untuk setiap quest yang kamu selesaikan (${completedTodayPersonalCount}/${todayPersonalTasks.length} selesai)`}
@@ -8484,11 +8484,12 @@ export default function Page() {
                           style={{
                             fontSize: '12.5px',
                             fontWeight: 900,
-                            color: isAllDone ? '#d8b4fe' : '#f3e8ff',
-                            background: isAllDone ? 'rgba(192, 132, 252, 0.22)' : 'rgba(168, 85, 247, 0.22)',
+                            color: isAllDone ? '#67e8f9' : '#f3e8ff',
+                            background: isAllDone ? 'rgba(56, 189, 248, 0.16)' : 'rgba(168, 85, 247, 0.22)',
                             padding: '5px 11px',
                             borderRadius: '8px',
-                            border: isAllDone ? '1px solid rgba(192, 132, 252, 0.5)' : '1px solid rgba(168, 85, 247, 0.4)',
+                            border: isAllDone ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid rgba(168, 85, 247, 0.4)',
+                            boxShadow: isAllDone ? '0 0 10px rgba(56, 189, 248, 0.18)' : 'none',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -10037,10 +10038,10 @@ export default function Page() {
                           <div
                             style={{
                               background: isAllDone
-                                ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(107, 33, 168, 0.2))'
+                                ? 'linear-gradient(135deg, rgba(14, 116, 144, 0.16), rgba(88, 28, 135, 0.24))'
                                 : 'linear-gradient(135deg, rgba(37, 20, 68, 0.65), rgba(18, 14, 30, 0.85))',
                               border: isAllDone
-                                ? '1px solid rgba(192, 132, 252, 0.35)'
+                                ? '1px solid rgba(56, 189, 248, 0.35)'
                                 : '1px solid rgba(139, 92, 246, 0.25)',
                               borderRadius: '12px',
                               padding: '10px 14px',
@@ -10056,7 +10057,7 @@ export default function Page() {
                                 style={{
                                   fontSize: '11px',
                                   fontWeight: 700,
-                                  color: isAllDone ? '#86efac' : '#c084fc',
+                                  color: isAllDone ? '#67e8f9' : '#c084fc',
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '5px',
@@ -10065,7 +10066,7 @@ export default function Page() {
                                 <Zap size={13} />
                                 {isAllDone ? 'REWARD LIST DIPEROLEH!' : 'REWARD LIST QUEST'}
                               </div>
-                              <div style={{ fontSize: '10px', color: '#8e84a2', marginTop: '2px' }}>
+                              <div style={{ fontSize: '10px', color: isAllDone ? '#bae6fd' : '#8e84a2', marginTop: '2px' }}>
                                 {isAllDone
                                   ? `Seluruh (${completedByMeCount}/${selectedClanQuests.length}) quest selesai • +${totalClanListXp} XP aktif`
                                   : `Dapatkan XP untuk setiap quest clan yang kamu selesaikan (${completedByMeCount}/${selectedClanQuests.length} selesai)`}
@@ -10075,11 +10076,11 @@ export default function Page() {
                               style={{
                                 fontSize: '12px',
                                 fontWeight: 800,
-                                color: isAllDone ? '#d8b4fe' : '#d5beff',
-                                background: isAllDone ? 'rgba(192, 132, 252, 0.2)' : 'rgba(168, 85, 247, 0.18)',
+                                color: isAllDone ? '#67e8f9' : '#d5beff',
+                                background: isAllDone ? 'rgba(56, 189, 248, 0.16)' : 'rgba(168, 85, 247, 0.18)',
                                 padding: '4px 10px',
                                 borderRadius: '8px',
-                                border: isAllDone ? '1px solid rgba(192, 132, 252, 0.4)' : '1px solid rgba(168, 85, 247, 0.3)',
+                                border: isAllDone ? '1px solid rgba(56, 189, 248, 0.42)' : '1px solid rgba(168, 85, 247, 0.3)',
                                 whiteSpace: 'nowrap',
                               }}
                             >
