@@ -35,7 +35,26 @@ export interface PersonalTask {
   schedule?: string[]
   targetTime?: string
   completedDates?: string[]
+  skippedDates?: string[]
   workoutExercises?: WorkoutExercise[]
+}
+
+function encodeScheduleForCloud(task: PersonalTask): string[] {
+  const cleanSchedule = (task.schedule || []).filter(
+    (s) =>
+      typeof s === 'string' &&
+      !s.startsWith('time:') &&
+      !s.startsWith('skip:') &&
+      !s.startsWith('unskip:')
+  )
+  const skipTags = (task.skippedDates || []).map((d) =>
+    d.startsWith('unskip:') ? d : `skip:${d}`
+  )
+  return [
+    ...cleanSchedule,
+    ...(task.targetTime ? [`time:${task.targetTime}`] : []),
+    ...skipTags,
+  ]
 }
 
 export interface UserProfile {
@@ -79,7 +98,17 @@ export async function fetchCloudQuests(
       const rawSchedule = Array.isArray(row.schedule) ? row.schedule : []
       const timeTag = rawSchedule.find((s: string) => typeof s === 'string' && s.startsWith('time:'))
       const targetTimeFromSchedule = timeTag ? timeTag.replace('time:', '') : undefined
-      const cleanSchedule = rawSchedule.filter((s: string) => typeof s === 'string' && !s.startsWith('time:'))
+      const skipTags = rawSchedule.filter(
+        (s: string) => typeof s === 'string' && (s.startsWith('skip:') || s.startsWith('unskip:'))
+      )
+      const skippedDatesFromSchedule = skipTags.map((s: string) => s.replace(/^skip:/, ''))
+      const cleanSchedule = rawSchedule.filter(
+        (s: string) =>
+          typeof s === 'string' &&
+          !s.startsWith('time:') &&
+          !s.startsWith('skip:') &&
+          !s.startsWith('unskip:')
+      )
 
       return {
         id: row.id,
@@ -92,6 +121,7 @@ export async function fetchCloudQuests(
         schedule: cleanSchedule,
         targetTime: row.target_time || targetTimeFromSchedule || undefined,
         completedDates: Array.isArray(row.completed_dates) ? row.completed_dates : [],
+        skippedDates: skippedDatesFromSchedule,
         workoutExercises: Array.isArray(row.workout_exercises) ? row.workout_exercises : [],
       }
     })
@@ -111,10 +141,7 @@ export async function saveCloudQuest(
   if (!isSupabaseConfigured || !supabase) return false
 
   try {
-    const cleanSchedule = (task.schedule || []).filter((s) => typeof s === 'string' && !s.startsWith('time:'))
-    const scheduleWithTime = task.targetTime
-      ? [...cleanSchedule, `time:${task.targetTime}`]
-      : cleanSchedule
+    const scheduleWithTime = encodeScheduleForCloud(task)
 
     const payload = {
       id: task.id,
@@ -173,10 +200,7 @@ export async function saveAllCloudQuests(
 
   try {
     const payload = tasks.map((task) => {
-      const cleanSchedule = (task.schedule || []).filter((s) => typeof s === 'string' && !s.startsWith('time:'))
-      const scheduleWithTime = task.targetTime
-        ? [...cleanSchedule, `time:${task.targetTime}`]
-        : cleanSchedule
+      const scheduleWithTime = encodeScheduleForCloud(task)
 
       return {
         id: task.id,

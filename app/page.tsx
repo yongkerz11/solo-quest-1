@@ -598,6 +598,7 @@ function QuestCard({
   isEvent,
   canManage,
   disabled,
+  viewOnly,
   schedule,
   targetTime,
   isSkipped,
@@ -623,6 +624,7 @@ function QuestCard({
   isEvent?: boolean
   canManage: boolean
   disabled?: boolean
+  viewOnly?: boolean
   schedule?: string[]
   targetTime?: string
   isSkipped?: boolean
@@ -790,7 +792,13 @@ function QuestCard({
         <span
           className={`check-box ${done ? 'completed' : isSkipped ? 'skipped' : ''}`}
           style={
-            isSkipped && !done
+            viewOnly
+              ? {
+                  borderColor: 'rgba(148, 163, 184, 0.25)',
+                  background: 'rgba(15, 11, 26, 0.7)',
+                  cursor: 'not-allowed',
+                }
+              : isSkipped && !done
               ? {
                   borderColor: 'rgba(239, 68, 68, 0.65)',
                   background: 'rgba(239, 68, 68, 0.2)',
@@ -801,13 +809,21 @@ function QuestCard({
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
-            if (!disabled) onToggle()
+            if (!disabled && !viewOnly) onToggle()
           }}
-          role="button"
-          aria-label="Toggle status"
-          title={done ? 'Batalkan centang selesai' : 'Centang selesai (+XP)'}
+          role={viewOnly ? undefined : 'button'}
+          aria-label={viewOnly ? 'Belum saatnya dikerjakan (Hanya Lihat)' : 'Toggle status'}
+          title={
+            viewOnly
+              ? 'Belum saatnya (Hanya Lihat)'
+              : done
+              ? 'Batalkan centang selesai'
+              : 'Centang selesai (+XP)'
+          }
         >
-          {done ? (
+          {viewOnly ? (
+            <Lock size={12} color="#9a8fb2" />
+          ) : done ? (
             <Check size={15} strokeWidth={3} />
           ) : isSkipped ? (
             <FastForward size={13} color="#f87171" strokeWidth={2.5} />
@@ -905,67 +921,91 @@ function QuestCard({
 
         {/* SISI KANAN: TOMBOL START (GYM) + BUTTON SKIP + MENU */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
-          {!isSkipped && !done && isGym && onOpenWorkout && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onOpenWorkout()
-              }}
+          {viewOnly ? (
+            <span
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '5px 10px',
+                padding: '4px 8px',
                 borderRadius: '7px',
-                fontSize: '10.5px',
-                fontWeight: 800,
-                background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
-                border: '1px solid rgba(168, 85, 247, 0.65)',
-                color: '#ffffff',
-                cursor: 'pointer',
-                boxShadow: '0 2px 10px rgba(124, 58, 237, 0.35)',
-                transition: 'all 0.15s ease',
-              }}
-              title="Mulai Workout"
-              aria-label="Mulai Workout"
-            >
-              <Play size={10} fill="#ffffff" />
-              <span>Start</span>
-            </button>
-          )}
-
-          {!done && onSkip && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (!disabled) onSkip()
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px',
-                padding: '5px 8px',
-                borderRadius: '7px',
-                fontSize: '10.5px',
+                fontSize: '10px',
                 fontWeight: 700,
-                cursor: 'pointer',
-                background: isSkipped
-                  ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(153, 27, 27, 0.45))'
-                  : 'rgba(168, 85, 247, 0.12)',
-                border: isSkipped
-                  ? '1px solid rgba(248, 113, 113, 0.7)'
-                  : '1px solid rgba(168, 85, 247, 0.32)',
-                color: isSkipped ? '#fecaca' : '#d8b4fe',
-                transition: 'all 0.15s ease',
+                background: 'rgba(148, 163, 184, 0.1)',
+                border: '1px solid rgba(148, 163, 184, 0.25)',
+                color: '#9a8fb2',
+                cursor: 'not-allowed',
               }}
-              title={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
-              aria-label={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
+              title="Quest mendatang hanya bisa dilihat"
             >
-              <FastForward size={10} />
-              <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
-            </button>
+              <Lock size={10} />
+              <span>Hanya Lihat</span>
+            </span>
+          ) : (
+            <>
+              {!isSkipped && !done && isGym && onOpenWorkout && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenWorkout()
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '5px 10px',
+                    borderRadius: '7px',
+                    fontSize: '10.5px',
+                    fontWeight: 800,
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+                    border: '1px solid rgba(168, 85, 247, 0.65)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 10px rgba(124, 58, 237, 0.35)',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Mulai Workout"
+                  aria-label="Mulai Workout"
+                >
+                  <Play size={10} fill="#ffffff" />
+                  <span>Start</span>
+                </button>
+              )}
+
+              {!done && onSkip && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!disabled) onSkip()
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    padding: '5px 8px',
+                    borderRadius: '7px',
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: isSkipped
+                      ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(153, 27, 27, 0.45))'
+                      : 'rgba(168, 85, 247, 0.12)',
+                    border: isSkipped
+                      ? '1px solid rgba(248, 113, 113, 0.7)'
+                      : '1px solid rgba(168, 85, 247, 0.32)',
+                    color: isSkipped ? '#fecaca' : '#d8b4fe',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
+                  aria-label={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
+                >
+                  <FastForward size={10} />
+                  <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
+                </button>
+              )}
+            </>
           )}
 
           {xp === undefined && badgeText ? (
@@ -1149,7 +1189,7 @@ function QuestCard({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Opsi Khusus Gym: Halaman Workout */}
-            {isGym && onOpenWorkout && (
+            {!viewOnly && isGym && onOpenWorkout && (
               <button
                 type="button"
                 onClick={() => {
@@ -1228,7 +1268,7 @@ function QuestCard({
             )}
 
             {/* Opsi Skip / Batal Skip Quest */}
-            {onSkip && !done && (
+            {!viewOnly && onSkip && !done && (
               <button
                 type="button"
                 onClick={() => {
@@ -2104,6 +2144,7 @@ export default function Page() {
       const dateShortId = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
       const isToday = item.code === todayDayCode
       const isPast = !isToday && isoDate < todayIso
+      const isFuture = !isToday && isoDate > todayIso
 
       const scheduledTasks = userPersonalTasks.filter((t) => {
         if (!t.schedule || t.schedule.length === 0 || t.schedule.includes('Everyday')) return true
@@ -2121,6 +2162,7 @@ export default function Page() {
         isoDate,
         isToday,
         isPast,
+        isFuture,
         scheduledTasks,
         isDone,
       }
@@ -2166,8 +2208,14 @@ export default function Page() {
         const todayIso = new Date().toISOString().slice(0, 10)
         const normalizedCloudQuests = cloudQuests.map((t: any) => {
           const cat = findCategory(t.category)
+          const existingLocal = personalTasks.find((lt) => lt.id === t.id)
           const compDates = Array.isArray(t.completedDates) ? t.completedDates : []
-          const skipDates = Array.isArray(t.skippedDates) ? t.skippedDates : []
+          const skipDates = Array.from(
+            new Set([
+              ...(Array.isArray(t.skippedDates) ? t.skippedDates : []),
+              ...(existingLocal?.skippedDates || []),
+            ])
+          )
           return {
             ...t,
             category: cat.name,
@@ -2863,7 +2911,14 @@ export default function Page() {
   // PERSONAL QUEST CRUD HANDLERS
   // ============================================================================
 
-  const handleTogglePersonal = (taskId: string) => {
+  const handleTogglePersonal = (taskId: string, targetDateIso?: string) => {
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const dateIso = targetDateIso || todayIso
+    if (dateIso > todayIso) {
+      showToast('Quest mendatang belum saatnya dikerjakan (Hanya Lihat).')
+      return
+    }
+
     const target =
       personalTasks.find(
         (t) =>
@@ -2874,23 +2929,30 @@ export default function Page() {
             (currentUser.username && t.id.includes(currentUser.username)))
       ) || personalTasks.find((t) => t.id === taskId)
     if (!target) return
-    const nextDone = !target.done
 
-    const todayIso = new Date().toISOString().slice(0, 10)
+    const isTargetToday = dateIso === todayIso
+    const wasDoneOnDate = Boolean(target.completedDates?.includes(dateIso) || (isTargetToday && target.done))
+    const nextDone = !wasDoneOnDate
+    const unskipToken = `unskip:${dateIso}`
+
     const nextTasks = personalTasks.map((t) => {
       if (t.id !== taskId) return t
       const prevDates = new Set(t.completedDates || [])
       const prevSkipped = new Set(t.skippedDates || [])
       if (nextDone) {
-        prevDates.add(todayIso)
-        prevSkipped.delete(todayIso)
+        prevDates.add(dateIso)
+        prevSkipped.delete(dateIso)
+        prevSkipped.delete(unskipToken)
       } else {
-        prevDates.delete(todayIso)
+        prevDates.delete(dateIso)
+        if (dateIso < todayIso) {
+          prevSkipped.add(unskipToken)
+        }
       }
       return {
         ...t,
-        done: nextDone,
-        skipped: nextDone ? false : t.skipped,
+        done: isTargetToday ? nextDone : t.done,
+        skipped: isTargetToday && nextDone ? false : t.skipped,
         completedDates: Array.from(prevDates),
         skippedDates: Array.from(prevSkipped),
       }
@@ -2914,18 +2976,21 @@ export default function Page() {
     const wasAllClear = isDailyAllClearToday
     const isNowAllClear =
       nextUserTodayTasks.length >= MIN_QUESTS_FOR_DAILY_BONUS && nextUserTodayTasks.every((t) => t.done)
-    const bonusDelta =
-      !wasAllClear && isNowAllClear
+    const bonusDelta = isTargetToday
+      ? !wasAllClear && isNowAllClear
         ? DAILY_FULL_CLEAR_BONUS_XP
         : wasAllClear && !isNowAllClear
-        ? -DAILY_FULL_CLEAR_BONUS_XP
-        : 0
+          ? -DAILY_FULL_CLEAR_BONUS_XP
+          : 0
+      : 0
 
     const xpDelta = (nextDone ? taskXp : -taskXp) + bonusDelta
     const nextXp = Math.max(0, effectiveXp + xpDelta)
-    const nextBonusDates = isNowAllClear
-      ? Array.from(new Set([...(currentUser.dailyBonusDates || []), todayIso]))
-      : (currentUser.dailyBonusDates || []).filter((d) => d !== todayIso)
+    const nextBonusDates = isTargetToday
+      ? isNowAllClear
+        ? Array.from(new Set([...(currentUser.dailyBonusDates || []), todayIso]))
+        : (currentUser.dailyBonusDates || []).filter((d) => d !== todayIso)
+      : currentUser.dailyBonusDates || []
 
     setUsers((curr) =>
       curr.map((u) =>
@@ -2936,7 +3001,13 @@ export default function Page() {
     )
     saveCloudProfile({ ...currentUser, xp: nextXp })
 
-    if (nextDone && !wasAllClear && isNowAllClear) {
+    if (!isTargetToday) {
+      if (nextDone) {
+        showToast(`Quest "${target.title}" ditandai selesai pada ${dateIso}! +${taskXp} XP 🎉`)
+      } else {
+        showToast(`Status selesai "${target.title}" pada ${dateIso} dibatalkan. (-${taskXp} XP)`)
+      }
+    } else if (nextDone && !wasAllClear && isNowAllClear) {
       showToast(`🎉 ALL CLEAR! "${target.title}" (+${taskXp} XP) + Bonus Harian (+${DAILY_FULL_CLEAR_BONUS_XP} XP)!`)
     } else if (nextDone) {
       showToast(`Quest "${target.title}" selesai! +${taskXp} XP (${findCategory(target.category).name}) 🎉`)
@@ -2947,7 +3018,14 @@ export default function Page() {
     }
   }
 
-  const handleSkipPersonal = (taskId: string) => {
+  const handleSkipPersonal = (taskId: string, targetDateIso?: string) => {
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const dateIso = targetDateIso || todayIso
+    if (dateIso > todayIso) {
+      showToast('Quest mendatang belum saatnya dikerjakan (Hanya Lihat).')
+      return
+    }
+
     const target =
       personalTasks.find(
         (t) =>
@@ -2959,9 +3037,14 @@ export default function Page() {
       ) || personalTasks.find((t) => t.id === taskId)
     if (!target) return
 
-    const todayIso = new Date().toISOString().slice(0, 10)
-    const nextSkipped = !target.skipped
-    const wasDone = target.done
+    const isTargetToday = dateIso === todayIso
+    const unskipToken = `unskip:${dateIso}`
+    const wasDone = Boolean(target.completedDates?.includes(dateIso) || (isTargetToday && target.done))
+    const wasSkippedOnDate =
+      dateIso < todayIso
+        ? !wasDone && !Boolean(target.skippedDates?.includes(unskipToken))
+        : Boolean(target.skipped || target.skippedDates?.includes(dateIso))
+    const nextSkipped = !wasSkippedOnDate
 
     const nextTasks = personalTasks.map((t) => {
       if (t.id !== taskId) return t
@@ -2969,15 +3052,19 @@ export default function Page() {
       const prevSkipped = new Set(t.skippedDates || [])
 
       if (nextSkipped) {
-        prevSkipped.add(todayIso)
-        prevDates.delete(todayIso)
+        prevSkipped.add(dateIso)
+        prevSkipped.delete(unskipToken)
+        prevDates.delete(dateIso)
       } else {
-        prevSkipped.delete(todayIso)
+        prevSkipped.delete(dateIso)
+        if (dateIso < todayIso) {
+          prevSkipped.add(unskipToken)
+        }
       }
       return {
         ...t,
-        skipped: nextSkipped,
-        done: nextSkipped ? false : t.done,
+        skipped: isTargetToday ? nextSkipped : t.skipped,
+        done: isTargetToday && nextSkipped ? false : t.done,
         completedDates: Array.from(prevDates),
         skippedDates: Array.from(prevSkipped),
       }
@@ -2990,7 +3077,7 @@ export default function Page() {
     }
 
     if (wasDone) {
-      const taskXp = Number(target.xp) || 20
+      const taskXp = findCategory(target.category).xp
       const nextXp = Math.max(0, effectiveXp - taskXp)
       setUsers((curr) =>
         curr.map((u) =>
@@ -3003,9 +3090,9 @@ export default function Page() {
     }
 
     if (nextSkipped) {
-      showToast(`Quest "${target.title}" dilewati (Terskip hari ini) ⏭`)
+      showToast(`Quest "${target.title}" dilewati (${isTargetToday ? 'Terskip hari ini' : dateIso}) ⏭`)
     } else {
-      showToast(`Skip quest "${target.title}" dibatalkan. Siap dikerjakan!`)
+      showToast(`Skip quest "${target.title}" dibatalkan. Sekarang bisa dikerjakan!`)
     }
   }
 
@@ -8349,20 +8436,50 @@ export default function Page() {
 
                   {/* Preview Quest pada Hari yang Dipilih (Default menyembunyikan yang sudah selesai; tap badge ✓ X/X Selesai untuk lihat/tutup) */}
                   {(() => {
+                    const isPastDay = Boolean(activeScheduleDayObj.isPast)
+                    const isFutureDay = Boolean(activeScheduleDayObj.isFuture)
+                    const isTaskDoneOnDay = (t: PersonalTask) =>
+                      Boolean(
+                        t.completedDates?.includes(activeScheduleDayObj.isoDate) ||
+                          (activeScheduleDayObj.isToday && t.done)
+                      )
+                    const isTaskSkippedOnDay = (t: PersonalTask) => {
+                      if (isFutureDay || isTaskDoneOnDay(t)) return false
+                      if (isPastDay) {
+                        return !t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
+                      }
+                      return Boolean(t.skippedDates?.includes(activeScheduleDayObj.isoDate) || t.skipped)
+                    }
+
                     const totalDayTasks = activeScheduleDayObj.scheduledTasks.length
                     const remainingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
-                      (t) =>
-                        !(
-                          t.completedDates?.includes(activeScheduleDayObj.isoDate) ||
-                          (activeScheduleDayObj.isToday && t.done)
-                        )
+                      (t) => !isTaskDoneOnDay(t)
                     )
                     const completedDayCount = totalDayTasks - remainingDayTasks.length
+                    const skippedDayCount = remainingDayTasks.filter((t) => isTaskSkippedOnDay(t)).length
+                    const activeRemainingDayCount = remainingDayTasks.length - skippedDayCount
                     const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
-                    const isPastDay = Boolean(activeScheduleDayObj.isPast)
                     const visibleDayTasks = showCompletedDayQuests
                       ? activeScheduleDayObj.scheduledTasks
                       : remainingDayTasks
+
+                    const headerBadgeText = allDoneForDay
+                      ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
+                      : totalDayTasks === 0
+                        ? 'Belum Ada Jadwal'
+                        : isFutureDay
+                          ? `Hanya Lihat • ${totalDayTasks} Quest`
+                          : isPastDay
+                            ? [
+                                completedDayCount > 0 ? `${completedDayCount} Selesai` : null,
+                                activeRemainingDayCount > 0 ? `${activeRemainingDayCount} Aktif` : null,
+                                skippedDayCount > 0 ? `${skippedDayCount} Skip` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' • ')
+                            : `${remainingDayTasks.length} Quest Tersisa`
+
+                    const showPastSkipPill = isPastDay && skippedDayCount > 0 && !allDoneForDay
 
                     return (
                       <div
@@ -8397,12 +8514,14 @@ export default function Page() {
                           <span
                             style={{
                               fontSize: '10px',
-                              fontWeight: allDoneForDay || (isPastDay && remainingDayTasks.length > 0) ? 700 : 500,
+                              fontWeight: allDoneForDay || showPastSkipPill || isFutureDay ? 700 : 500,
                               color: allDoneForDay
                                 ? '#67e8f9'
-                                : isPastDay && remainingDayTasks.length > 0
+                                : showPastSkipPill
                                   ? '#fca5a5'
-                                  : '#b8add1',
+                                  : isFutureDay && totalDayTasks > 0
+                                    ? '#c4b5fd'
+                                    : '#b8add1',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
@@ -8416,25 +8535,25 @@ export default function Page() {
                                     border: '1px solid rgba(56, 189, 248, 0.42)',
                                     boxShadow: '0 0 10px rgba(56, 189, 248, 0.16)',
                                   }
-                                : isPastDay && remainingDayTasks.length > 0
+                                : showPastSkipPill
                                   ? {
                                       padding: '2px 8px',
                                       borderRadius: '999px',
                                       background: 'rgba(239, 68, 68, 0.16)',
                                       border: '1px solid rgba(239, 68, 68, 0.38)',
                                     }
-                                  : {}),
+                                  : isFutureDay && totalDayTasks > 0
+                                    ? {
+                                        padding: '2px 8px',
+                                        borderRadius: '999px',
+                                        background: 'rgba(148, 163, 184, 0.12)',
+                                        border: '1px solid rgba(148, 163, 184, 0.3)',
+                                      }
+                                    : {}),
                             }}
                           >
-                            <span>
-                              {allDoneForDay
-                                ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
-                                : isPastDay && remainingDayTasks.length > 0
-                                ? `${completedDayCount > 0 ? `${completedDayCount} Selesai • ` : ''}${remainingDayTasks.length} Skip`
-                                : remainingDayTasks.length > 0
-                                ? `${remainingDayTasks.length} Quest Tersisa`
-                                : 'Belum Ada Jadwal'}
-                            </span>
+                            {isFutureDay && totalDayTasks > 0 && <Lock size={10} />}
+                            <span>{headerBadgeText}</span>
                             {completedDayCount > 0 &&
                               (showCompletedDayQuests ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
                           </span>
@@ -8444,17 +8563,8 @@ export default function Page() {
                           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '6px' }}>
                             {visibleDayTasks.slice(0, 4).map((task) => {
                           const isGym = task.category.toLowerCase() === 'gym'
-                          const isDoneOnDay = Boolean(
-                            task.completedDates?.includes(activeScheduleDayObj.isoDate) ||
-                              (activeScheduleDayObj.isToday && task.done)
-                          )
-                          const isSkipped =
-                            !isDoneOnDay &&
-                            Boolean(
-                              isPastDay ||
-                                task.skippedDates?.includes(activeScheduleDayObj.isoDate) ||
-                                (activeScheduleDayObj.isToday && task.skipped)
-                            )
+                          const isDoneOnDay = isTaskDoneOnDay(task)
+                          const isSkipped = isTaskSkippedOnDay(task)
                           return (
                             <div
                               key={task.id}
@@ -8465,63 +8575,76 @@ export default function Page() {
                                 gap: '8px',
                                 padding: '7px 9px',
                                 borderRadius: '10px',
+                                opacity: isFutureDay ? 0.78 : 1,
                                 background: isSkipped && !isDoneOnDay ? 'rgba(45, 18, 28, 0.85)' : 'rgba(24, 18, 42, 0.85)',
-                                border: isSkipped && !isDoneOnDay ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(168, 85, 247, 0.22)',
+                                border: isSkipped && !isDoneOnDay
+                                  ? '1px solid rgba(239, 68, 68, 0.35)'
+                                  : isFutureDay
+                                    ? '1px solid rgba(148, 163, 184, 0.22)'
+                                    : '1px solid rgba(168, 85, 247, 0.22)',
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                                 <span
                                   className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
                                   onClick={() => {
-                                    if (activeScheduleDayObj.isToday) {
-                                      handleTogglePersonal(task.id)
+                                    if (!isFutureDay) {
+                                      handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
                                     }
                                   }}
-                                  role={activeScheduleDayObj.isToday ? 'button' : undefined}
-                                  tabIndex={activeScheduleDayObj.isToday ? 0 : undefined}
+                                  role={isFutureDay ? undefined : 'button'}
+                                  tabIndex={isFutureDay ? undefined : 0}
                                   style={{
                                     width: '20px',
                                     height: '20px',
                                     borderRadius: '6px',
-                                    border: isDoneOnDay
-                                      ? '1px solid #38bdf8'
-                                      : isSkipped
-                                      ? '1px solid #ef4444'
-                                      : '1px solid rgba(168, 85, 247, 0.45)',
-                                    background: isDoneOnDay
-                                      ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
-                                      : isSkipped
-                                      ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(153, 27, 27, 0.4))'
-                                      : 'rgba(24, 18, 42, 0.7)',
+                                    border: isFutureDay
+                                      ? '1px solid rgba(148, 163, 184, 0.3)'
+                                      : isDoneOnDay
+                                        ? '1px solid #38bdf8'
+                                        : isSkipped
+                                          ? '1px solid #ef4444'
+                                          : '1px solid rgba(168, 85, 247, 0.45)',
+                                    background: isFutureDay
+                                      ? 'rgba(15, 11, 26, 0.75)'
+                                      : isDoneOnDay
+                                        ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
+                                        : isSkipped
+                                          ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(153, 27, 27, 0.4))'
+                                          : 'rgba(24, 18, 42, 0.7)',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    cursor: activeScheduleDayObj.isToday ? 'pointer' : 'default',
+                                    cursor: isFutureDay ? 'not-allowed' : 'pointer',
                                     flexShrink: 0,
-                                    color: isDoneOnDay ? '#67e8f9' : isSkipped ? '#f87171' : 'transparent',
+                                    color: isFutureDay
+                                      ? '#9a8fb2'
+                                      : isDoneOnDay
+                                        ? '#67e8f9'
+                                        : isSkipped
+                                          ? '#f87171'
+                                          : 'transparent',
                                     boxShadow: isDoneOnDay ? '0 0 10px rgba(56, 189, 248, 0.3)' : 'none',
                                     transition: 'all 0.15s ease',
                                   }}
                                   title={
-                                    activeScheduleDayObj.isToday
-                                      ? isDoneOnDay
+                                    isFutureDay
+                                      ? 'Belum saatnya dikerjakan (Hanya Lihat)'
+                                      : isDoneOnDay
                                         ? 'Batalkan selesai'
                                         : 'Centang selesai (+XP)'
-                                      : isDoneOnDay
-                                        ? 'Selesai'
-                                        : 'Terlewat (Skip)'
                                   }
                                   aria-label={
-                                    activeScheduleDayObj.isToday
-                                      ? isDoneOnDay
+                                    isFutureDay
+                                      ? 'Belum saatnya dikerjakan (Hanya Lihat)'
+                                      : isDoneOnDay
                                         ? 'Batalkan selesai'
                                         : 'Centang selesai (+XP)'
-                                      : isDoneOnDay
-                                        ? 'Selesai'
-                                        : 'Terlewat (Skip)'
                                   }
                                 >
-                                  {isDoneOnDay ? (
+                                  {isFutureDay ? (
+                                    <Lock size={10} color="#9a8fb2" />
+                                  ) : isDoneOnDay ? (
                                     <Check size={13} strokeWidth={3} />
                                   ) : isSkipped ? (
                                     <FastForward size={11} color="#f87171" strokeWidth={2.5} />
@@ -8562,85 +8685,93 @@ export default function Page() {
                                     {task.category}
                                     {isSkipped && !isDoneOnDay
                                       ? isPastDay
-                                        ? ' • (Terlewat / Skip)'
+                                        ? ' • (Skip — bisa dibatalkan)'
                                         : ' • (Dilewati)'
-                                      : ` • +${task.xp} XP`}
+                                      : isFutureDay
+                                        ? ` • +${task.xp} XP • Terjadwal`
+                                        : ` • +${task.xp} XP`}
                                   </span>
                                 </div>
                               </div>
 
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                {isGym && activeScheduleDayObj.isToday && !isDoneOnDay && !isSkipped && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setWorkoutSubPage('overview')
-                                      setActiveWorkoutQuest({ type: 'personal', id: task.id })
-                                    }}
+                                {isFutureDay ? (
+                                  <span
                                     style={{
-                                      padding: '4px 8px',
+                                      padding: '4px 7px',
                                       borderRadius: '7px',
-                                      background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                      border: '1px solid rgba(168, 85, 247, 0.5)',
-                                      color: '#ffffff',
+                                      background: 'rgba(148, 163, 184, 0.1)',
+                                      border: '1px solid rgba(148, 163, 184, 0.25)',
+                                      color: '#9a8fb2',
                                       fontSize: '10px',
-                                      fontWeight: 800,
-                                      cursor: 'pointer',
+                                      fontWeight: 700,
+                                      cursor: 'not-allowed',
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       gap: '3px',
                                     }}
-                                    title="Mulai Workout"
+                                    title="Quest besok-besoknya hanya bisa dilihat"
                                   >
-                                    <Play size={9} fill="currentColor" />
-                                    <span>Start</span>
-                                  </button>
-                                )}
+                                    <Lock size={9} />
+                                    <span>Hanya Lihat</span>
+                                  </span>
+                                ) : (
+                                  <>
+                                    {isGym && !isDoneOnDay && !isSkipped && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setWorkoutSubPage('overview')
+                                          setActiveWorkoutQuest({ type: 'personal', id: task.id })
+                                        }}
+                                        style={{
+                                          padding: '4px 8px',
+                                          borderRadius: '7px',
+                                          background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                          border: '1px solid rgba(168, 85, 247, 0.5)',
+                                          color: '#ffffff',
+                                          fontSize: '10px',
+                                          fontWeight: 800,
+                                          cursor: 'pointer',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '3px',
+                                        }}
+                                        title="Mulai Workout"
+                                      >
+                                        <Play size={9} fill="currentColor" />
+                                        <span>Start</span>
+                                      </button>
+                                    )}
 
-                                {!isDoneOnDay && (
-                                  isPastDay ? (
-                                    <span
-                                      style={{
-                                        padding: '4px 7px',
-                                        borderRadius: '7px',
-                                        background: 'rgba(239, 68, 68, 0.2)',
-                                        border: '1px solid rgba(239, 68, 68, 0.5)',
-                                        color: '#fca5a5',
-                                        fontSize: '10px',
-                                        fontWeight: 700,
-                                        cursor: 'default',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '3px',
-                                      }}
-                                      title="Hari sudah berlalu (Skip)"
-                                    >
-                                      <FastForward size={9} />
-                                      <span>Skip</span>
-                                    </span>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSkipPersonal(task.id)}
-                                      style={{
-                                        padding: '4px 7px',
-                                        borderRadius: '7px',
-                                        background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.12)',
-                                        border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
-                                        color: isSkipped ? '#fca5a5' : '#d8b4fe',
-                                        fontSize: '10px',
-                                        fontWeight: 700,
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '3px',
-                                      }}
-                                      title={isSkipped ? 'Batal lewati quest' : 'Lewati quest (0 XP)'}
-                                    >
-                                      <FastForward size={9} />
-                                      <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
-                                    </button>
-                                  )
+                                    {!isDoneOnDay && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)}
+                                        style={{
+                                          padding: '4px 7px',
+                                          borderRadius: '7px',
+                                          background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.12)',
+                                          border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
+                                          color: isSkipped ? '#fca5a5' : '#d8b4fe',
+                                          fontSize: '10px',
+                                          fontWeight: 700,
+                                          cursor: 'pointer',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '3px',
+                                        }}
+                                        title={
+                                          isSkipped
+                                            ? 'Batalkan status Skip agar quest bisa dikerjakan'
+                                            : 'Lewati quest (0 XP)'
+                                        }
+                                      >
+                                        <FastForward size={9} />
+                                        <span>{isSkipped ? (isPastDay ? 'Batal Skip' : 'Dilewati') : 'Skip'}</span>
+                                      </button>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -9284,6 +9415,7 @@ export default function Page() {
                             schedule={task.schedule}
                             isSkipped={isSkipped}
                             canManage={true}
+                            viewOnly={questScheduleTab === 'upcoming'}
                             isGym={task.category.toLowerCase() === 'gym'}
                             xp={task.xp}
                             onOpenWorkout={() => {
