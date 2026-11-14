@@ -29,6 +29,7 @@ import {
   EyeOff,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   ChevronRight,
   ArrowLeft,
   Clock,
@@ -249,13 +250,105 @@ function isQuestTimeSkipped(_targetTime?: string, _isDone?: boolean, _schedule?:
   return false
 }
 
-// Sistem Rank Hunter Kompetitif (Tidak mudah naik, butuh konsistensi jangka panjang)
+// Sistem Rank Hunter Kompetitif (Tier E hingga SSS — butuh konsistensi jangka panjang)
+interface HunterRankTier {
+  rank: 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'SS' | 'SSS'
+  title: string
+  subtitle: string
+  minXp: number
+  nextXp: number | null
+  primaryColor: string
+  secondaryColor: string
+  glowColor: string
+}
+
+const HUNTER_RANK_TIERS: HunterRankTier[] = [
+  {
+    rank: 'E',
+    title: 'Awakened Novice',
+    subtitle: 'Hunter yang baru bangkit di dalam Sistem dan memulai disiplin harian.',
+    minXp: 0,
+    nextXp: 500,
+    primaryColor: '#a78bfa',
+    secondaryColor: '#6d28d9',
+    glowColor: 'rgba(167, 139, 250, 0.42)',
+  },
+  {
+    rank: 'D',
+    title: 'Dungeon Scout',
+    subtitle: 'Mulai terbiasa menaklukkan quest harian dengan ritme yang stabil.',
+    minXp: 500,
+    nextXp: 1500,
+    primaryColor: '#38bdf8',
+    secondaryColor: '#1d4ed8',
+    glowColor: 'rgba(56, 189, 248, 0.45)',
+  },
+  {
+    rank: 'C',
+    title: 'Strike Vanguard',
+    subtitle: 'Petarung garis depan dengan konsistensi fisik dan fokus yang teruji.',
+    minXp: 1500,
+    nextXp: 3500,
+    primaryColor: '#67e8f9',
+    secondaryColor: '#0284c7',
+    glowColor: 'rgba(103, 232, 249, 0.5)',
+  },
+  {
+    rank: 'B',
+    title: 'Gate Captain',
+    subtitle: 'Memimpin penyerbuan Gate sulit dengan disiplin yang jarang goyah.',
+    minXp: 3500,
+    nextXp: 7000,
+    primaryColor: '#c084fc',
+    secondaryColor: '#7c3aed',
+    glowColor: 'rgba(192, 132, 252, 0.55)',
+  },
+  {
+    rank: 'A',
+    title: 'Elite Guild Master',
+    subtitle: 'Hunter kelas elit yang menjadi pilar utama kekuatan Clan.',
+    minXp: 7000,
+    nextXp: 14000,
+    primaryColor: '#e879f9',
+    secondaryColor: '#7e22ce',
+    glowColor: 'rgba(232, 121, 249, 0.58)',
+  },
+  {
+    rank: 'S',
+    title: 'National Level Hunter',
+    subtitle: 'Melampaui batas manusia biasa dengan dedikasi tingkat tinggi.',
+    minXp: 14000,
+    nextXp: 28000,
+    primaryColor: '#fb923c',
+    secondaryColor: '#9333ea',
+    glowColor: 'rgba(251, 146, 60, 0.6)',
+  },
+  {
+    rank: 'SS',
+    title: 'Sovereign Vessel',
+    subtitle: 'Penguasa aura dimensi yang mendominasi seluruh kategori quest.',
+    minXp: 28000,
+    nextXp: 50000,
+    primaryColor: '#f43f5e',
+    secondaryColor: '#a855f7',
+    glowColor: 'rgba(244, 63, 94, 0.62)',
+  },
+  {
+    rank: 'SSS',
+    title: 'Shadow Monarch',
+    subtitle: 'Puncak absolut para Hunter. Penguasa bayangan dan disiplin abadi.',
+    minXp: 50000,
+    nextXp: null,
+    primaryColor: '#67e8f9',
+    secondaryColor: '#c084fc',
+    glowColor: 'rgba(103, 232, 249, 0.72)',
+  },
+]
+
 function getHunterRank(xp: number): string {
-  if (xp >= 14000) return 'S'
-  if (xp >= 7000) return 'A'
-  if (xp >= 3500) return 'B'
-  if (xp >= 1500) return 'C'
-  if (xp >= 500) return 'D'
+  for (let i = HUNTER_RANK_TIERS.length - 1; i >= 0; i--) {
+    if (xp >= HUNTER_RANK_TIERS[i].minXp) return HUNTER_RANK_TIERS[i].rank
+  }
   return 'E'
 }
 
@@ -1265,6 +1358,9 @@ export default function Page() {
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'offline'>('idle')
   const [isHistoryPageOpen, setIsHistoryPageOpen] = useState<boolean>(false)
   const [isMasteryPageOpen, setIsMasteryPageOpen] = useState<boolean>(false)
+  const [isRankSystemOpen, setIsRankSystemOpen] = useState<boolean>(false)
+  const [selectedRankSlideIdx, setSelectedRankSlideIdx] = useState<number>(0)
+  const rankSwipeStartXRef = useRef<number | null>(null)
   const [featuredCategoryName, setFeaturedCategoryName] = useState<string | null>(null)
   const [historyFilter, setHistoryFilter] = useState<'all' | 'gym' | 'other'>('all')
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
@@ -8020,7 +8116,19 @@ export default function Page() {
                           {/* Teks Rank di Tengah Perisai Heksagon */}
                           <div className="rank-hex-content">
                             <span className="rank-hex-label">RANK</span>
-                            <strong className="rank-hex-letter">{currentRank}</strong>
+                            <strong
+                              className="rank-hex-letter"
+                              style={{
+                                fontSize:
+                                  currentRank.length >= 3
+                                    ? '18px'
+                                    : currentRank.length === 2
+                                      ? '23px'
+                                      : undefined,
+                              }}
+                            >
+                              {currentRank}
+                            </strong>
                             <span className="rank-hex-sub">HUNTER</span>
                           </div>
                         </div>
@@ -10925,6 +11033,598 @@ export default function Page() {
             TAB 5: PROFILE & SUPABASE AUTH ACCOUNT (HUNTER LICENSE DESIGN)
            ================================================================ */}
         {activeTab === 'profile' && (
+          isRankSystemOpen ? (() => {
+            const safeIdx = Math.max(0, Math.min(HUNTER_RANK_TIERS.length - 1, selectedRankSlideIdx))
+            const currentTierIdx = Math.max(0, HUNTER_RANK_TIERS.findIndex((t) => t.rank === currentRank))
+
+            return (
+              <div style={{ display: 'grid', gap: '12px', animation: 'heroCardAppear 0.22s ease' }}>
+                {/* Header Bar */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsRankSystemOpen(false)}
+                      style={{
+                        background: '#151026',
+                        border: '1px solid #32254a',
+                        borderRadius: '10px',
+                        width: '34px',
+                        height: '34px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#d5beff',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                      title="Kembali ke Profile"
+                      aria-label="Kembali ke Profile"
+                    >
+                      <ArrowLeft size={16} />
+                    </button>
+                    <div style={{ minWidth: 0 }}>
+                      <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#f5f2ff' }}>
+                        Sistem Rank Hunter
+                      </h2>
+                      <p style={{ margin: '1px 0 0', fontSize: '10.5px', color: '#9a8fb2' }}>
+                        Geser atau pilih Tier E — SSS
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      background: 'rgba(56, 189, 248, 0.14)',
+                      border: '1px solid rgba(56, 189, 248, 0.35)',
+                      color: '#67e8f9',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {effectiveXp.toLocaleString('id-ID')} XP
+                  </span>
+                </div>
+
+                {/* 8-Tier Stepper Track (E -> SSS) */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
+                    gap: '4px',
+                    padding: '4px',
+                    borderRadius: '13px',
+                    background: '#0c0916',
+                    border: '1px solid #261f3d',
+                  }}
+                >
+                  {HUNTER_RANK_TIERS.map((tier, idx) => {
+                    const isViewing = idx === safeIdx
+                    const isUnlocked = effectiveXp >= tier.minXp
+                    const isCurrent = tier.rank === currentRank
+                    return (
+                      <button
+                        key={tier.rank}
+                        type="button"
+                        onClick={() => setSelectedRankSlideIdx(idx)}
+                        style={{
+                          padding: '7px 0',
+                          borderRadius: '9px',
+                          fontSize: tier.rank.length >= 3 ? '9.5px' : '11px',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          position: 'relative',
+                          background: isViewing
+                            ? `linear-gradient(135deg, ${tier.secondaryColor}, ${tier.primaryColor})`
+                            : isUnlocked
+                              ? 'rgba(139, 92, 246, 0.16)'
+                              : 'transparent',
+                          border: isViewing
+                            ? `1px solid ${tier.primaryColor}`
+                            : isCurrent
+                              ? '1px solid rgba(56, 189, 248, 0.5)'
+                              : '1px solid transparent',
+                          color: isViewing ? '#ffffff' : isUnlocked ? '#e9d5ff' : '#6c6282',
+                          boxShadow: isViewing ? `0 0 12px ${tier.glowColor}` : 'none',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {tier.rank}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Interactive Horizontal Slider Showcase (Swipe + Arrow Controls) */}
+                <div
+                  style={{ position: 'relative', overflow: 'hidden', borderRadius: '22px' }}
+                  onTouchStart={(e) => {
+                    rankSwipeStartXRef.current = e.touches[0]?.clientX ?? null
+                  }}
+                  onTouchEnd={(e) => {
+                    if (rankSwipeStartXRef.current === null) return
+                    const endX = e.changedTouches[0]?.clientX ?? rankSwipeStartXRef.current
+                    const diff = rankSwipeStartXRef.current - endX
+                    if (Math.abs(diff) > 36) {
+                      if (diff > 0 && safeIdx < HUNTER_RANK_TIERS.length - 1) {
+                        setSelectedRankSlideIdx(safeIdx + 1)
+                      } else if (diff < 0 && safeIdx > 0) {
+                        setSelectedRankSlideIdx(safeIdx - 1)
+                      }
+                    }
+                    rankSwipeStartXRef.current = null
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      transform: `translateX(-${safeIdx * 100}%)`,
+                      transition: 'transform 0.34s cubic-bezier(0.22, 1, 0.36, 1)',
+                    }}
+                  >
+                    {HUNTER_RANK_TIERS.map((tier, idx) => {
+                      const isCurrent = tier.rank === currentRank
+                      const isUnlocked = effectiveXp >= tier.minXp
+                      const xpNeededToUnlock = Math.max(0, tier.minXp - effectiveXp)
+
+                      // Calculate progress bar inside this slide
+                      const progressTarget = isUnlocked && tier.nextXp ? tier.nextXp : tier.minXp
+                      const progressFloor = isUnlocked ? tier.minXp : 0
+                      const progressDenom = Math.max(1, progressTarget - progressFloor)
+                      const slideProgressPct = isUnlocked
+                        ? tier.nextXp
+                          ? Math.min(100, Math.round(((effectiveXp - tier.minXp) / progressDenom) * 100))
+                          : 100
+                        : Math.min(100, Math.round((effectiveXp / Math.max(1, tier.minXp)) * 100))
+
+                      const outerGradId = `slideHexOuter-${idx}`
+                      const coreGradId = `slideHexCore-${idx}`
+                      const wingGradId = `slideWing-${idx}`
+
+                      return (
+                        <div
+                          key={tier.rank}
+                          style={{
+                            minWidth: '100%',
+                            padding: '18px 16px 16px',
+                            borderRadius: '22px',
+                            background: `radial-gradient(circle at 50% 24%, ${tier.glowColor.replace(/[\d.]+\)$/, '0.24)')}, transparent 60%), linear-gradient(155deg, rgba(22, 16, 38, 0.98), rgba(9, 6, 18, 0.99))`,
+                            border: `1px solid ${tier.primaryColor}`,
+                            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06)`,
+                            display: 'grid',
+                            gap: '12px',
+                            textAlign: 'center',
+                          }}
+                        >
+                          {/* Top Status Pill + Slide Navigation */}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '8px',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              disabled={safeIdx === 0}
+                              onClick={() => setSelectedRankSlideIdx((v) => Math.max(0, v - 1))}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '10px',
+                                background: '#120d22',
+                                border: '1px solid rgba(168, 85, 247, 0.28)',
+                                color: safeIdx === 0 ? '#4c4361' : '#e9d5ff',
+                                display: 'grid',
+                                placeItems: 'center',
+                                cursor: safeIdx === 0 ? 'default' : 'pointer',
+                              }}
+                              aria-label="Rank sebelumnya"
+                            >
+                              <ChevronLeft size={16} />
+                            </button>
+
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '4px 11px',
+                                borderRadius: '999px',
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                letterSpacing: '0.06em',
+                                background: isCurrent
+                                  ? 'rgba(56, 189, 248, 0.16)'
+                                  : isUnlocked
+                                    ? 'rgba(168, 85, 247, 0.18)'
+                                    : 'rgba(15, 11, 26, 0.85)',
+                                border: isCurrent
+                                  ? '1px solid rgba(56, 189, 248, 0.5)'
+                                  : isUnlocked
+                                    ? `1px solid ${tier.primaryColor}`
+                                    : '1px solid rgba(148, 163, 184, 0.25)',
+                                color: isCurrent ? '#67e8f9' : isUnlocked ? tier.primaryColor : '#94a3b8',
+                              }}
+                            >
+                              {isCurrent ? (
+                                <>
+                                  <Check size={11} /> RANK AKTIF SAAT INI
+                                </>
+                              ) : isUnlocked ? (
+                                <>
+                                  <Check size={11} /> RANK TERCAPAI
+                                </>
+                              ) : (
+                                <>
+                                  <Lock size={11} /> BUTUH {xpNeededToUnlock.toLocaleString('id-ID')} XP LAGI
+                                </>
+                              )}
+                            </span>
+
+                            <button
+                              type="button"
+                              disabled={safeIdx === HUNTER_RANK_TIERS.length - 1}
+                              onClick={() =>
+                                setSelectedRankSlideIdx((v) =>
+                                  Math.min(HUNTER_RANK_TIERS.length - 1, v + 1)
+                                )
+                              }
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '10px',
+                                background: '#120d22',
+                                border: '1px solid rgba(168, 85, 247, 0.28)',
+                                color:
+                                  safeIdx === HUNTER_RANK_TIERS.length - 1 ? '#4c4361' : '#e9d5ff',
+                                display: 'grid',
+                                placeItems: 'center',
+                                cursor:
+                                  safeIdx === HUNTER_RANK_TIERS.length - 1 ? 'default' : 'pointer',
+                              }}
+                              aria-label="Rank berikutnya"
+                            >
+                              <ChevronRight size={16} />
+                            </button>
+                          </div>
+
+                          {/* Large Animated Winged Hex-Crest Emblem */}
+                          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+                            <div
+                              className="rank-hex-emblem"
+                              style={{
+                                transform: 'scale(1.18)',
+                                filter: isUnlocked ? `drop-shadow(0 0 18px ${tier.glowColor})` : 'saturate(0.7)',
+                              }}
+                            >
+                              <svg className="rank-hex-svg" viewBox="0 0 106 102" fill="none">
+                                <defs>
+                                  <linearGradient id={outerGradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor="#ffffff" />
+                                    <stop offset="45%" stopColor={tier.primaryColor} />
+                                    <stop offset="100%" stopColor={tier.secondaryColor} />
+                                  </linearGradient>
+                                  <radialGradient id={coreGradId} cx="50%" cy="28%" r="72%">
+                                    <stop offset="0%" stopColor={tier.secondaryColor} stopOpacity="0.88" />
+                                    <stop offset="65%" stopColor="#140c26" stopOpacity="0.97" />
+                                    <stop offset="100%" stopColor="#070410" stopOpacity="0.99" />
+                                  </radialGradient>
+                                  <linearGradient id={wingGradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor={tier.primaryColor} stopOpacity="0.92" />
+                                    <stop offset="100%" stopColor={tier.secondaryColor} stopOpacity="0.22" />
+                                  </linearGradient>
+                                </defs>
+                                <g className="rank-svg-orbit-cw">
+                                  <circle cx="53" cy="51" r="47" stroke={tier.primaryColor} strokeOpacity="0.28" strokeWidth="1" strokeDasharray="6 6" />
+                                  <circle cx="53" cy="4" r="2.2" fill={tier.primaryColor} />
+                                  <circle cx="53" cy="98" r="2.2" fill={tier.secondaryColor} />
+                                </g>
+                                <g className="rank-svg-orbit-ccw">
+                                  <circle cx="53" cy="51" r="43" stroke={tier.primaryColor} strokeOpacity="0.4" strokeWidth="1.2" strokeDasharray="24 66" strokeLinecap="round" />
+                                </g>
+                                <g className="rank-svg-wings">
+                                  <path d="M15 34 L3 25 L8 42 L15 46 Z" fill={`url(#${wingGradId})`} />
+                                  <path d="M15 50 L1 47 L7 60 L15 62 Z" fill={`url(#${wingGradId})`} opacity="0.75" />
+                                  <path d="M91 34 L103 25 L98 42 L91 46 Z" fill={`url(#${wingGradId})`} />
+                                  <path d="M91 50 L105 47 L99 60 L91 62 Z" fill={`url(#${wingGradId})`} opacity="0.75" />
+                                </g>
+                                <polygon points="53,8 90,28 90,74 53,94 16,74 16,28" fill={`url(#${coreGradId})`} stroke={`url(#${outerGradId})`} strokeWidth="2.2" strokeLinejoin="round" />
+                                <polygon className="rank-svg-laser-glow" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke={tier.primaryColor} strokeOpacity="0.45" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                                <polygon className="rank-svg-laser-border" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <polygon points="53,13 85,31 85,71 53,89 21,71 21,31" fill="none" stroke={tier.primaryColor} strokeOpacity="0.32" strokeWidth="1" />
+                                <polygon points="53,4 57,9 53,14 49,9" fill={tier.primaryColor} />
+                                <polygon points="53,88 56,93 53,98 50,93" fill={tier.secondaryColor} />
+                              </svg>
+                              <div className="rank-hex-content">
+                                <span className="rank-hex-label">RANK</span>
+                                <strong
+                                  className="rank-hex-letter"
+                                  style={{
+                                    fontSize:
+                                      tier.rank.length >= 3
+                                        ? '18px'
+                                        : tier.rank.length === 2
+                                          ? '23px'
+                                          : undefined,
+                                    textShadow: `0 0 20px ${tier.glowColor}`,
+                                  }}
+                                >
+                                  {tier.rank}
+                                </strong>
+                                <span className="rank-hex-sub">HUNTER</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Rank Title & Description */}
+                          <div>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#f5f2ff' }}>
+                              Rank {tier.rank} —{' '}
+                              <span style={{ color: tier.primaryColor }}>{tier.title}</span>
+                            </h3>
+                            <p
+                              style={{
+                                margin: '6px auto 0',
+                                maxWidth: '300px',
+                                fontSize: '11.5px',
+                                color: '#b8add1',
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              {tier.subtitle}
+                            </p>
+                          </div>
+
+                          {/* Syarat Poin & Progress Box */}
+                          <div
+                            style={{
+                              padding: '12px',
+                              borderRadius: '14px',
+                              background: '#090612',
+                              border: '1px solid rgba(139, 92, 246, 0.22)',
+                              display: 'grid',
+                              gap: '8px',
+                              textAlign: 'left',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                                gap: '8px',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: '10px',
+                                  background: 'rgba(22, 16, 38, 0.85)',
+                                  border: '1px solid rgba(168, 85, 247, 0.18)',
+                                }}
+                              >
+                                <span style={{ display: 'block', fontSize: '9.5px', color: '#9a8fb2', fontWeight: 700 }}>
+                                  POIN MINIMUM
+                                </span>
+                                <strong style={{ fontSize: '14px', color: tier.primaryColor, fontWeight: 900 }}>
+                                  {tier.minXp.toLocaleString('id-ID')} XP
+                                </strong>
+                              </div>
+                              <div
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: '10px',
+                                  background: 'rgba(22, 16, 38, 0.85)',
+                                  border: '1px solid rgba(56, 189, 248, 0.18)',
+                                }}
+                              >
+                                <span style={{ display: 'block', fontSize: '9.5px', color: '#9a8fb2', fontWeight: 700 }}>
+                                  {tier.nextXp ? 'NAIK RANK BERIKUTNYA' : 'STATUS TIER'}
+                                </span>
+                                <strong style={{ fontSize: '14px', color: '#67e8f9', fontWeight: 900 }}>
+                                  {tier.nextXp ? `${tier.nextXp.toLocaleString('id-ID')} XP` : 'MAX TIER'}
+                                </strong>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  color: '#b8add1',
+                                  marginBottom: '5px',
+                                }}
+                              >
+                                <span>
+                                  {isUnlocked && tier.nextXp
+                                    ? `Progres ke Rank ${HUNTER_RANK_TIERS[idx + 1]?.rank}`
+                                    : isUnlocked
+                                      ? 'Puncak Tertinggi Hunter'
+                                      : `Progres Menuju Rank ${tier.rank}`}
+                                </span>
+                                <span style={{ color: tier.primaryColor }}>
+                                  {effectiveXp.toLocaleString('id-ID')} /{' '}
+                                  {(isUnlocked && tier.nextXp ? tier.nextXp : tier.minXp || 500).toLocaleString('id-ID')} XP
+                                </span>
+                              </div>
+                              <div
+                                style={{
+                                  height: '7px',
+                                  borderRadius: '999px',
+                                  background: '#130e22',
+                                  border: '1px solid rgba(139, 92, 246, 0.25)',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: `${Math.max(4, slideProgressPct)}%`,
+                                    height: '100%',
+                                    borderRadius: '999px',
+                                    background: `linear-gradient(90deg, ${tier.secondaryColor}, ${tier.primaryColor})`,
+                                    boxShadow: `0 0 10px ${tier.glowColor}`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Pagination Dots */}
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
+                  {HUNTER_RANK_TIERS.map((tier, idx) => (
+                    <button
+                      key={tier.rank}
+                      type="button"
+                      onClick={() => setSelectedRankSlideIdx(idx)}
+                      aria-label={`Pilih Rank ${tier.rank}`}
+                      style={{
+                        width: idx === safeIdx ? '20px' : '7px',
+                        height: '7px',
+                        borderRadius: '999px',
+                        border: 0,
+                        padding: 0,
+                        cursor: 'pointer',
+                        background:
+                          idx === safeIdx
+                            ? tier.primaryColor
+                            : idx <= currentTierIdx
+                              ? 'rgba(168, 85, 247, 0.55)'
+                              : '#271f3d',
+                        transition: 'all 0.25s ease',
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Quick All-Tiers Points Table (E to SSS) */}
+                <div
+                  style={{
+                    padding: '12px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(155deg, rgba(20, 15, 34, 0.92), rgba(10, 7, 19, 0.98))',
+                    border: '1px solid rgba(139, 92, 246, 0.22)',
+                    display: 'grid',
+                    gap: '6px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingBottom: '4px',
+                    }}
+                  >
+                    <span className="modal-label" style={{ marginBottom: 0 }}>
+                      DAFTAR POIN RANK (E — SSS)
+                    </span>
+                    <span style={{ fontSize: '10px', color: '#9a8fb2' }}>Tap untuk lihat slide</span>
+                  </div>
+
+                  {HUNTER_RANK_TIERS.map((tier, idx) => {
+                    const isViewing = idx === safeIdx
+                    const isCurrent = tier.rank === currentRank
+                    const isUnlocked = effectiveXp >= tier.minXp
+                    return (
+                      <button
+                        key={tier.rank}
+                        type="button"
+                        onClick={() => setSelectedRankSlideIdx(idx)}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          padding: '8px 10px',
+                          borderRadius: '11px',
+                          background: isViewing
+                            ? `linear-gradient(135deg, ${tier.glowColor.replace(/[\d.]+\)$/, '0.2)')}, rgba(13, 9, 24, 0.95))`
+                            : '#0b0816',
+                          border: isViewing
+                            ? `1px solid ${tier.primaryColor}`
+                            : isCurrent
+                              ? '1px solid rgba(56, 189, 248, 0.45)'
+                              : '1px solid rgba(139, 92, 246, 0.14)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                          <span
+                            style={{
+                              width: '32px',
+                              height: '28px',
+                              borderRadius: '8px',
+                              display: 'grid',
+                              placeItems: 'center',
+                              background: isUnlocked
+                                ? `linear-gradient(135deg, ${tier.secondaryColor}, ${tier.primaryColor})`
+                                : '#161126',
+                              color: isUnlocked ? '#ffffff' : '#7b7194',
+                              fontSize: tier.rank.length >= 3 ? '9.5px' : '11.5px',
+                              fontWeight: 900,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {tier.rank}
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <strong
+                              style={{
+                                display: 'block',
+                                fontSize: '12px',
+                                fontWeight: 800,
+                                color: isUnlocked ? '#f3f1ff' : '#a89ec0',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {tier.title}
+                            </strong>
+                            <span style={{ fontSize: '10px', color: isCurrent ? '#67e8f9' : '#867aa1' }}>
+                              {isCurrent ? '• Rank Aktif Kamu' : isUnlocked ? '• Tercapai' : '• Terkunci'}
+                            </span>
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '11.5px',
+                            fontWeight: 800,
+                            color: tier.primaryColor,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {tier.minXp.toLocaleString('id-ID')} XP
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })() : (
           <div style={{ display: 'grid', gap: '14px', animation: 'heroCardAppear 0.24s ease' }}>
             {/* 1. UNIFIED HUNTER LICENSE HERO CARD */}
             <section
@@ -11088,52 +11788,103 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Animated Hex-Crest Rank Emblem (Matches Home) */}
-                <div className="rank-hex-emblem" style={{ transform: 'scale(0.86)', transformOrigin: 'center right', flexShrink: 0 }}>
-                  <svg className="rank-hex-svg" viewBox="0 0 106 102" fill="none">
-                    <defs>
-                      <linearGradient id="profHexOuterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#f3e8ff" />
-                        <stop offset="45%" stopColor="#a855f7" />
-                        <stop offset="100%" stopColor="#6d28d9" />
-                      </linearGradient>
-                      <radialGradient id="profHexCoreGrad" cx="50%" cy="28%" r="72%">
-                        <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
-                        <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
-                        <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
-                      </radialGradient>
-                      <linearGradient id="profWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
-                        <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
-                      </linearGradient>
-                    </defs>
-                    <g className="rank-svg-orbit-cw">
-                      <circle cx="53" cy="51" r="47" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="1" strokeDasharray="6 6" />
-                      <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
-                      <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
-                    </g>
-                    <g className="rank-svg-orbit-ccw">
-                      <circle cx="53" cy="51" r="43" stroke="rgba(216, 180, 254, 0.35)" strokeWidth="1.2" strokeDasharray="24 66" strokeLinecap="round" />
-                    </g>
-                    <g className="rank-svg-wings">
-                      <path d="M15 34 L3 25 L8 42 L15 46 Z" fill="url(#profWingGrad)" />
-                      <path d="M15 50 L1 47 L7 60 L15 62 Z" fill="url(#profWingGrad)" opacity="0.75" />
-                      <path d="M91 34 L103 25 L98 42 L91 46 Z" fill="url(#profWingGrad)" />
-                      <path d="M91 50 L105 47 L99 60 L91 62 Z" fill="url(#profWingGrad)" opacity="0.75" />
-                    </g>
-                    <polygon points="53,8 90,28 90,74 53,94 16,74 16,28" fill="url(#profHexCoreGrad)" stroke="url(#profHexOuterGrad)" strokeWidth="2" strokeLinejoin="round" />
-                    <polygon className="rank-svg-laser-glow" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="rgba(216, 180, 254, 0.42)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-                    <polygon className="rank-svg-laser-border" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="#f3e8ff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                    <polygon points="53,13 85,31 85,71 53,89 21,71 21,31" fill="none" stroke="rgba(192, 132, 252, 0.28)" strokeWidth="1" />
-                    <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
-                    <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
-                  </svg>
-                  <div className="rank-hex-content">
-                    <span className="rank-hex-label">RANK</span>
-                    <strong className="rank-hex-letter">{currentRank}</strong>
-                    <span className="rank-hex-sub">HUNTER</span>
+                {/* Clickable Animated Hex-Crest Rank Emblem -> Opens Rank E-SSS Slider */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idx = Math.max(0, HUNTER_RANK_TIERS.findIndex((t) => t.rank === currentRank))
+                    setSelectedRankSlideIdx(idx)
+                    setIsRankSystemOpen(true)
+                  }}
+                  title="Lihat Sistem Rank (E — SSS)"
+                  style={{
+                    background: 'transparent',
+                    border: 0,
+                    padding: 0,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '2px',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div className="rank-hex-emblem" style={{ transform: 'scale(0.86)', transformOrigin: 'center' }}>
+                    <svg className="rank-hex-svg" viewBox="0 0 106 102" fill="none">
+                      <defs>
+                        <linearGradient id="profHexOuterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#f3e8ff" />
+                          <stop offset="45%" stopColor="#a855f7" />
+                          <stop offset="100%" stopColor="#6d28d9" />
+                        </linearGradient>
+                        <radialGradient id="profHexCoreGrad" cx="50%" cy="28%" r="72%">
+                          <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
+                          <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
+                          <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
+                        </radialGradient>
+                        <linearGradient id="profWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
+                          <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
+                        </linearGradient>
+                      </defs>
+                      <g className="rank-svg-orbit-cw">
+                        <circle cx="53" cy="51" r="47" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="1" strokeDasharray="6 6" />
+                        <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
+                        <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
+                      </g>
+                      <g className="rank-svg-orbit-ccw">
+                        <circle cx="53" cy="51" r="43" stroke="rgba(216, 180, 254, 0.35)" strokeWidth="1.2" strokeDasharray="24 66" strokeLinecap="round" />
+                      </g>
+                      <g className="rank-svg-wings">
+                        <path d="M15 34 L3 25 L8 42 L15 46 Z" fill="url(#profWingGrad)" />
+                        <path d="M15 50 L1 47 L7 60 L15 62 Z" fill="url(#profWingGrad)" opacity="0.75" />
+                        <path d="M91 34 L103 25 L98 42 L91 46 Z" fill="url(#profWingGrad)" />
+                        <path d="M91 50 L105 47 L99 60 L91 62 Z" fill="url(#profWingGrad)" opacity="0.75" />
+                      </g>
+                      <polygon points="53,8 90,28 90,74 53,94 16,74 16,28" fill="url(#profHexCoreGrad)" stroke="url(#profHexOuterGrad)" strokeWidth="2" strokeLinejoin="round" />
+                      <polygon className="rank-svg-laser-glow" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="rgba(216, 180, 254, 0.42)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                      <polygon className="rank-svg-laser-border" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="#f3e8ff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                      <polygon points="53,13 85,31 85,71 53,89 21,71 21,31" fill="none" stroke="rgba(192, 132, 252, 0.28)" strokeWidth="1" />
+                      <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
+                      <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
+                    </svg>
+                    <div className="rank-hex-content">
+                      <span className="rank-hex-label">RANK</span>
+                      <strong
+                        className="rank-hex-letter"
+                        style={{
+                          fontSize:
+                            currentRank.length >= 3
+                              ? '18px'
+                              : currentRank.length === 2
+                                ? '23px'
+                                : undefined,
+                        }}
+                      >
+                        {currentRank}
+                      </strong>
+                      <span className="rank-hex-sub">HUNTER</span>
+                    </div>
                   </div>
-                </div>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '2px',
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                      background: 'rgba(56, 189, 248, 0.12)',
+                      border: '1px solid rgba(56, 189, 248, 0.35)',
+                      color: '#67e8f9',
+                      fontSize: '9.5px',
+                      fontWeight: 800,
+                      marginTop: '-4px',
+                    }}
+                  >
+                    <span>Sistem Rank</span>
+                    <ChevronRight size={10} />
+                  </span>
+                </button>
               </div>
 
               {/* XP Progress Bar inside Hunter License */}
@@ -11370,6 +12121,7 @@ export default function Page() {
               </button>
             </section>
           </div>
+          )
         )}
       </>
     )}
@@ -11390,6 +12142,7 @@ export default function Page() {
             onClick={() => {
               setIsHistoryPageOpen(false)
               setIsMasteryPageOpen(false)
+              setIsRankSystemOpen(false)
               setIsPersonalModalOpen(false)
               setActiveTab(key as typeof activeTab)
             }}
