@@ -141,7 +141,7 @@ function LoginForm() {
             Sistem Masuk Hunter
           </p>
           <h1 className="text-2xl font-extrabold tracking-tight mt-1 text-white">
-            SOLO <span className="text-purple-400">QUEST</span>
+            RANK<span className="text-purple-400">ERZ</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
             Masuk dengan akun Hunter kamu langsung tanpa verifikasi email
@@ -269,7 +269,7 @@ function LoginForm() {
 
         {/* Footer info */}
         <div className="mt-8 pt-4 border-t border-purple-950/80 text-center text-[10px] text-zinc-500">
-          Sistem Autentikasi Mandiri Solo Quest • Bebas Hambatan Email
+          Sistem Autentikasi Mandiri Rankerz • Bebas Hambatan Email
         </div>
       </div>
     </div>

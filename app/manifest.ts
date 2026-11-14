@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'SoloLevel — Daily Quest',
-    short_name: 'SoloLevel',
-    description: 'Bangun konsistensi dan naikkan levelmu setiap hari.',
+    name: 'Rankerz',
+    short_name: 'Rankerz',
+    description: 'Bangun konsistensi dan naikkan levelmu setiap hari bersama Rankerz.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0a0714',
-    theme_color: '#0a0714',
+    background_color: '#07050f',
+    theme_color: '#07050f',
     orientation: 'portrait',
     icons: [
       {

@@ -1,18 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <radialGradient id="aura" cx="50%" cy="50%" r="48%">
-      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.48"/>
-      <stop offset="55%" stop-color="#4c1d95" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#07050f" stop-opacity="0"/>
+    <radialGradient id="riftAura" cx="50%" cy="50%" r="45%">
+      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#05040a" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="sBlade" x1="150" y1="90" x2="362" y2="422" gradientUnits="userSpaceOnUse">
+    <linearGradient id="chev" x1="256" y1="140" x2="256" y2="390" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="blade" x1="256" y1="86" x2="256" y2="426" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#67e8f9"/>
-      <stop offset="45%" stop-color="#a855f7"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
+      <stop offset="50%" stop-color="#e0f2fe"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" fill="#07050f"/>
-  <circle cx="256" cy="256" r="220" fill="url(#aura)"/>
-  <!-- Sharp Minimalist S-Blade Monogram -->
-  <path d="M356 98L182 214L276 268L156 414L330 298L236 244L356 98Z" fill="url(#sBlade)" stroke="#67e8f9" stroke-width="8" stroke-linejoin="round"/>
+  <rect width="512" height="512" fill="#05040a"/>
+  <circle cx="256" cy="256" r="200" fill="url(#riftAura)"/>
+  <!-- Twin Upward Chevrons (Left & Right halves) -->
+  <path d="M242 146L124 292L128 296L242 204V146Z" fill="url(#chev)" stroke="#c084fc" stroke-width="4"/>
+  <path d="M270 146L388 292L384 296L270 204V146Z" fill="url(#chev)" stroke="#c084fc" stroke-width="4"/>
+  <path d="M242 232L134 364L138 368L242 288V232Z" fill="url(#chev)" stroke="#a855f7" stroke-width="4"/>
+  <path d="M270 232L378 364L374 368L270 288V232Z" fill="url(#chev)" stroke="#a855f7" stroke-width="4"/>
+  <!-- Center Mana Cyan Dimensional Blade -->
+  <path d="M256 82L266 256L256 430L246 256L256 82Z" fill="url(#blade)"/>
 </svg>

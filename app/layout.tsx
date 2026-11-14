@@ -3,14 +3,14 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'SoloLevel — Daily Quest',
-  description: 'Bangun konsistensi dan naikkan levelmu setiap hari.',
+  title: 'Rankerz — Daily Quest',
+  description: 'Bangun konsistensi dan naikkan levelmu setiap hari bersama Rankerz.',
   generator: 'v0.app',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'SoloLevel',
+    title: 'Rankerz',
   },
   icons: {
     icon: [
