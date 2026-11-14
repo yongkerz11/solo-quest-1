@@ -2084,6 +2084,7 @@ export default function Page() {
     const diffToMonday = currentDayIdx === 0 ? -6 : 1 - currentDayIdx
     const monday = new Date(now)
     monday.setDate(now.getDate() + diffToMonday)
+    const todayIso = now.toISOString().slice(0, 10)
 
     const order: Array<{ code: string; shortLabel: string; fullName: string }> = [
       { code: 'Mon', shortLabel: 'Sen', fullName: 'Senin' },
@@ -2102,6 +2103,7 @@ export default function Page() {
       const dateNum = String(d.getDate()).padStart(2, '0')
       const dateShortId = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
       const isToday = item.code === todayDayCode
+      const isPast = !isToday && isoDate < todayIso
 
       const scheduledTasks = userPersonalTasks.filter((t) => {
         if (!t.schedule || t.schedule.length === 0 || t.schedule.includes('Everyday')) return true
@@ -2118,6 +2120,7 @@ export default function Page() {
         dateNum,
         isoDate,
         isToday,
+        isPast,
         scheduledTasks,
         isDone,
       }
@@ -8356,6 +8359,7 @@ export default function Page() {
                     )
                     const completedDayCount = totalDayTasks - remainingDayTasks.length
                     const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
+                    const isPastDay = Boolean(activeScheduleDayObj.isPast)
                     const visibleDayTasks = showCompletedDayQuests
                       ? activeScheduleDayObj.scheduledTasks
                       : remainingDayTasks
@@ -8393,8 +8397,12 @@ export default function Page() {
                           <span
                             style={{
                               fontSize: '10px',
-                              fontWeight: allDoneForDay ? 700 : 500,
-                              color: allDoneForDay ? '#67e8f9' : '#b8add1',
+                              fontWeight: allDoneForDay || (isPastDay && remainingDayTasks.length > 0) ? 700 : 500,
+                              color: allDoneForDay
+                                ? '#67e8f9'
+                                : isPastDay && remainingDayTasks.length > 0
+                                  ? '#fca5a5'
+                                  : '#b8add1',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
@@ -8408,12 +8416,21 @@ export default function Page() {
                                     border: '1px solid rgba(56, 189, 248, 0.42)',
                                     boxShadow: '0 0 10px rgba(56, 189, 248, 0.16)',
                                   }
-                                : {}),
+                                : isPastDay && remainingDayTasks.length > 0
+                                  ? {
+                                      padding: '2px 8px',
+                                      borderRadius: '999px',
+                                      background: 'rgba(239, 68, 68, 0.16)',
+                                      border: '1px solid rgba(239, 68, 68, 0.38)',
+                                    }
+                                  : {}),
                             }}
                           >
                             <span>
                               {allDoneForDay
                                 ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
+                                : isPastDay && remainingDayTasks.length > 0
+                                ? `${completedDayCount > 0 ? `${completedDayCount} Selesai • ` : ''}${remainingDayTasks.length} Skip`
                                 : remainingDayTasks.length > 0
                                 ? `${remainingDayTasks.length} Quest Tersisa`
                                 : 'Belum Ada Jadwal'}
@@ -8431,7 +8448,13 @@ export default function Page() {
                             task.completedDates?.includes(activeScheduleDayObj.isoDate) ||
                               (activeScheduleDayObj.isToday && task.done)
                           )
-                          const isSkipped = Boolean(task.skipped || task.skippedDates?.includes(new Date().toISOString().slice(0, 10)))
+                          const isSkipped =
+                            !isDoneOnDay &&
+                            Boolean(
+                              isPastDay ||
+                                task.skippedDates?.includes(activeScheduleDayObj.isoDate) ||
+                                (activeScheduleDayObj.isToday && task.skipped)
+                            )
                           return (
                             <div
                               key={task.id}
@@ -8449,9 +8472,13 @@ export default function Page() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                                 <span
                                   className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
-                                  onClick={() => handleTogglePersonal(task.id)}
-                                  role="button"
-                                  tabIndex={0}
+                                  onClick={() => {
+                                    if (activeScheduleDayObj.isToday) {
+                                      handleTogglePersonal(task.id)
+                                    }
+                                  }}
+                                  role={activeScheduleDayObj.isToday ? 'button' : undefined}
+                                  tabIndex={activeScheduleDayObj.isToday ? 0 : undefined}
                                   style={{
                                     width: '20px',
                                     height: '20px',
@@ -8469,14 +8496,30 @@ export default function Page() {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    cursor: 'pointer',
+                                    cursor: activeScheduleDayObj.isToday ? 'pointer' : 'default',
                                     flexShrink: 0,
                                     color: isDoneOnDay ? '#67e8f9' : isSkipped ? '#f87171' : 'transparent',
                                     boxShadow: isDoneOnDay ? '0 0 10px rgba(56, 189, 248, 0.3)' : 'none',
                                     transition: 'all 0.15s ease',
                                   }}
-                                  title={isDoneOnDay ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
-                                  aria-label={isDoneOnDay ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
+                                  title={
+                                    activeScheduleDayObj.isToday
+                                      ? isDoneOnDay
+                                        ? 'Batalkan selesai'
+                                        : 'Centang selesai (+XP)'
+                                      : isDoneOnDay
+                                        ? 'Selesai'
+                                        : 'Terlewat (Skip)'
+                                  }
+                                  aria-label={
+                                    activeScheduleDayObj.isToday
+                                      ? isDoneOnDay
+                                        ? 'Batalkan selesai'
+                                        : 'Centang selesai (+XP)'
+                                      : isDoneOnDay
+                                        ? 'Selesai'
+                                        : 'Terlewat (Skip)'
+                                  }
                                 >
                                   {isDoneOnDay ? (
                                     <Check size={13} strokeWidth={3} />
@@ -8511,19 +8554,23 @@ export default function Page() {
                                           flexShrink: 0,
                                         }}
                                       >
-                                        DILEWATI
+                                        {isPastDay ? 'SKIP' : 'DILEWATI'}
                                       </span>
                                     )}
                                   </strong>
                                   <span style={{ fontSize: '9.5px', color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1' }}>
                                     {task.category}
-                                    {isSkipped && !isDoneOnDay ? ' • (Dilewati)' : ` • +${task.xp} XP`}
+                                    {isSkipped && !isDoneOnDay
+                                      ? isPastDay
+                                        ? ' • (Terlewat / Skip)'
+                                        : ' • (Dilewati)'
+                                      : ` • +${task.xp} XP`}
                                   </span>
                                 </div>
                               </div>
 
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                {isGym && !isDoneOnDay && !isSkipped && (
+                                {isGym && activeScheduleDayObj.isToday && !isDoneOnDay && !isSkipped && (
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -8551,27 +8598,49 @@ export default function Page() {
                                 )}
 
                                 {!isDoneOnDay && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSkipPersonal(task.id)}
-                                    style={{
-                                      padding: '4px 7px',
-                                      borderRadius: '7px',
-                                      background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.12)',
-                                      border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
-                                      color: isSkipped ? '#fca5a5' : '#d8b4fe',
-                                      fontSize: '10px',
-                                      fontWeight: 700,
-                                      cursor: 'pointer',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '3px',
-                                    }}
-                                    title={isSkipped ? 'Batal lewati quest' : 'Lewati quest (0 XP)'}
-                                  >
-                                    <FastForward size={9} />
-                                    <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
-                                  </button>
+                                  isPastDay ? (
+                                    <span
+                                      style={{
+                                        padding: '4px 7px',
+                                        borderRadius: '7px',
+                                        background: 'rgba(239, 68, 68, 0.2)',
+                                        border: '1px solid rgba(239, 68, 68, 0.5)',
+                                        color: '#fca5a5',
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        cursor: 'default',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                      }}
+                                      title="Hari sudah berlalu (Skip)"
+                                    >
+                                      <FastForward size={9} />
+                                      <span>Skip</span>
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSkipPersonal(task.id)}
+                                      style={{
+                                        padding: '4px 7px',
+                                        borderRadius: '7px',
+                                        background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.12)',
+                                        border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
+                                        color: isSkipped ? '#fca5a5' : '#d8b4fe',
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                      }}
+                                      title={isSkipped ? 'Batal lewati quest' : 'Lewati quest (0 XP)'}
+                                    >
+                                      <FastForward size={9} />
+                                      <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
+                                    </button>
+                                  )
                                 )}
                               </div>
                             </div>
