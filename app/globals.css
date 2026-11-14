@@ -43,36 +43,59 @@ button { font: inherit; color: inherit; }
 .rank-badge strong { font-size: 40px; font-weight: 900; line-height: 1; color: #ffffff; text-shadow: 0 0 24px rgba(192, 132, 252, 0.95); }
 
 /* UNIFIED ANIMATED GAME HERO CARD & SHADOW MONARCH SVG HEX-CREST */
-@keyframes auraPulseGlow {
+@keyframes portalSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes portalSpinReverse {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes portalPulse {
   0%, 100% {
-    box-shadow: 0 0 14px rgba(168, 85, 247, 0.52), 0 0 26px rgba(56, 189, 248, 0.22);
-    filter: brightness(1);
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.55)) drop-shadow(0 0 12px rgba(139, 92, 246, 0.6));
   }
   50% {
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.78), 0 0 34px rgba(56, 189, 248, 0.4);
-    filter: brightness(1.08);
+    filter: drop-shadow(0 0 10px rgba(103, 232, 249, 0.85)) drop-shadow(0 0 18px rgba(168, 85, 247, 0.8));
   }
 }
-.avatar-aura-ring {
+.portal-avatar-wrap {
   position: relative;
-  border-radius: 999px;
-  padding: 2.5px;
-  background: conic-gradient(from 140deg, #a855f7, #38bdf8, #7c3aed, #67e8f9, #a855f7);
-  animation: auraPulseGlow 3s ease-in-out infinite;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
 }
-.avatar-aura-inner {
-  width: 100%;
-  height: 100%;
+.portal-vortex-svg {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  pointer-events: none;
+  animation: portalPulse 3.2s ease-in-out infinite;
+}
+.portal-ring-outer {
+  transform-origin: 50% 50%;
+  animation: portalSpin 9s linear infinite;
+}
+.portal-ring-inner {
+  transform-origin: 50% 50%;
+  animation: portalSpinReverse 6s linear infinite;
+}
+.portal-avatar-core {
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
   border-radius: 999px;
   overflow: hidden;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 30% 22%, rgba(139, 92, 246, 0.45), #090614 78%);
-  border: 1.5px solid #090614;
-  color: #f5f2ff;
+  background: radial-gradient(circle at 50% 45%, rgba(56, 189, 248, 0.22), rgba(76, 29, 149, 0.42) 48%, #05030b 85%);
+  border: 1px solid rgba(103, 232, 249, 0.35);
+  box-shadow: inset 0 0 14px rgba(56, 189, 248, 0.35), 0 0 12px rgba(124, 58, 237, 0.45);
+  color: #e0f2fe;
   font-weight: 900;
-  text-shadow: 0 0 12px rgba(103, 232, 249, 0.65), 0 0 20px rgba(168, 85, 247, 0.75);
+  text-shadow: 0 0 10px rgba(103, 232, 249, 0.9), 0 0 18px rgba(168, 85, 247, 0.85);
 }
 
 @keyframes heroCardAppear {
