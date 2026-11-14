@@ -7709,6 +7709,7 @@ export default function Page() {
 
                   {/* Preview Quest pada Hari yang Dipilih (Hanya menampilkan quest yang belum selesai; yang sudah selesai pindah ke History di bawah) */}
                   {(() => {
+                    const totalDayTasks = activeScheduleDayObj.scheduledTasks.length
                     const remainingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
                       (t) =>
                         !(
@@ -7716,8 +7717,7 @@ export default function Page() {
                           (activeScheduleDayObj.isToday && t.done)
                         )
                     )
-                    const allDoneForDay =
-                      activeScheduleDayObj.scheduledTasks.length > 0 && remainingDayTasks.length === 0
+                    const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
 
                     return (
                       <div
@@ -7746,11 +7746,19 @@ export default function Page() {
                             style={{
                               fontSize: '10px',
                               fontWeight: allDoneForDay ? 700 : 500,
-                              color: allDoneForDay ? '#d8b4fe' : '#b8add1',
+                              color: allDoneForDay ? '#e9d5ff' : '#b8add1',
+                              ...(allDoneForDay
+                                ? {
+                                    padding: '2px 8px',
+                                    borderRadius: '999px',
+                                    background: 'rgba(168, 85, 247, 0.16)',
+                                    border: '1px solid rgba(192, 132, 252, 0.35)',
+                                  }
+                                : {}),
                             }}
                           >
                             {allDoneForDay
-                              ? '✓ Semua selesai • Pindah ke History'
+                              ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
                               : remainingDayTasks.length > 0
                               ? `${remainingDayTasks.length} Quest Tersisa`
                               : 'Belum Ada Jadwal'}
