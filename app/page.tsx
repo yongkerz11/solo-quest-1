@@ -652,11 +652,21 @@ function QuestCard({
       style={{
         position: 'relative',
         zIndex: isMenuOpen ? 150 : 1,
+        minWidth: 0,
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
       }}
     >
       <div
         className={`task-row ${done ? 'completed' : ''}`}
         style={{
+          minWidth: 0,
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          gap: '8px',
+          padding: '10px 10px',
           opacity: disabled ? 0.55 : isSkipped ? 0.78 : 1,
           cursor: disabled ? 'not-allowed' : 'pointer',
           userSelect: 'none',
