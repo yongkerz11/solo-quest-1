@@ -102,8 +102,8 @@ const scenarios = [
     story: 'Hunter mengelola jadwal quest Hari Ini vs Upcoming, membuka halaman referensi program Gym (2x-6x), menjalankan sesi Workout interaktif, dan melihat kalender konsistensi.',
     checks: [
       {
-        name: 'Komponen QuestCard menggunakan icon vektor monokrom (renderCategoryIcon) untuk semua kategori',
-        pass: !pageCode.includes('<span className="task-symbol">{icon}</span>') && pageCode.includes('renderCategoryIcon(meta || title, 16)'),
+        name: 'Komponen QuestCard menggunakan icon vektor monokrom (renderCategoryIcon) & layout 1 baris rapi tanpa teks terhimpit',
+        pass: !pageCode.includes('<span className="task-symbol">{icon}</span>') && pageCode.includes('renderCategoryIcon(meta || title, 14)') && pageCode.includes('• +{xp} XP'),
       },
       {
         name: 'Sub-tab jadwal (Hari Ini / Upcoming) & tombol + Tambah quest baru berfungsi',

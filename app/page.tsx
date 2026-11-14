@@ -709,57 +709,98 @@ function QuestCard({
             <FastForward size={13} color="#f87171" strokeWidth={2.5} />
           ) : null}
         </span>
-        <span className="task-symbol" style={{ color: "#c084fc", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{renderCategoryIcon(meta || title, 16)}</span>
-        <span className="task-copy">
-          <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            {title}
+        <span
+          className="task-symbol"
+          style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '7px',
+            background: 'rgba(168, 85, 247, 0.14)',
+            border: '1px solid rgba(168, 85, 247, 0.28)',
+            color: '#c084fc',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {renderCategoryIcon(meta || title, 14)}
+        </span>
+        <span className="task-copy" style={{ flex: 1, minWidth: 0 }}>
+          <strong
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              fontSize: '13px',
+              color: '#f5f3ff',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
             {isEvent && <span className="clan-badge event">EVENT</span>}
             {isSkipped && !done && (
               <span
                 style={{
-                  fontSize: '9px',
+                  fontSize: '8.5px',
                   color: '#ffffff',
                   background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-                  padding: '1px 6px',
-                  borderRadius: '6px',
+                  padding: '1px 5px',
+                  borderRadius: '4px',
                   display: 'inline-flex',
                   alignItems: 'center',
                   fontWeight: 800,
                   letterSpacing: '0.04em',
+                  flexShrink: 0,
                 }}
               >
                 DILEWATI
               </span>
             )}
-            {schedule && schedule.length > 0 && (
-              <span
-                style={{
-                  fontSize: '9px',
-                  color: '#c4b5fd',
-                  background: 'rgba(139, 92, 246, 0.15)',
-                  border: '1px solid rgba(139, 92, 246, 0.35)',
-                  padding: '1px 6px',
-                  borderRadius: '6px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  fontWeight: 500,
-                }}
-              >
-                <Clock size={9} />
-                {schedule.includes('Everyday') ? 'Everyday' : schedule.join(', ')}
-              </span>
-            )}
           </strong>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
-            <small style={isSkipped && !done ? { color: '#f87171' } : undefined}>
-              {isSkipped && !done ? 'Dilewati hari ini • 0 XP' : meta}
-            </small>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              marginTop: '2px',
+              fontSize: '10.5px',
+              color: isSkipped && !done ? '#fca5a5' : '#b8add1',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {isSkipped && !done ? (
+              <span>Dilewati hari ini • 0 XP</span>
+            ) : (
+              <>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {meta}
+                  {schedule && schedule.length > 0
+                    ? ` • ${schedule.includes('Everyday') ? 'Everyday' : schedule.join(', ')}`
+                    : ''}
+                </span>
+                {xp !== undefined && (
+                  <span
+                    style={{
+                      color: done ? '#4ade80' : '#c084fc',
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    • +{xp} XP
+                  </span>
+                )}
+              </>
+            )}
           </div>
         </span>
 
-        {/* SISI KANAN: TOMBOL START (GYM) + BUTTON CENTANG + BUTTON SKIP + XP BADGE */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        {/* SISI KANAN: TOMBOL START (GYM) + BUTTON SKIP + MENU */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
           {!isSkipped && !done && isGym && onOpenWorkout && (
             <button
               type="button"
@@ -770,29 +811,26 @@ function QuestCard({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                padding: '6px 12px',
-                minHeight: '34px',
-                borderRadius: '9px',
-                fontSize: '11.5px',
+                gap: '4px',
+                padding: '5px 10px',
+                borderRadius: '7px',
+                fontSize: '10.5px',
                 fontWeight: 800,
-                letterSpacing: '0.03em',
                 background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
                 border: '1px solid rgba(168, 85, 247, 0.65)',
                 color: '#ffffff',
                 cursor: 'pointer',
-                boxShadow: '0 2px 12px rgba(124, 58, 237, 0.4)',
+                boxShadow: '0 2px 10px rgba(124, 58, 237, 0.35)',
                 transition: 'all 0.15s ease',
               }}
               title="Mulai Workout"
               aria-label="Mulai Workout"
             >
-              <Play size={11} fill="#ffffff" />
+              <Play size={10} fill="#ffffff" />
               <span>Start</span>
             </button>
           )}
 
-          {/* BUTTON SKIP (1 TOMBOL TINDAKAN DI KANAN KARENA CENTANG SUDAH ADA DI KOTAK KIRI) */}
           {!done && onSkip && (
             <button
               type="button"
@@ -803,55 +841,30 @@ function QuestCard({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '6px 11px',
-                minHeight: '34px',
-                borderRadius: '9px',
-                fontSize: '11.5px',
+                gap: '3px',
+                padding: '5px 8px',
+                borderRadius: '7px',
+                fontSize: '10.5px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 background: isSkipped
                   ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(153, 27, 27, 0.45))'
-                  : 'rgba(255, 255, 255, 0.08)',
+                  : 'rgba(168, 85, 247, 0.12)',
                 border: isSkipped
                   ? '1px solid rgba(248, 113, 113, 0.7)'
-                  : '1px solid rgba(168, 85, 247, 0.35)',
-                color: isSkipped ? '#fecaca' : '#e2e8f0',
-                boxShadow: isSkipped ? '0 0 10px rgba(239, 68, 68, 0.25)' : 'none',
+                  : '1px solid rgba(168, 85, 247, 0.32)',
+                color: isSkipped ? '#fecaca' : '#d8b4fe',
                 transition: 'all 0.15s ease',
               }}
               title={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
               aria-label={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
             >
-              <FastForward size={12} />
+              <FastForward size={10} />
               <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
             </button>
           )}
 
-          {/* XP BADGE */}
-          {isSkipped && !done ? (
-            <span
-              style={{
-                fontSize: '9.5px',
-                fontWeight: 800,
-                color: '#f87171',
-                padding: '2px 6px',
-                background: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
-                borderRadius: '6px',
-                letterSpacing: '0.04em',
-              }}
-            >
-              0 XP
-            </span>
-          ) : xp !== undefined ? (
-            <span
-              className="task-xp"
-              style={done ? { color: '#4ade80', borderColor: 'rgba(74, 222, 128, 0.4)' } : undefined}
-            >
-              +{xp} XP
-            </span>
-          ) : badgeText ? (
+          {xp === undefined && badgeText ? (
             <span className="task-xp">{badgeText}</span>
           ) : null}
 

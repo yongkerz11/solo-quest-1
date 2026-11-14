@@ -201,7 +201,7 @@ function LoginForm() {
         <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
           {mode === 'register' && (
             <div>
-              <label className="modal-label flex items-center gap-1.5 text-zinc-300">
+              <label className="modal-label text-zinc-300" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <User className="w-3.5 h-3.5 text-purple-400" />
                 Nama Hunter (Username)
               </label>
@@ -217,7 +217,7 @@ function LoginForm() {
           )}
 
           <div>
-            <label className="modal-label flex items-center gap-1.5 text-zinc-300">
+            <label className="modal-label text-zinc-300" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <Mail className="w-3.5 h-3.5 text-purple-400" />
               {mode === 'login' ? 'Email atau Username Hunter' : 'Email Hunter'}
             </label>
@@ -232,7 +232,7 @@ function LoginForm() {
           </div>
 
           <div>
-            <label className="modal-label flex items-center gap-1.5 text-zinc-300">
+            <label className="modal-label text-zinc-300" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <Lock className="w-3.5 h-3.5 text-purple-400" />
               Kata Sandi
             </label>
