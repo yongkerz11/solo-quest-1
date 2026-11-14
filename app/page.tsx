@@ -2336,17 +2336,65 @@ export default function Page() {
     type: 'personal' | 'clan',
     newExercises: WorkoutExercise[]
   ) => {
+    const hasCompletedExercise = newExercises.some(
+      (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+    )
+
     if (type === 'personal') {
-      setPersonalTasks((curr) =>
-        curr.map((t) => (t.id === questId ? { ...t, workoutExercises: newExercises } : t))
-      )
+      const todayIso = new Date().toISOString().slice(0, 10)
       const target = personalTasks.find((t) => t.id === questId)
+      const prevHadCompletedExercise = (target?.workoutExercises ?? []).some(
+        (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+      )
+      const wasDoneToday = Boolean(target?.done || target?.completedDates?.includes(todayIso))
+
+      const buildUpdatedTask = (t: PersonalTask): PersonalTask => {
+        const prevCompleted = new Set(t.completedDates || [])
+        const prevSkipped = new Set(t.skippedDates || [])
+        let nextDone = t.done
+        let nextSkipped = t.skipped
+
+        if (hasCompletedExercise) {
+          nextDone = true
+          nextSkipped = false
+          prevCompleted.add(todayIso)
+          prevSkipped.delete(todayIso)
+          prevSkipped.delete(`unskip:${todayIso}`)
+        } else if (prevHadCompletedExercise && wasDoneToday) {
+          nextDone = false
+          prevCompleted.delete(todayIso)
+        }
+
+        return {
+          ...t,
+          workoutExercises: newExercises,
+          done: nextDone,
+          skipped: nextSkipped,
+          completedDates: Array.from(prevCompleted),
+          skippedDates: Array.from(prevSkipped),
+        }
+      }
+
+      setPersonalTasks((curr) =>
+        curr.map((t) => (t.id === questId ? buildUpdatedTask(t) : t))
+      )
       if (target) {
-        saveCloudQuest({ ...target, workoutExercises: newExercises }, currentUser.username)
+        saveCloudQuest(buildUpdatedTask(target), currentUser.username)
       }
     } else {
       setClanQuests((curr) =>
-        curr.map((cq) => (cq.id === questId ? { ...cq, workoutExercises: newExercises } : cq))
+        curr.map((cq) => {
+          if (cq.id !== questId) return cq
+          const prevIds = new Set(cq.completedByUserIds || [])
+          if (hasCompletedExercise && currentUser) {
+            prevIds.add(currentUser.id)
+          }
+          return {
+            ...cq,
+            workoutExercises: newExercises,
+            completedByUserIds: Array.from(prevIds),
+          }
+        })
       )
     }
   }
@@ -2363,8 +2411,14 @@ export default function Page() {
         : clanQuests.find((cq) => cq.id === questId)
     if (!targetQuest) return
 
+    const wasAlreadyDone = Boolean(
+      type === 'personal'
+        ? (targetQuest as PersonalTask).done
+        : currentUser && (targetQuest as ClanQuest).completedByUserIds.includes(currentUser.id)
+    )
     const currentExs = targetQuest.workoutExercises ?? []
     let justCompleted = false
+    let exerciseNowFinished = false
     let restTime = 60
     let recordedWeight = 0
     let recordedReps = 0
@@ -2384,6 +2438,10 @@ export default function Page() {
         }
         return { ...s, completed: nextComp }
       })
+
+      if (justCompleted && nextSets.length > 0 && nextSets.every((s) => s.completed)) {
+        exerciseNowFinished = true
+      }
 
       let nextHistory = ex.history ? [...ex.history] : undefined
       if (justCompleted) {
@@ -2409,7 +2467,11 @@ export default function Page() {
 
     if (justCompleted) {
       startRestCountdown(restTime)
-      showToast(`Set selesai! Istirahat ${restTime}s dimulai ⏳`)
+      if (exerciseNowFinished && !wasAlreadyDone) {
+        showToast(`🔥 Gerakan selesai! Quest "${targetQuest.title}" otomatis tercentang selesai!`)
+      } else {
+        showToast(`Set selesai! Istirahat ${restTime}s dimulai ⏳`)
+      }
     }
   }
 
@@ -2425,6 +2487,11 @@ export default function Page() {
         : clanQuests.find((cq) => cq.id === questId)
     if (!targetQuest) return
 
+    const wasAlreadyDone = Boolean(
+      type === 'personal'
+        ? (targetQuest as PersonalTask).done
+        : currentUser && (targetQuest as ClanQuest).completedByUserIds.includes(currentUser.id)
+    )
     const currentExs = targetQuest.workoutExercises ?? []
     let triggeredRest = false
     let restTime = 60
@@ -2478,7 +2545,9 @@ export default function Page() {
 
     if (triggeredRest) {
       startRestCountdown(restTime)
-      if (completedAfter === totalSets) {
+      if (completedAfter === totalSets && !wasAlreadyDone) {
+        showToast(`🔥 Gerakan "${exName}" selesai! Quest "${targetQuest.title}" otomatis tercentang selesai!`)
+      } else if (completedAfter === totalSets) {
         showToast(`🔥 Semua set (${completedAfter}/${totalSets}) "${exName}" selesai! Istirahat ${restTime}s dimulai ⏳`)
       } else {
         showToast(`⚡ Set ${completedAfter}/${totalSets} "${exName}" selesai! Istirahat ${restTime}s dimulai ⏳`)
@@ -2890,15 +2959,23 @@ export default function Page() {
       handleUpdateWorkoutExercises(questId, type, updatedExercises)
     }
 
-    if (type === 'personal') {
-      const target = personalTasks.find((t) => t.id === questId)
-      if (target && !target.done) {
-        handleTogglePersonal(questId)
-      }
-    } else {
-      const target = clanQuests.find((cq) => cq.id === questId)
-      if (target && !target.completedByUserIds.includes(currentUser.id)) {
-        handleToggleClanQuest(target)
+    const hasCompletedExerciseInSession = Boolean(
+      targetQuest?.workoutExercises?.some(
+        (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+      )
+    )
+
+    if (!hasCompletedExerciseInSession) {
+      if (type === 'personal') {
+        const target = personalTasks.find((t) => t.id === questId)
+        if (target && !target.done) {
+          handleTogglePersonal(questId)
+        }
+      } else {
+        const target = clanQuests.find((cq) => cq.id === questId)
+        if (target && !target.completedByUserIds.includes(currentUser.id)) {
+          handleToggleClanQuest(target)
+        }
       }
     }
     setActiveWorkoutQuest(null)
