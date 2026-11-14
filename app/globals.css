@@ -630,12 +630,12 @@ button { font: inherit; color: inherit; }
   background: transparent;
 }
 .week-day-dot.scheduled {
-  background: rgba(168, 85, 247, 0.35);
-  box-shadow: none;
+  background: #a855f7;
+  box-shadow: 0 0 5px rgba(168, 85, 247, 0.5);
 }
 .week-day-dot.done {
-  background: #e9d5ff;
-  box-shadow: 0 0 7px #c084fc, 0 0 12px #a855f7;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8, 0 0 14px rgba(56, 189, 248, 0.65);
 }
 
 /* PERSONAL RECORDS (PR) & VOLUME BENTO */

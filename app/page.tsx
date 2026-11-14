@@ -6924,10 +6924,10 @@ export default function Page() {
                               style={{
                                 fontSize: '11px',
                                 fontWeight: 800,
-                                color: '#f3e8ff',
-                                background: 'rgba(168, 85, 247, 0.2)',
-                                border: '1px solid rgba(192, 132, 252, 0.48)',
-                                boxShadow: '0 0 10px rgba(168, 85, 247, 0.18)',
+                                color: '#67e8f9',
+                                background: 'rgba(56, 189, 248, 0.15)',
+                                border: '1px solid rgba(56, 189, 248, 0.42)',
+                                boxShadow: '0 0 10px rgba(56, 189, 248, 0.18)',
                                 padding: '4px 9px',
                                 borderRadius: '8px',
                                 whiteSpace: 'nowrap',
@@ -7600,9 +7600,9 @@ export default function Page() {
                       <div
                         className="hero-dock-icon"
                         style={{
-                          background: 'rgba(168, 85, 247, 0.16)',
-                          border: '1px solid rgba(192, 132, 252, 0.35)',
-                          color: '#d8b4fe',
+                          background: 'rgba(249, 115, 22, 0.16)',
+                          border: '1px solid rgba(251, 146, 60, 0.35)',
+                          color: '#fb923c',
                         }}
                       >
                         <Flame size={13} />
@@ -7620,9 +7620,9 @@ export default function Page() {
                       <div
                         className="hero-dock-icon"
                         style={{
-                          background: 'rgba(168, 85, 247, 0.16)',
-                          border: '1px solid rgba(192, 132, 252, 0.35)',
-                          color: '#d8b4fe',
+                          background: 'rgba(56, 189, 248, 0.16)',
+                          border: '1px solid rgba(56, 189, 248, 0.38)',
+                          color: '#38bdf8',
                         }}
                       >
                         <Activity size={13} />
@@ -7642,9 +7642,9 @@ export default function Page() {
                       <div
                         className="hero-dock-icon"
                         style={{
-                          background: 'rgba(168, 85, 247, 0.16)',
-                          border: '1px solid rgba(192, 132, 252, 0.35)',
-                          color: '#d8b4fe',
+                          background: 'rgba(168, 85, 247, 0.18)',
+                          border: '1px solid rgba(192, 132, 252, 0.38)',
+                          color: '#c084fc',
                         }}
                       >
                         <Shield size={13} />
@@ -7734,7 +7734,7 @@ export default function Page() {
                           borderRadius: '13px',
                           background: 'rgba(10, 8, 19, 0.72)',
                           border: allDoneForDay
-                            ? '1px solid rgba(192, 132, 252, 0.28)'
+                            ? '1px solid rgba(56, 189, 248, 0.28)'
                             : '1px solid rgba(139, 92, 246, 0.18)',
                         }}
                       >
@@ -7761,7 +7761,7 @@ export default function Page() {
                             style={{
                               fontSize: '10px',
                               fontWeight: allDoneForDay ? 700 : 500,
-                              color: allDoneForDay ? '#e9d5ff' : '#b8add1',
+                              color: allDoneForDay ? '#67e8f9' : '#b8add1',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
@@ -7770,9 +7770,10 @@ export default function Page() {
                                     padding: '2px 8px',
                                     borderRadius: '999px',
                                     background: showCompletedDayQuests
-                                      ? 'rgba(168, 85, 247, 0.28)'
-                                      : 'rgba(168, 85, 247, 0.16)',
-                                    border: '1px solid rgba(192, 132, 252, 0.38)',
+                                      ? 'rgba(56, 189, 248, 0.24)'
+                                      : 'rgba(56, 189, 248, 0.14)',
+                                    border: '1px solid rgba(56, 189, 248, 0.42)',
+                                    boxShadow: '0 0 10px rgba(56, 189, 248, 0.16)',
                                   }
                                 : {}),
                             }}
@@ -7823,12 +7824,12 @@ export default function Page() {
                                     height: '20px',
                                     borderRadius: '6px',
                                     border: isDoneOnDay
-                                      ? '1px solid #d8b4fe'
+                                      ? '1px solid #38bdf8'
                                       : isSkipped
                                       ? '1px solid #ef4444'
                                       : '1px solid rgba(168, 85, 247, 0.45)',
                                     background: isDoneOnDay
-                                      ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.3), rgba(107, 33, 168, 0.5))'
+                                      ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
                                       : isSkipped
                                       ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(153, 27, 27, 0.4))'
                                       : 'rgba(24, 18, 42, 0.7)',
@@ -7837,8 +7838,8 @@ export default function Page() {
                                     justifyContent: 'center',
                                     cursor: 'pointer',
                                     flexShrink: 0,
-                                    color: isDoneOnDay ? '#d8b4fe' : isSkipped ? '#f87171' : 'transparent',
-                                    boxShadow: isDoneOnDay ? '0 0 10px rgba(168, 85, 247, 0.3)' : 'none',
+                                    color: isDoneOnDay ? '#67e8f9' : isSkipped ? '#f87171' : 'transparent',
+                                    boxShadow: isDoneOnDay ? '0 0 10px rgba(56, 189, 248, 0.3)' : 'none',
                                     transition: 'all 0.15s ease',
                                   }}
                                   title={isDoneOnDay ? 'Batalkan selesai' : 'Centang selesai (+XP)'}
@@ -8055,10 +8056,10 @@ export default function Page() {
                                 style={{
                                   fontSize: '10.5px',
                                   fontWeight: 800,
-                                  color: '#f3e8ff',
-                                  background: 'rgba(168, 85, 247, 0.2)',
-                                  border: '1px solid rgba(192, 132, 252, 0.48)',
-                                  boxShadow: '0 0 10px rgba(168, 85, 247, 0.18)',
+                                  color: '#67e8f9',
+                                  background: 'rgba(56, 189, 248, 0.15)',
+                                  border: '1px solid rgba(56, 189, 248, 0.42)',
+                                  boxShadow: '0 0 10px rgba(56, 189, 248, 0.18)',
                                   padding: '3px 8px',
                                   borderRadius: '8px',
                                 }}
