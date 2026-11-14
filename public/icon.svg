@@ -1,29 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#110b22"/>
-      <stop offset="100%" stop-color="#07050f"/>
-    </linearGradient>
-    <linearGradient id="violet" x1="128" y1="100" x2="384" y2="412" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#c084fc"/>
+    <radialGradient id="aura" cx="50%" cy="50%" r="48%">
+      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.48"/>
+      <stop offset="55%" stop-color="#4c1d95" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#07050f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sBlade" x1="150" y1="90" x2="362" y2="422" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="45%" stop-color="#a855f7"/>
       <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
-    <linearGradient id="blade" x1="140" y1="120" x2="372" y2="372" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#67e8f9"/>
-      <stop offset="55%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#9333ea"/>
-    </linearGradient>
   </defs>
-  <rect width="512" height="512" fill="url(#bg)"/>
-  <!-- Shield / Chevron Crest -->
-  <path d="M256 108L348 188L318 288L256 382L194 288L164 188L256 108Z" stroke="url(#violet)" stroke-width="18" stroke-linejoin="round" fill="rgba(124,58,237,0.14)"/>
-  <path d="M204 206L256 148L308 206" stroke="#c084fc" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Crossed Blades -->
-  <path d="M142 136L196 154L332 290L302 320L166 184L142 136Z" fill="url(#blade)" stroke="#67e8f9" stroke-width="6" stroke-linejoin="round"/>
-  <path d="M370 136L346 184L210 320L180 290L316 154L370 136Z" fill="url(#blade)" stroke="#67e8f9" stroke-width="6" stroke-linejoin="round"/>
-  <!-- Crossguards & Hilts -->
-  <path d="M294 312L334 272M178 272L218 312" stroke="#67e8f9" stroke-width="14" stroke-linecap="round"/>
-  <path d="M318 296L354 332M194 296L158 332" stroke="#a855f7" stroke-width="16" stroke-linecap="round"/>
-  <circle cx="362" cy="340" r="10" fill="#67e8f9"/>
-  <circle cx="150" cy="340" r="10" fill="#67e8f9"/>
+  <rect width="512" height="512" fill="#07050f"/>
+  <circle cx="256" cy="256" r="220" fill="url(#aura)"/>
+  <!-- Sharp Minimalist S-Blade Monogram -->
+  <path d="M356 98L182 214L276 268L156 414L330 298L236 244L356 98Z" fill="url(#sBlade)" stroke="#67e8f9" stroke-width="8" stroke-linejoin="round"/>
 </svg>
