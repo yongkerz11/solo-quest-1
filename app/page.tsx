@@ -4606,62 +4606,37 @@ export default function Page() {
             }}
           >
             <div
+              className="avatar-aura-ring"
+              style={{ width: '44px', height: '44px' }}
+            >
+              <div className="avatar-aura-inner" style={{ fontSize: '16px', letterSpacing: '0.02em' }}>
+                {currentUser.avatarUrl ? (
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt={currentUser.username}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
+                )}
+              </div>
+            </div>
+            <span
               style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '999px',
-                overflow: 'hidden',
-                flexShrink: 0,
-                display: 'grid',
-                placeItems: 'center',
-                background: 'linear-gradient(135deg, #7c3aed, #38bdf8)',
-                border: '1.5px solid rgba(168, 85, 247, 0.75)',
-                boxShadow: '0 0 16px rgba(124, 58, 237, 0.32)',
-                color: '#ffffff',
+                display: 'block',
                 fontSize: '15px',
-                fontWeight: 900,
-                letterSpacing: '0.02em',
+                fontWeight: 800,
+                color: '#f5f2ff',
+                lineHeight: 1.15,
+                letterSpacing: '0.01em',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '185px',
               }}
             >
-              {currentUser.avatarUrl ? (
-                <img
-                  src={currentUser.avatarUrl}
-                  alt={currentUser.username}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
-              )}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: 800,
-                  color: '#f5f2ff',
-                  lineHeight: 1.15,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  maxWidth: '180px',
-                }}
-              >
-                {currentUser.username}
-              </span>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '10.5px',
-                  fontWeight: 700,
-                  color: '#67e8f9',
-                  marginTop: '2px',
-                  lineHeight: 1.1,
-                }}
-              >
-                Lv.{currentLevel} • Rank {currentRank}
-              </span>
-            </div>
+              {currentUser.username}
+            </span>
           </button>
 
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -10879,32 +10854,24 @@ export default function Page() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
                 <label
                   title="Ganti Foto Profil"
+                  className="avatar-aura-ring"
                   style={{
-                    width: '54px',
-                    height: '54px',
-                    borderRadius: '999px',
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                    display: 'grid',
-                    placeItems: 'center',
-                    background: 'linear-gradient(135deg, #7c3aed, #38bdf8)',
-                    border: '2px solid rgba(168, 85, 247, 0.8)',
-                    color: '#ffffff',
-                    fontSize: '20px',
-                    fontWeight: 900,
+                    width: '58px',
+                    height: '58px',
                     cursor: 'pointer',
-                    position: 'relative',
                   }}
                 >
-                  {currentUser.avatarUrl ? (
-                    <img
-                      src={currentUser.avatarUrl}
-                      alt={currentUser.username}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
-                  )}
+                  <div className="avatar-aura-inner" style={{ fontSize: '21px' }}>
+                    {currentUser.avatarUrl ? (
+                      <img
+                        src={currentUser.avatarUrl}
+                        alt={currentUser.username}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
+                    )}
+                  </div>
                   <input
                     type="file"
                     accept="image/*"
