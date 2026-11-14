@@ -4579,125 +4579,141 @@ export default function Page() {
       <div className="phone-frame">
         {/* TOPBAR */}
         <header className="topbar" style={{ marginBottom: '18px', gap: '12px' }}>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveWorkoutQuest(null)
-              setActiveExerciseId(null)
-              setIsHistoryPageOpen(false)
-              setIsMasteryPageOpen(false)
-              setIsQuestProgramPageOpen(false)
-              setIsPersonalModalOpen(false)
-              setActiveTab('profile')
-            }}
-            title="Lihat Profil Hunter"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              minHeight: '44px',
-              padding: '2px 10px 2px 2px',
-              borderRadius: '999px',
-              background: 'transparent',
-              border: '1px solid transparent',
-              cursor: 'pointer',
-              textAlign: 'left',
-              minWidth: 0,
-            }}
-          >
-            <div
-              className="portal-avatar-wrap"
-              style={{ width: '44px', height: '44px' }}
-            >
-              <svg viewBox="0 0 100 100" className="portal-vortex-svg" aria-hidden="true">
-                <defs>
-                  <linearGradient id="slPortalViolet" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#c084fc" />
-                    <stop offset="50%" stopColor="#7c3aed" />
-                    <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.15" />
-                  </linearGradient>
-                  <linearGradient id="slPortalCyan" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#67e8f9" />
-                    <stop offset="55%" stopColor="#38bdf8" />
-                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.1" />
-                  </linearGradient>
-                </defs>
-                {/* Outer swirling Solo Leveling gate wisps */}
-                <g className="portal-ring-outer">
-                  <path
-                    d="M 50 6 A 44 44 0 0 1 92 38"
-                    fill="none"
-                    stroke="url(#slPortalCyan)"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M 90 68 A 44 44 0 0 1 22 86"
-                    fill="none"
-                    stroke="url(#slPortalViolet)"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M 10 64 A 44 44 0 0 1 32 10"
-                    fill="none"
-                    stroke="#a855f7"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeDasharray="10 8"
-                  />
-                  <circle cx="92" cy="38" r="2.2" fill="#67e8f9" />
-                  <circle cx="22" cy="86" r="2.2" fill="#c084fc" />
-                </g>
-                {/* Inner counter-rotating mana vortex */}
-                <g className="portal-ring-inner">
-                  <path
-                    d="M 50 13 A 37 37 0 0 1 84 65"
-                    fill="none"
-                    stroke="#38bdf8"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeOpacity="0.85"
-                  />
-                  <path
-                    d="M 62 85 A 37 37 0 0 1 14 42"
-                    fill="none"
-                    stroke="#c084fc"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeOpacity="0.85"
-                  />
-                </g>
-              </svg>
-              <div className="portal-avatar-core" style={{ fontSize: '15px', letterSpacing: '0.02em' }}>
-                {currentUser.avatarUrl ? (
-                  <img
-                    src={currentUser.avatarUrl}
-                    alt={currentUser.username}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
-                )}
-              </div>
+          {activeTab === 'profile' ? (
+            <div style={{ display: 'flex', alignItems: 'center', minHeight: '44px' }}>
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  letterSpacing: '0.16em',
+                  color: '#a78bfa',
+                  textTransform: 'uppercase',
+                }}
+              >
+                HUNTER PROFILE
+              </span>
             </div>
-            <span
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveWorkoutQuest(null)
+                setActiveExerciseId(null)
+                setIsHistoryPageOpen(false)
+                setIsMasteryPageOpen(false)
+                setIsQuestProgramPageOpen(false)
+                setIsPersonalModalOpen(false)
+                setActiveTab('profile')
+              }}
+              title="Lihat Profil Hunter"
               style={{
-                display: 'block',
-                fontSize: '15px',
-                fontWeight: 800,
-                color: '#f5f2ff',
-                lineHeight: 1.15,
-                letterSpacing: '0.01em',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: '185px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                minHeight: '44px',
+                padding: '2px 10px 2px 2px',
+                borderRadius: '999px',
+                background: 'transparent',
+                border: '1px solid transparent',
+                cursor: 'pointer',
+                textAlign: 'left',
+                minWidth: 0,
               }}
             >
-              {currentUser.username}
-            </span>
-          </button>
+              <div
+                className="portal-avatar-wrap"
+                style={{ width: '44px', height: '44px' }}
+              >
+                <svg viewBox="0 0 100 100" className="portal-vortex-svg" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="slPortalViolet" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#c084fc" />
+                      <stop offset="50%" stopColor="#7c3aed" />
+                      <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.15" />
+                    </linearGradient>
+                    <linearGradient id="slPortalCyan" x1="100%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#67e8f9" />
+                      <stop offset="55%" stopColor="#38bdf8" />
+                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.1" />
+                    </linearGradient>
+                  </defs>
+                  {/* Outer swirling Solo Leveling gate wisps */}
+                  <g className="portal-ring-outer">
+                    <path
+                      d="M 50 6 A 44 44 0 0 1 92 38"
+                      fill="none"
+                      stroke="url(#slPortalCyan)"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M 90 68 A 44 44 0 0 1 22 86"
+                      fill="none"
+                      stroke="url(#slPortalViolet)"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M 10 64 A 44 44 0 0 1 32 10"
+                      fill="none"
+                      stroke="#a855f7"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeDasharray="10 8"
+                    />
+                    <circle cx="92" cy="38" r="2.2" fill="#67e8f9" />
+                    <circle cx="22" cy="86" r="2.2" fill="#c084fc" />
+                  </g>
+                  {/* Inner counter-rotating mana vortex */}
+                  <g className="portal-ring-inner">
+                    <path
+                      d="M 50 13 A 37 37 0 0 1 84 65"
+                      fill="none"
+                      stroke="#38bdf8"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeOpacity="0.85"
+                    />
+                    <path
+                      d="M 62 85 A 37 37 0 0 1 14 42"
+                      fill="none"
+                      stroke="#c084fc"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeOpacity="0.85"
+                    />
+                  </g>
+                </svg>
+                <div className="portal-avatar-core" style={{ fontSize: '15px', letterSpacing: '0.02em' }}>
+                  {currentUser.avatarUrl ? (
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt={currentUser.username}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
+                  )}
+                </div>
+              </div>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '15px',
+                  fontWeight: 800,
+                  color: '#f5f2ff',
+                  lineHeight: 1.15,
+                  letterSpacing: '0.01em',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '185px',
+                }}
+              >
+                {currentUser.username}
+              </span>
+            </button>
+          )}
 
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <button
