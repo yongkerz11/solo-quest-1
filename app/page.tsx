@@ -7706,37 +7706,59 @@ export default function Page() {
                     })}
                   </div>
 
-                  {/* Preview Quest pada Hari yang Dipilih */}
-                  <div
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: '13px',
-                      background: 'rgba(10, 8, 19, 0.72)',
-                      border: '1px solid rgba(139, 92, 246, 0.18)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: activeScheduleDayObj.scheduledTasks.length > 0 ? '8px' : '0',
-                      }}
-                    >
-                      <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#c4b5fd' }}>
-                        {activeScheduleDayObj.fullName}
-                        {activeScheduleDayObj.isToday ? ' (Hari Ini)' : ''}
-                      </span>
-                      <span style={{ fontSize: '10px', color: '#8a80a0' }}>
-                        {activeScheduleDayObj.scheduledTasks.length > 0
-                          ? `${activeScheduleDayObj.scheduledTasks.length} Quest Terjadwal`
-                          : 'Belum Ada Jadwal'}
-                      </span>
-                    </div>
+                  {/* Preview Quest pada Hari yang Dipilih (Hanya menampilkan quest yang belum selesai; yang sudah selesai pindah ke History di bawah) */}
+                  {(() => {
+                    const remainingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
+                      (t) =>
+                        !(
+                          t.completedDates?.includes(activeScheduleDayObj.isoDate) ||
+                          (activeScheduleDayObj.isToday && t.done)
+                        )
+                    )
+                    const allDoneForDay =
+                      activeScheduleDayObj.scheduledTasks.length > 0 && remainingDayTasks.length === 0
 
-                    {activeScheduleDayObj.scheduledTasks.length > 0 && (
-                      <div style={{ display: 'grid', gap: '6px' }}>
-                        {activeScheduleDayObj.scheduledTasks.slice(0, 4).map((task) => {
+                    return (
+                      <div
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '13px',
+                          background: 'rgba(10, 8, 19, 0.72)',
+                          border: allDoneForDay
+                            ? '1px solid rgba(74, 222, 128, 0.28)'
+                            : '1px solid rgba(139, 92, 246, 0.18)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: remainingDayTasks.length > 0 ? '8px' : '0',
+                          }}
+                        >
+                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#c4b5fd' }}>
+                            {activeScheduleDayObj.fullName}
+                            {activeScheduleDayObj.isToday ? ' (Hari Ini)' : ''}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: allDoneForDay ? 700 : 500,
+                              color: allDoneForDay ? '#4ade80' : '#b8add1',
+                            }}
+                          >
+                            {allDoneForDay
+                              ? '✓ Semua selesai • Pindah ke History'
+                              : remainingDayTasks.length > 0
+                              ? `${remainingDayTasks.length} Quest Tersisa`
+                              : 'Belum Ada Jadwal'}
+                          </span>
+                        </div>
+
+                        {remainingDayTasks.length > 0 && (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '6px' }}>
+                            {remainingDayTasks.slice(0, 4).map((task) => {
                           const isGym = task.category.toLowerCase() === 'gym'
                           const isSkipped = Boolean(task.skipped || task.skippedDates?.includes(new Date().toISOString().slice(0, 10)))
                           return (
@@ -7887,6 +7909,8 @@ export default function Page() {
                       </div>
                     )}
                   </div>
+                    )
+                  })()}
                 </section>
 
                 {/* 3. HISTORY QUEST DENGAN SHOW MORE */}
