@@ -1272,6 +1272,7 @@ export default function Page() {
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
+  const [expandedTemplateSessionId, setExpandedTemplateSessionId] = useState<string | null>(null)
   const [editingPersonalTask, setEditingPersonalTask] = useState<PersonalTask | null>(null)
 
   const [isClanQuestPageOpen, setIsClanQuestPageOpen] = useState(false)
@@ -8479,29 +8480,33 @@ export default function Page() {
           <>
             {isQuestProgramPageOpen ? (
               /* ============================================================
-                 HALAMAN PENUH: REFERENSI PROGRAM GYM (2X–6X SEMINGGU) DARI MY QUEST
+                 HALAMAN PENUH: REFERENSI PROGRAM GYM (MINIMALIS & RINGKAS)
                  ============================================================ */
               (() => {
                 const activeProgram =
                   GYM_PROGRAM_TEMPLATES.find((p) => p.id === selectedProgramId) || GYM_PROGRAM_TEMPLATES[0]
 
                 return (
-                  <div style={{ animation: 'heroCardAppear 0.25s ease' }}>
+                  <div style={{ animation: 'heroCardAppear 0.22s ease' }}>
+                    {/* Minimalist Top Bar */}
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: '10px',
-                        marginBottom: '14px',
+                        marginBottom: '12px',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                         <button
                           type="button"
-                          onClick={() => setIsQuestProgramPageOpen(false)}
+                          onClick={() => {
+                            setIsQuestProgramPageOpen(false)
+                            setIsPersonalModalOpen(true)
+                          }}
                           style={{
-                            background: '#171226',
+                            background: '#151026',
                             border: '1px solid #32254a',
                             borderRadius: '10px',
                             width: '34px',
@@ -8513,204 +8518,219 @@ export default function Page() {
                             cursor: 'pointer',
                             flexShrink: 0,
                           }}
-                          title="Kembali ke My Quest"
+                          title="Kembali"
                         >
                           <ArrowLeft size={16} />
                         </button>
-                        <div style={{ minWidth: 0 }}>
-                          <div className="eyebrow" style={{ color: '#9d76f3', fontSize: '9px' }}>
-                            QUEST WORKOUT TEMPLATES
-                          </div>
-                          <h2
-                            style={{
-                              fontSize: '18px',
-                              fontWeight: 800,
-                              color: '#ffffff',
-                              margin: '2px 0 0',
-                              letterSpacing: '-0.02em',
-                            }}
-                          >
-                            Referensi Program Latihan
-                          </h2>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* PILIHAN FREKUENSI: 2x, 3x, 4x, 5x, 6x Seminggu (FLEX WRAP — TANPA SCROLLBAR) */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '6px',
-                        marginBottom: '12px',
-                      }}
-                    >
-                      {GYM_PROGRAM_TEMPLATES.map((prog) => {
-                        const isSel = prog.id === activeProgram.id
-                        return (
-                          <button
-                            key={prog.id}
-                            type="button"
-                            onClick={() => setSelectedProgramId(prog.id)}
-                            style={{
-                              padding: '6px 11px',
-                              borderRadius: '99px',
-                              fontSize: '10.5px',
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              background: isSel
-                                ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
-                                : '#141024',
-                              border: isSel ? '1px solid #d8b4fe' : '1px solid #2b2144',
-                              color: isSel ? '#ffffff' : '#b3a7cc',
-                            }}
-                          >
-                            {prog.frequencyLabel}
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    {/* BANNER INFO PROGRAM */}
-                    <div
-                      style={{
-                        padding: '13px',
-                        borderRadius: '14px',
-                        background: 'linear-gradient(135deg, rgba(44, 24, 92, 0.55), rgba(18, 13, 34, 0.9))',
-                        border: '1px solid rgba(168, 85, 247, 0.38)',
-                        marginBottom: '14px',
-                      }}
-                    >
-                      <strong style={{ display: 'block', fontSize: '14px', color: '#ffffff', fontWeight: 800 }}>
-                        {activeProgram.title}
-                      </strong>
-                      <span style={{ display: 'block', fontSize: '11px', color: '#d8b4fe', marginTop: '2px' }}>
-                        {activeProgram.subtitle}
-                      </span>
-                      {activeProgram.note && (
-                        <p style={{ margin: '6px 0 0', fontSize: '10.5px', color: '#a89ec0', lineHeight: 1.4 }}>
-                          📌 {activeProgram.note}
-                        </p>
-                      )}
-                      <div
-                        style={{
-                          marginTop: '8px',
-                          padding: '6px 9px',
-                          borderRadius: '8px',
-                          background: 'rgba(11, 8, 22, 0.65)',
-                          border: '1px solid rgba(168, 85, 247, 0.22)',
-                          fontSize: '10px',
-                          color: '#c4b5fd',
-                        }}
-                      >
-                        ✨ <strong>Fleksibel &amp; Tidak Permanen:</strong> Setelah membuat quest dari referensi ini, kamu bebas mengubah jadwal hari dan mengganti gerakan di halaman Library.
+                        <h2
+                          style={{
+                            fontSize: '16px',
+                            fontWeight: 800,
+                            color: '#f5f2ff',
+                            margin: 0,
+                          }}
+                        >
+                          Template Program Gym
+                        </h2>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleApplyFullProgramSchedule(activeProgram)}
-                        className="btn-primary"
                         style={{
-                          width: '100%',
-                          marginTop: '10px',
-                          padding: '9px 12px',
-                          fontSize: '11.5px',
+                          padding: '6px 11px',
+                          borderRadius: '999px',
+                          background: 'rgba(56, 189, 248, 0.14)',
+                          border: '1px solid rgba(56, 189, 248, 0.4)',
+                          color: '#67e8f9',
+                          fontSize: '10.5px',
                           fontWeight: 800,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
+                          cursor: 'pointer',
+                          flexShrink: 0,
                         }}
                       >
-                        <Sparkles size={13} />
-                        <span>Terapkan Seluruh {activeProgram.sessions.length} Sesi ke Jadwal Quest</span>
+                        + Pakai Semua ({activeProgram.sessions.length} Sesi)
                       </button>
                     </div>
 
-                    {/* DAFTAR SESI DALAM PROGRAM */}
-                    <div style={{ display: 'grid', gap: '10px' }}>
-                      {activeProgram.sessions.map((session) => (
-                        <div
-                          key={session.id}
-                          style={{
-                            padding: '12px',
-                            borderRadius: '14px',
-                            background: '#110e1d',
-                            border: '1px solid #2b2242',
-                          }}
-                        >
-                          <div
+                    {/* 1 BARIS PILIHAN FREKUENSI: 2x, 3x, 4x, 5x, 6x */}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                        gap: '5px',
+                        padding: '4px',
+                        borderRadius: '12px',
+                        background: '#0e0b18',
+                        border: '1px solid #261f3d',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      {GYM_PROGRAM_TEMPLATES.map((prog) => {
+                        const isSel = prog.id === activeProgram.id
+                        const shortFreq = prog.frequencyLabel.replace(/\s*Seminggu/i, '')
+                        return (
+                          <button
+                            key={prog.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedProgramId(prog.id)
+                              setExpandedTemplateSessionId(null)
+                            }}
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: '8px',
-                              marginBottom: '8px',
+                              padding: '7px 0',
+                              borderRadius: '9px',
+                              fontSize: '11.5px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              textAlign: 'center',
+                              background: isSel
+                                ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
+                                : 'transparent',
+                              border: isSel ? '1px solid rgba(192, 132, 252, 0.55)' : '1px solid transparent',
+                              color: isSel ? '#ffffff' : '#b3a7cc',
                             }}
                           >
-                            <div>
-                              <strong style={{ display: 'block', fontSize: '13px', color: '#f3f1ff', fontWeight: 800 }}>
-                                {session.title}
-                              </strong>
-                              <span style={{ fontSize: '10px', color: '#9388ac' }}>
-                                Rekomendasi: {session.dayLabel} • {session.exercises.length} Gerakan
-                              </span>
-                            </div>
+                            {shortFreq}
+                          </button>
+                        )
+                      })}
+                    </div>
 
-                            <button
-                              type="button"
-                              onClick={() => handleCreateQuestFromSessionTemplate(session)}
+                    {/* SUBTITLE RINGKAS */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '8px',
+                        padding: '0 2px',
+                      }}
+                    >
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#e9d5ff' }}>
+                        {activeProgram.title}
+                      </span>
+                      <span style={{ fontSize: '10.5px', color: '#9a8fb2' }}>
+                        Tap sesi untuk lihat gerakan
+                      </span>
+                    </div>
+
+                    {/* DAFTAR SESI COMPACT (COLLAPSIBLE GERAKAN) */}
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      {activeProgram.sessions.map((session) => {
+                        const isExpanded = expandedTemplateSessionId === session.id
+                        const isPicked = selectedTemplateSessionIdForQuest === session.id
+                        return (
+                          <div
+                            key={session.id}
+                            style={{
+                              padding: '11px 12px',
+                              borderRadius: '14px',
+                              background: 'linear-gradient(145deg, rgba(22, 16, 38, 0.92), rgba(13, 10, 23, 0.96))',
+                              border: isPicked
+                                ? '1px solid rgba(56, 189, 248, 0.45)'
+                                : '1px solid rgba(139, 92, 246, 0.22)',
+                            }}
+                          >
+                            <div
                               style={{
-                                padding: '6px 11px',
-                                borderRadius: '8px',
-                                background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
-                                border: '1px solid #c084fc',
-                                color: '#ffffff',
-                                fontSize: '10px',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                                flexShrink: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px',
                               }}
                             >
-                              + Buat Quest Ini
-                            </button>
-                          </div>
-
-                          <div style={{ display: 'grid', gap: '4px' }}>
-                            {session.exercises.map((ex, idx) => (
                               <div
-                                key={idx}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  padding: '5px 8px',
-                                  borderRadius: '7px',
-                                  background: '#0a0813',
-                                  border: '1px solid #1e182e',
-                                  fontSize: '11px',
-                                }}
+                                onClick={() =>
+                                  setExpandedTemplateSessionId(isExpanded ? null : session.id)
+                                }
+                                style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
                               >
-                                <span style={{ color: '#e2d9f3', fontWeight: 600 }}>
-                                  {idx + 1}. {ex.name}
-                                </span>
+                                <strong style={{ display: 'block', fontSize: '13px', color: '#f3f1ff', fontWeight: 800 }}>
+                                  {session.title}
+                                </strong>
                                 <span
                                   style={{
-                                    fontSize: '10px',
-                                    color: '#c4b5fd',
-                                    fontWeight: 700,
-                                    background: 'rgba(168, 85, 247, 0.12)',
-                                    padding: '1px 6px',
-                                    borderRadius: '6px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '10.5px',
+                                    color: '#b8add1',
+                                    marginTop: '2px',
                                   }}
                                 >
-                                  {ex.note || `${ex.sets} × ${ex.reps}`}
+                                  <span>
+                                    {session.dayLabel} • {session.exercises.length} Gerakan
+                                  </span>
+                                  {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                                 </span>
                               </div>
-                            ))}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedTemplateSessionIdForQuest(session.id)
+                                  setQuestTitle(session.questTitle)
+                                  if (session.recommendedDays.length > 0) {
+                                    setQuestDays(session.recommendedDays)
+                                  }
+                                  setIsQuestProgramPageOpen(false)
+                                  setIsPersonalModalOpen(true)
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '9px',
+                                  background: isPicked
+                                    ? 'rgba(56, 189, 248, 0.18)'
+                                    : 'linear-gradient(135deg, #7c3aed, #9333ea)',
+                                  border: isPicked ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid #c084fc',
+                                  color: isPicked ? '#67e8f9' : '#ffffff',
+                                  fontSize: '11px',
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {isPicked ? '✓ Dipilih' : 'Pilih'}
+                              </button>
+                            </div>
+
+                            {isExpanded && (
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gap: '4px',
+                                  marginTop: '9px',
+                                  paddingTop: '8px',
+                                  borderTop: '1px solid rgba(139, 92, 246, 0.16)',
+                                }}
+                              >
+                                {session.exercises.map((ex, idx) => (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '4px 8px',
+                                      borderRadius: '7px',
+                                      background: '#0a0813',
+                                      fontSize: '11px',
+                                    }}
+                                  >
+                                    <span style={{ color: '#e2d9f3', fontWeight: 600 }}>
+                                      {idx + 1}. {ex.name}
+                                    </span>
+                                    <span style={{ fontSize: '10px', color: '#67e8f9', fontWeight: 700 }}>
+                                      {ex.note || `${ex.sets} × ${ex.reps}`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )
