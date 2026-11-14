@@ -8324,26 +8324,56 @@ export default function Page() {
               })()
             ) : (
               <>
-                <section className="quest-heading">
-                  <div>
-                    <p className="eyebrow">MY QUEST • {currentUser.username.toUpperCase()}</p>
-                    <h1>Daily checklist</h1>
-                    <p className="quest-date">
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    marginBottom: '12px',
+                    padding: '2px 2px 0',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <CalendarDays size={14} style={{ color: '#a855f7', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#e9d5ff', letterSpacing: '0.01em' }}>
                       {new Date().toLocaleDateString('id-ID', {
                         weekday: 'long',
                         day: '2-digit',
                         month: 'long',
                         year: 'numeric',
                       })}
-                    </p>
+                    </span>
                   </div>
-                  <div className="quest-count">
-                    <span>DONE</span>
-                    <strong>
-                      {completedTodayPersonalCount}/{todayPersonalTasks.length}
-                    </strong>
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      background:
+                        todayPersonalTasks.length > 0 && completedTodayPersonalCount === todayPersonalTasks.length
+                          ? 'rgba(56, 189, 248, 0.14)'
+                          : 'rgba(168, 85, 247, 0.14)',
+                      border:
+                        todayPersonalTasks.length > 0 && completedTodayPersonalCount === todayPersonalTasks.length
+                          ? '1px solid rgba(56, 189, 248, 0.38)'
+                          : '1px solid rgba(168, 85, 247, 0.32)',
+                      color:
+                        todayPersonalTasks.length > 0 && completedTodayPersonalCount === todayPersonalTasks.length
+                          ? '#67e8f9'
+                          : '#d8b4fe',
+                    }}
+                  >
+                    <Check size={12} strokeWidth={2.8} />
+                    <span>
+                      {completedTodayPersonalCount}/{todayPersonalTasks.length} Done
+                    </span>
                   </div>
-                </section>
+                </div>
 
                 <section className="section-block quest-list-section">
                   {/* TAB SWITCHER: TODAY & UPCOMING */}
