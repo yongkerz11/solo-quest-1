@@ -709,7 +709,7 @@ function QuestCard({
             <FastForward size={13} color="#f87171" strokeWidth={2.5} />
           ) : null}
         </span>
-        <span className="task-symbol">{icon}</span>
+        <span className="task-symbol" style={{ color: "#c084fc", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{renderCategoryIcon(meta || title, 16)}</span>
         <span className="task-copy">
           <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {title}
@@ -938,7 +938,7 @@ function QuestCard({
                 }}
               >
                 {title}{' '}
-                <span style={{ fontSize: '11.5px', color: '#827896', fontWeight: 400 }}>
+                <span style={{ fontSize: '11.5px', color: '#b8add1', fontWeight: 400 }}>
                   - {scheduleText}
                 </span>
               </div>
@@ -6748,7 +6748,7 @@ export default function Page() {
                     <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#f5f2ff' }}>
                       {userHistoryItems.length}
                     </strong>
-                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Quest Selesai</span>
+                    <span style={{ fontSize: '10px', color: '#c4b5fd' }}>Quest Selesai</span>
                   </div>
                   <div
                     style={{
@@ -6762,7 +6762,7 @@ export default function Page() {
                     <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#d8b4fe' }}>
                       {effectiveXp.toLocaleString('id-ID')} XP
                     </strong>
-                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Total XP</span>
+                    <span style={{ fontSize: '10px', color: '#c4b5fd' }}>Total XP</span>
                   </div>
                   <div
                     style={{
@@ -6776,7 +6776,7 @@ export default function Page() {
                     <strong style={{ display: 'block', fontSize: '17px', fontWeight: 800, color: '#fbbf24' }}>
                       {currentUser.streak} Hari
                     </strong>
-                    <span style={{ fontSize: '10px', color: '#9a8fb3' }}>Streak Aktif</span>
+                    <span style={{ fontSize: '10px', color: '#c4b5fd' }}>Streak Aktif</span>
                   </div>
                 </div>
 
@@ -6843,7 +6843,7 @@ export default function Page() {
                             background: '#0e0c16',
                             border: '1px dashed #2c2342',
                             textAlign: 'center',
-                            color: '#827896',
+                            color: '#b8add1',
                             fontSize: '12px',
                           }}
                         >
@@ -6868,7 +6868,7 @@ export default function Page() {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
                             <div className="history-icon-box">
-                              {item.isGym ? <Dumbbell size={18} /> : item.icon}
+                              {item.isGym ? <Dumbbell size={18} /> : renderCategoryIcon(item.category, 18)}
                             </div>
                             <div style={{ minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
@@ -7768,7 +7768,7 @@ export default function Page() {
                                     <FastForward size={11} color="#f87171" strokeWidth={2.5} />
                                   ) : null}
                                 </span>
-                                <span style={{ fontSize: '15px' }}>{task.icon}</span>
+                                <span style={{ width: '26px', height: '26px', borderRadius: '7px', background: 'rgba(168, 85, 247, 0.14)', border: '1px solid rgba(168, 85, 247, 0.28)', color: '#c084fc', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{renderCategoryIcon(task.category, 14)}</span>
                                 <div style={{ minWidth: 0 }}>
                                   <strong
                                     style={{
@@ -7799,7 +7799,7 @@ export default function Page() {
                                       </span>
                                     )}
                                   </strong>
-                                  <span style={{ fontSize: '9.5px', color: isSkipped && !task.done ? '#fca5a5' : '#8e84a2' }}>
+                                  <span style={{ fontSize: '9.5px', color: isSkipped && !task.done ? '#fca5a5' : '#b8add1' }}>
                                     {task.category}
                                     {isSkipped && !task.done ? ' • (Dilewati)' : ` • +${task.xp} XP`}
                                   </span>
@@ -7841,9 +7841,9 @@ export default function Page() {
                                     style={{
                                       padding: '4px 7px',
                                       borderRadius: '7px',
-                                      background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                                      border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                      color: isSkipped ? '#fca5a5' : '#94a3b8',
+                                      background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.12)',
+                                      border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
+                                      color: isSkipped ? '#fca5a5' : '#d8b4fe',
                                       fontSize: '10px',
                                       fontWeight: 700,
                                       cursor: 'pointer',
@@ -7893,7 +7893,7 @@ export default function Page() {
                           border: '1px dashed #28213a',
                           textAlign: 'center',
                           fontSize: '11.5px',
-                          color: '#827896',
+                          color: '#b8add1',
                         }}
                       >
                         <p style={{ margin: '0 0 10px' }}>Belum ada riwayat quest yang tercatat.</p>
@@ -7921,7 +7921,7 @@ export default function Page() {
                             onClick={() => setIsHistoryPageOpen(true)}
                           >
                             <div className="history-icon-box">
-                              {item.isGym ? <Dumbbell size={18} /> : item.icon}
+                              {item.isGym ? <Dumbbell size={18} /> : renderCategoryIcon(item.category, 18)}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
@@ -8422,7 +8422,7 @@ export default function Page() {
                           border: '1px dashed #28213a',
                           textAlign: 'center',
                           fontSize: '11.5px',
-                          color: '#7c738f',
+                          color: '#b8add1',
                         }}
                       >
                         {questScheduleTab === 'today'
@@ -8917,7 +8917,7 @@ export default function Page() {
                                   }}
                                 >
                                   {cq.title}{' '}
-                                  <span style={{ fontSize: '11px', color: '#827896', fontWeight: 400 }}>
+                                  <span style={{ fontSize: '11px', color: '#b8add1', fontWeight: 400 }}>
                                     - {scheduleText}
                                   </span>
                                 </div>
@@ -9035,7 +9035,7 @@ export default function Page() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '22px' }}>{questInfoTarget.icon}</span>
+                      <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.16)', border: '1px solid rgba(168, 85, 247, 0.35)', color: '#c084fc', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{renderCategoryIcon(questInfoTarget.category, 17)}</span>
                       <div style={{ fontSize: '15px', fontWeight: 800, color: '#f3f1ff' }}>
                         {questInfoTarget.title}
                       </div>
@@ -9526,7 +9526,7 @@ export default function Page() {
                               value={cat.name}
                               style={{ background: '#130f24', color: '#f3f1ff', padding: '8px' }}
                             >
-                              {cat.icon} {cat.name}
+                              {cat.name} (+{cat.xp} XP)
                             </option>
                           ))}
                         </select>
@@ -9588,7 +9588,7 @@ export default function Page() {
                         }}
                       >
                         <span style={{ fontSize: '12px', color: '#e2d9f3', fontWeight: 600 }}>
-                          {findCategory(questCategory).icon} {findCategory(questCategory).name}
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><span style={{ color: "#c084fc", display: "inline-flex" }}>{renderCategoryIcon(questCategory, 14)}</span><span>{findCategory(questCategory).name}</span></span>
                         </span>
                         <span style={{ fontSize: '13px', color: '#c084fc', fontWeight: 800 }}>
                           +{findCategory(questCategory).xp} XP
@@ -10331,33 +10331,33 @@ export default function Page() {
                     flexShrink: 0,
                   }}
                 >
-                  🎯
+                  <Trophy size={17} style={{ color: "#e9d5ff" }} />
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <strong style={{ fontSize: '13.5px', fontWeight: 800, color: '#f3f1ff' }}>
                       Category Mastery
                     </strong>
-                    {sRankCategories.length > 0 && (
+                    {unlockedMasteries.length > 0 && (
                       <span
                         style={{
                           fontSize: '9px',
                           fontWeight: 800,
                           padding: '1px 5px',
                           borderRadius: '5px',
-                          background: 'rgba(250, 204, 21, 0.2)',
-                          border: '1px solid rgba(250, 204, 21, 0.45)',
-                          color: '#fde047',
+                          background: 'rgba(168, 85, 247, 0.25)',
+                          border: '1px solid rgba(192, 132, 252, 0.45)',
+                          color: '#e9d5ff',
                         }}
                       >
-                        👑 {sRankCategories.length} Rank S
+                        {unlockedMasteries.length} Aktif
                       </span>
                     )}
                   </div>
-                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#9a8fb3' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#c4b5fd' }}>
                     {activeMasteries.length > 0
                       ? `${activeMasteries.length} kategori aktif terdaftar • Buka halaman mastery`
-                      : 'Lihat spesialisasi & rank kategori hunter'}
+                      : 'Lihat spesialisasi & total XP kategori hunter'}
                   </p>
                 </div>
               </div>
@@ -10477,7 +10477,7 @@ export default function Page() {
                       value={cat.name}
                       style={{ background: '#130f24', color: '#f3f1ff', padding: '8px' }}
                     >
-                      {cat.icon} {cat.name}
+                      {cat.name} (+{cat.xp} XP)
                     </option>
                   ))}
                 </select>
@@ -10616,7 +10616,7 @@ export default function Page() {
                 }}
               >
                 <span style={{ fontSize: '12px', color: '#e2d9f3', fontWeight: 600 }}>
-                  {findCategory(questCategory).icon} {findCategory(questCategory).name}
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><span style={{ color: "#c084fc", display: "inline-flex" }}>{renderCategoryIcon(questCategory, 14)}</span><span>{findCategory(questCategory).name}</span></span>
                 </span>
                 <span style={{ fontSize: '13px', color: '#c084fc', fontWeight: 800 }}>
                   +{findCategory(questCategory).xp} XP
@@ -10680,14 +10680,14 @@ export default function Page() {
                   className={`modal-chip ${!editClanPrivate ? 'active' : ''}`}
                   onClick={() => setEditClanPrivate(false)}
                 >
-                  🌐 Publik (Bisa dicari & langsung gabung)
+                  <Globe size={12} style={{ display: "inline", marginRight: "5px", verticalAlign: "-2px" }} />Publik (Bisa dicari & langsung gabung)
                 </button>
                 <button
                   type="button"
                   className={`modal-chip ${editClanPrivate ? 'active' : ''}`}
                   onClick={() => setEditClanPrivate(true)}
                 >
-                  🔒 Privat (Hanya lewat Kode Invite)
+                  <Lock size={12} style={{ display: "inline", marginRight: "5px", verticalAlign: "-2px" }} />Privat (Hanya lewat Kode Invite)
                 </button>
               </div>
 
@@ -10786,14 +10786,14 @@ export default function Page() {
                   className={`modal-chip ${!newClanPrivate ? 'active' : ''}`}
                   onClick={() => setNewClanPrivate(false)}
                 >
-                  🌐 Publik (Bebas Join)
+                  <Globe size={12} style={{ display: "inline", marginRight: "5px", verticalAlign: "-2px" }} />Publik (Bebas Join)
                 </button>
                 <button
                   type="button"
                   className={`modal-chip ${newClanPrivate ? 'active' : ''}`}
                   onClick={() => setNewClanPrivate(true)}
                 >
-                  🔒 Privat (Wajib Kode Invite)
+                  <Lock size={12} style={{ display: "inline", marginRight: "5px", verticalAlign: "-2px" }} />Privat (Wajib Kode Invite)
                 </button>
               </div>
 
@@ -11046,7 +11046,7 @@ export default function Page() {
                         }}
                       >
                         {task.title}{' '}
-                        <span style={{ fontSize: '11px', color: '#827896', fontWeight: 400 }}>
+                        <span style={{ fontSize: '11px', color: '#b8add1', fontWeight: 400 }}>
                           - {scheduleText}
                         </span>
                       </div>
