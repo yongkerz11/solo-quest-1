@@ -1271,6 +1271,7 @@ export default function Page() {
 
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
   const [editingPersonalTask, setEditingPersonalTask] = useState<PersonalTask | null>(null)
 
   const [isClanQuestPageOpen, setIsClanQuestPageOpen] = useState(false)
@@ -2948,7 +2949,8 @@ export default function Page() {
     setQuestXp(cat.xp)
     setQuestDays(['Everyday'])
     setSelectedTemplateSessionIdForQuest('')
-    setSelectedProgramId('none')
+    setSelectedProgramId(GYM_PROGRAM_TEMPLATES[0].id)
+    setIsCategoryDropdownOpen(false)
     setIsPersonalModalOpen(true)
   }
 
@@ -2959,7 +2961,8 @@ export default function Page() {
     setQuestXp(task.xp)
     setQuestDays(task.schedule && task.schedule.length > 0 ? task.schedule : ['Everyday'])
     setSelectedTemplateSessionIdForQuest('')
-    setSelectedProgramId('none')
+    setSelectedProgramId(GYM_PROGRAM_TEMPLATES[0].id)
+    setIsCategoryDropdownOpen(false)
     setIsPersonalModalOpen(true)
   }
 
@@ -6703,29 +6706,29 @@ export default function Page() {
           </div>
         ) : isPersonalModalOpen ? (
           /* ================================================================
-             HALAMAN PENUH: TAMBAH / EDIT QUEST PRIBADI (DEDICATED FULL PAGE - BUKAN POPUP)
+             HALAMAN PENUH: TAMBAH / EDIT QUEST PRIBADI (MINIMALIS 1 KARTU)
              ================================================================ */
-          <div style={{ animation: 'heroCardAppear 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-            {/* Top Header Navigation */}
+          <div style={{ animation: 'heroCardAppear 0.22s ease' }}>
+            {/* Minimalist Top Bar */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '12px',
-                marginBottom: '16px',
+                gap: '10px',
+                marginBottom: '14px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
                   onClick={() => setIsPersonalModalOpen(false)}
                   style={{
-                    background: '#171226',
+                    background: '#151026',
                     border: '1px solid #32254a',
-                    borderRadius: '11px',
-                    width: '36px',
-                    height: '36px',
+                    borderRadius: '10px',
+                    width: '34px',
+                    height: '34px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -6738,57 +6741,40 @@ export default function Page() {
                 >
                   <ArrowLeft size={16} />
                 </button>
-                <div style={{ minWidth: 0 }}>
-                  <span className="eyebrow" style={{ fontSize: '9px', color: '#a855f7' }}>
-                    PERSONAL QUEST SETUP
-                  </span>
-                  <h2
-                    style={{
-                      margin: '2px 0 0',
-                      fontSize: '18px',
-                      fontWeight: 800,
-                      color: '#f5f2ff',
-                      letterSpacing: '-0.02em',
-                    }}
-                  >
-                    {editingPersonalTask ? 'Edit Quest Pribadi' : 'Tambah Quest Baru'}
-                  </h2>
-                </div>
+                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#f5f2ff' }}>
+                  {editingPersonalTask ? 'Edit Quest' : 'Tambah Quest Baru'}
+                </h2>
               </div>
-              <div
+              <span
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '5px 11px',
+                  padding: '4px 10px',
                   borderRadius: '999px',
                   background: 'rgba(56, 189, 248, 0.14)',
-                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  border: '1px solid rgba(56, 189, 248, 0.38)',
                   color: '#67e8f9',
-                  fontSize: '11.5px',
+                  fontSize: '11px',
                   fontWeight: 800,
-                  flexShrink: 0,
                 }}
               >
-                <Zap size={12} />
-                <span>+{findCategory(questCategory).xp} XP</span>
-              </div>
+                +{findCategory(questCategory).xp} XP
+              </span>
             </div>
 
-            <form onSubmit={handleSavePersonalQuest} style={{ display: 'grid', gap: '14px' }}>
+            {/* Single Minimalist Card Form */}
+            <form
+              onSubmit={handleSavePersonalQuest}
+              style={{
+                padding: '16px',
+                borderRadius: '18px',
+                background: 'linear-gradient(145deg, rgba(22, 16, 38, 0.94), rgba(13, 10, 23, 0.98))',
+                border: '1px solid rgba(139, 92, 246, 0.25)',
+                display: 'grid',
+                gap: '14px',
+              }}
+            >
               {/* 1. NAMA QUEST */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: '16px',
-                  background: 'linear-gradient(145deg, rgba(22, 16, 38, 0.92), rgba(13, 10, 23, 0.96))',
-                  border: '1px solid rgba(139, 92, 246, 0.24)',
-                }}
-              >
-                <label
-                  className="modal-label"
-                  style={{ display: 'block', marginBottom: '8px', fontSize: '10.5px', color: '#c4b5fd' }}
-                >
+              <div>
+                <label className="modal-label" style={{ marginBottom: '6px' }}>
                   NAMA QUEST
                 </label>
                 <input
@@ -6800,9 +6786,9 @@ export default function Page() {
                   style={{
                     marginBottom: 0,
                     height: '42px',
-                    fontSize: '13.5px',
+                    fontSize: '13px',
                     background: '#0a0814',
-                    border: '1px solid rgba(168, 85, 247, 0.35)',
+                    border: '1px solid rgba(168, 85, 247, 0.32)',
                     borderRadius: '11px',
                   }}
                   autoFocus
@@ -6810,360 +6796,217 @@ export default function Page() {
                 />
               </div>
 
-              {/* 2. KATEGORI QUEST (GRID PILIHAN LANGSUNG TANPA DROPDOWN POPUP OS) */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: '16px',
-                  background: 'linear-gradient(145deg, rgba(22, 16, 38, 0.92), rgba(13, 10, 23, 0.96))',
-                  border: '1px solid rgba(139, 92, 246, 0.24)',
-                }}
-              >
-                <div
+              {/* 2. KATEGORI QUEST (1 BARIS COMPACT + CUSTOM LIST TANPA NATIVE OS POPUP) */}
+              <div>
+                <label className="modal-label" style={{ marginBottom: '6px' }}>
+                  KATEGORI
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryDropdownOpen((v) => !v)}
                   style={{
+                    width: '100%',
+                    height: '42px',
+                    padding: '0 12px',
+                    borderRadius: '11px',
+                    background: '#0a0814',
+                    border: isCategoryDropdownOpen
+                      ? '1px solid rgba(56, 189, 248, 0.5)'
+                      : '1px solid rgba(168, 85, 247, 0.32)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    marginBottom: '10px',
+                    cursor: 'pointer',
+                    color: '#f3f1ff',
                   }}
                 >
-                  <label className="modal-label" style={{ marginBottom: 0, fontSize: '10.5px', color: '#c4b5fd' }}>
-                    PILIH KATEGORI QUEST
-                  </label>
-                  <span style={{ fontSize: '10.5px', color: '#9a8fb2' }}>
-                    XP otomatis sesuai kategori
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}>
+                    <span style={{ color: '#c084fc', display: 'inline-flex' }}>
+                      {renderCategoryIcon(questCategory, 15)}
+                    </span>
+                    <span>{findCategory(questCategory).name}</span>
                   </span>
-                </div>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                    gap: '7px',
-                  }}
-                >
-                  {CATEGORIES.map((cat) => {
-                    const isSelected = questCategory.toLowerCase() === cat.name.toLowerCase()
-                    return (
-                      <button
-                        key={cat.name}
-                        type="button"
-                        onClick={() => setQuestCategory(cat.name)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
-                          padding: '9px 10px',
-                          borderRadius: '11px',
-                          background: isSelected
-                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.28), rgba(56, 189, 248, 0.14))'
-                            : 'rgba(12, 9, 22, 0.85)',
-                          border: isSelected
-                            ? '1px solid rgba(56, 189, 248, 0.5)'
-                            : '1px solid rgba(139, 92, 246, 0.18)',
-                          boxShadow: isSelected ? '0 0 12px rgba(56, 189, 248, 0.14)' : 'none',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          transition: 'all 0.15s ease',
-                          minWidth: 0,
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                          <span
-                            style={{
-                              width: '26px',
-                              height: '26px',
-                              borderRadius: '8px',
-                              background: isSelected ? 'rgba(56, 189, 248, 0.18)' : 'rgba(168, 85, 247, 0.12)',
-                              border: isSelected
-                                ? '1px solid rgba(56, 189, 248, 0.4)'
-                                : '1px solid rgba(168, 85, 247, 0.24)',
-                              color: isSelected ? '#67e8f9' : '#c084fc',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                            }}
-                          >
-                            {renderCategoryIcon(cat.name, 14)}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '11.5px',
-                              fontWeight: isSelected ? 800 : 600,
-                              color: isSelected ? '#ffffff' : '#d4cae8',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {cat.name}
-                          </span>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            fontWeight: 800,
-                            color: isSelected ? '#67e8f9' : '#a855f7',
-                            flexShrink: 0,
-                          }}
-                        >
-                          +{cat.xp}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#67e8f9' }}>
+                      +{findCategory(questCategory).xp} XP
+                    </span>
+                    {isCategoryDropdownOpen ? (
+                      <ChevronUp size={15} color="#a855f7" />
+                    ) : (
+                      <ChevronDown size={15} color="#a855f7" />
+                    )}
+                  </span>
+                </button>
 
-              {/* 3. TEMPLATE LATIHAN GYM (OPSIONAL, KARTU INTERAKTIF TANPA SELECT POPUP) */}
-              {questCategory.toLowerCase() === 'gym' && (
-                <div
-                  style={{
-                    padding: '14px',
-                    borderRadius: '16px',
-                    background: 'linear-gradient(145deg, rgba(26, 18, 48, 0.92), rgba(13, 10, 24, 0.96))',
-                    border: '1px solid rgba(168, 85, 247, 0.32)',
-                  }}
-                >
+                {isCategoryDropdownOpen && (
                   <div
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                      marginBottom: '10px',
+                      marginTop: '6px',
+                      padding: '6px',
+                      borderRadius: '12px',
+                      background: '#0c0918',
+                      border: '1px solid rgba(168, 85, 247, 0.35)',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                      gap: '5px',
                     }}
                   >
-                    <label
-                      className="modal-label"
-                      style={{
-                        marginBottom: 0,
-                        fontSize: '10.5px',
-                        color: '#e9d5ff',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}
-                    >
-                      <Dumbbell size={13} style={{ color: '#c084fc' }} />
-                      <span>TEMPLATE SESI GYM (OPSIONAL)</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsPersonalModalOpen(false)
-                        if (selectedProgramId === 'none') {
-                          setSelectedProgramId(GYM_PROGRAM_TEMPLATES[0].id)
-                        }
-                        setIsQuestProgramPageOpen(true)
-                        setActiveTab('calendar')
-                      }}
-                      style={{
-                        padding: '4px 9px',
-                        borderRadius: '999px',
-                        background: 'rgba(168, 85, 247, 0.16)',
-                        border: '1px solid rgba(192, 132, 252, 0.35)',
-                        color: '#d8b4fe',
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span>Detail Program</span>
-                      <ChevronRight size={11} />
-                    </button>
-                  </div>
-
-                  {/* Pill Tab Frekuensi: Manual vs 2x - 6x */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '10px' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedProgramId('none')
-                        setSelectedTemplateSessionIdForQuest('')
-                      }}
-                      style={{
-                        padding: '5px 10px',
-                        borderRadius: '999px',
-                        fontSize: '10.5px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        background:
-                          selectedProgramId === 'none'
-                            ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
-                            : 'rgba(12, 9, 22, 0.85)',
-                        border:
-                          selectedProgramId === 'none'
-                            ? '1px solid #d8b4fe'
-                            : '1px solid rgba(139, 92, 246, 0.22)',
-                        color: selectedProgramId === 'none' ? '#ffffff' : '#b8add1',
-                      }}
-                    >
-                      Manual (Kosong)
-                    </button>
-                    {GYM_PROGRAM_TEMPLATES.map((prog) => {
-                      const isProgSelected = selectedProgramId === prog.id
+                    {CATEGORIES.map((cat) => {
+                      const isSel = questCategory.toLowerCase() === cat.name.toLowerCase()
                       return (
                         <button
-                          key={prog.id}
+                          key={cat.name}
                           type="button"
-                          onClick={() => setSelectedProgramId(prog.id)}
+                          onClick={() => {
+                            setQuestCategory(cat.name)
+                            setIsCategoryDropdownOpen(false)
+                          }}
                           style={{
-                            padding: '5px 10px',
-                            borderRadius: '999px',
-                            fontSize: '10.5px',
-                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '6px',
+                            padding: '7px 9px',
+                            borderRadius: '9px',
+                            background: isSel ? 'rgba(124, 58, 237, 0.28)' : 'transparent',
+                            border: isSel ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
+                            color: isSel ? '#ffffff' : '#cfc4e6',
+                            fontSize: '11.5px',
+                            fontWeight: isSel ? 800 : 600,
                             cursor: 'pointer',
-                            background: isProgSelected
-                              ? 'linear-gradient(135deg, #7c3aed, #9333ea)'
-                              : 'rgba(12, 9, 22, 0.85)',
-                            border: isProgSelected
-                              ? '1px solid #d8b4fe'
-                              : '1px solid rgba(139, 92, 246, 0.22)',
-                            color: isProgSelected ? '#ffffff' : '#b8add1',
+                            textAlign: 'left',
+                            minWidth: 0,
                           }}
                         >
-                          {prog.frequencyLabel}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                            <span style={{ color: isSel ? '#67e8f9' : '#c084fc', display: 'inline-flex', flexShrink: 0 }}>
+                              {renderCategoryIcon(cat.name, 13)}
+                            </span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {cat.name}
+                            </span>
+                          </span>
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: isSel ? '#67e8f9' : '#a855f7', flexShrink: 0 }}>
+                            +{cat.xp}
+                          </span>
                         </button>
                       )
                     })}
                   </div>
+                )}
 
-                  {selectedProgramId === 'none' ? (
+                {/* TOMBOL BUKA HALAMAN REFERENSI PROGRAM GYM (1 BARIS SIMPLE) */}
+                {questCategory.toLowerCase() === 'gym' && (() => {
+                  const allSess = GYM_PROGRAM_TEMPLATES.flatMap((p) => p.sessions)
+                  const pickedSess = selectedTemplateSessionIdForQuest
+                    ? allSess.find((s) => s.id === selectedTemplateSessionIdForQuest)
+                    : null
+
+                  return (
                     <div
                       style={{
+                        marginTop: '8px',
                         padding: '9px 11px',
-                        borderRadius: '10px',
-                        background: 'rgba(10, 8, 19, 0.7)',
-                        border: '1px dashed rgba(139, 92, 246, 0.25)',
-                        fontSize: '11px',
-                        color: '#b8add1',
+                        borderRadius: '11px',
+                        background: pickedSess ? 'rgba(56, 189, 248, 0.1)' : 'rgba(168, 85, 247, 0.08)',
+                        border: pickedSess
+                          ? '1px solid rgba(56, 189, 248, 0.35)'
+                          : '1px solid rgba(168, 85, 247, 0.24)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
                       }}
                     >
-                      Tanpa template — kamu bebas menambah gerakan sendiri saat sesi workout dimulai, atau pilih frekuensi <strong>2x–6x</strong> di atas.
+                      <div style={{ minWidth: 0 }}>
+                        <span
+                          style={{
+                            display: 'block',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            color: pickedSess ? '#67e8f9' : '#e9d5ff',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {pickedSess ? `✓ ${pickedSess.title}` : 'Template Program Gym (Opsional)'}
+                        </span>
+                        <span style={{ fontSize: '10px', color: '#9a8fb2' }}>
+                          {pickedSess
+                            ? `${pickedSess.exercises.length} gerakan otomatis dimuat`
+                            : 'Pilih jadwal 2x–6x seminggu atau kosongkan'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                        {pickedSess && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTemplateSessionIdForQuest('')}
+                            style={{
+                              padding: '4px 7px',
+                              borderRadius: '7px',
+                              background: 'rgba(239, 68, 68, 0.14)',
+                              border: '1px solid rgba(239, 68, 68, 0.35)',
+                              color: '#fca5a5',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Reset
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsPersonalModalOpen(false)
+                            setIsQuestProgramPageOpen(true)
+                            setActiveTab('calendar')
+                          }}
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: '8px',
+                            background: 'rgba(168, 85, 247, 0.18)',
+                            border: '1px solid rgba(192, 132, 252, 0.38)',
+                            color: '#e9d5ff',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                        >
+                          <span>{pickedSess ? 'Ganti' : 'Pilih'}</span>
+                          <ChevronRight size={12} />
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    (() => {
-                      const currentProg =
-                        GYM_PROGRAM_TEMPLATES.find((p) => p.id === selectedProgramId) || GYM_PROGRAM_TEMPLATES[0]
-                      return (
-                        <div style={{ display: 'grid', gap: '6px' }}>
-                          {currentProg.sessions.map((sess) => {
-                            const isSessSelected = selectedTemplateSessionIdForQuest === sess.id
-                            return (
-                              <button
-                                key={sess.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedTemplateSessionIdForQuest(sess.id)
-                                  setQuestTitle(sess.questTitle)
-                                  if (sess.recommendedDays.length > 0) {
-                                    setQuestDays(sess.recommendedDays)
-                                  }
-                                }}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '8px',
-                                  padding: '9px 11px',
-                                  borderRadius: '10px',
-                                  background: isSessSelected
-                                    ? 'linear-gradient(135deg, rgba(14, 116, 144, 0.22), rgba(88, 28, 135, 0.32))'
-                                    : 'rgba(10, 8, 19, 0.8)',
-                                  border: isSessSelected
-                                    ? '1px solid rgba(56, 189, 248, 0.5)'
-                                    : '1px solid rgba(139, 92, 246, 0.2)',
-                                  cursor: 'pointer',
-                                  textAlign: 'left',
-                                }}
-                              >
-                                <div style={{ minWidth: 0 }}>
-                                  <strong
-                                    style={{
-                                      display: 'block',
-                                      fontSize: '12px',
-                                      color: isSessSelected ? '#ffffff' : '#e9d5ff',
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    {sess.title}
-                                  </strong>
-                                  <span style={{ fontSize: '10px', color: isSessSelected ? '#bae6fd' : '#9a8fb2' }}>
-                                    Rekomendasi: {sess.dayLabel} • {sess.exercises.length} gerakan
-                                  </span>
-                                </div>
-                                <span
-                                  style={{
-                                    padding: '3px 8px',
-                                    borderRadius: '999px',
-                                    fontSize: '10px',
-                                    fontWeight: 800,
-                                    background: isSessSelected
-                                      ? 'rgba(56, 189, 248, 0.2)'
-                                      : 'rgba(168, 85, 247, 0.14)',
-                                    border: isSessSelected
-                                      ? '1px solid rgba(56, 189, 248, 0.45)'
-                                      : '1px solid rgba(168, 85, 247, 0.28)',
-                                    color: isSessSelected ? '#67e8f9' : '#c084fc',
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  {isSessSelected ? '✓ Dipilih' : 'Pilih'}
-                                </span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )
-                    })()
-                  )}
-                </div>
-              )}
+                  )
+                })()}
+              </div>
 
-              {/* 4. JADWAL HARI (7 KOLOM RAPI DALAM 1 BARIS + TOGGLE EVERYDAY) */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: '16px',
-                  background: 'linear-gradient(145deg, rgba(22, 16, 38, 0.92), rgba(13, 10, 23, 0.96))',
-                  border: '1px solid rgba(139, 92, 246, 0.24)',
-                }}
-              >
+              {/* 3. JADWAL HARI (1 BARIS 7 HARI + PILL EVERYDAY) */}
+              <div>
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    marginBottom: '10px',
+                    marginBottom: '8px',
                   }}
                 >
-                  <label
-                    className="modal-label"
-                    style={{
-                      marginBottom: 0,
-                      fontSize: '10.5px',
-                      color: '#c4b5fd',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                    }}
-                  >
-                    <Clock size={12} style={{ color: '#a855f7' }} />
-                    <span>JADWAL HARI</span>
+                  <label className="modal-label" style={{ marginBottom: 0 }}>
+                    JADWAL HARI
                   </label>
                   <button
                     type="button"
                     onClick={() => handleToggleDay('Everyday')}
                     style={{
-                      padding: '4px 10px',
+                      padding: '3px 9px',
                       borderRadius: '999px',
-                      fontSize: '10.5px',
+                      fontSize: '10px',
                       fontWeight: 800,
                       cursor: 'pointer',
                       background: questDays.includes('Everyday')
@@ -7171,11 +7014,11 @@ export default function Page() {
                         : 'rgba(168, 85, 247, 0.12)',
                       border: questDays.includes('Everyday')
                         ? '1px solid #d8b4fe'
-                        : '1px solid rgba(168, 85, 247, 0.3)',
+                        : '1px solid rgba(168, 85, 247, 0.28)',
                       color: questDays.includes('Everyday') ? '#ffffff' : '#c4b5fd',
                     }}
                   >
-                    {questDays.includes('Everyday') ? '✓ Setiap Hari (Everyday)' : 'Setiap Hari (Everyday)'}
+                    {questDays.includes('Everyday') ? '✓ Setiap Hari' : 'Setiap Hari'}
                   </button>
                 </div>
 
@@ -7204,23 +7047,22 @@ export default function Page() {
                         onClick={() => handleToggleDay(d.code)}
                         style={{
                           padding: '8px 0',
-                          borderRadius: '10px',
+                          borderRadius: '9px',
                           fontSize: '11px',
                           fontWeight: 700,
                           cursor: 'pointer',
                           textAlign: 'center',
                           background: isSelected
                             ? isEvery
-                              ? 'rgba(124, 58, 237, 0.24)'
+                              ? 'rgba(124, 58, 237, 0.22)'
                               : 'linear-gradient(135deg, #7c3aed, #9333ea)'
-                            : 'rgba(10, 8, 19, 0.85)',
+                            : '#0a0814',
                           border: isSelected
                             ? isEvery
-                              ? '1px solid rgba(192, 132, 252, 0.45)'
+                              ? '1px solid rgba(192, 132, 252, 0.42)'
                               : '1px solid #67e8f9'
                             : '1px solid rgba(139, 92, 246, 0.2)',
                           color: isSelected ? '#ffffff' : '#9a8fb2',
-                          transition: 'all 0.15s ease',
                         }}
                       >
                         {d.label}
@@ -7230,20 +7072,20 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* 5. ACTION BUTTONS */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px', paddingTop: '4px' }}>
+              {/* 4. ACTION BUTTONS */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px', paddingTop: '2px' }}>
                 <button
                   type="button"
                   className="btn-secondary"
                   onClick={() => setIsPersonalModalOpen(false)}
-                  style={{ height: '44px', borderRadius: '12px', fontSize: '13px', fontWeight: 700 }}
+                  style={{ height: '42px', borderRadius: '11px', fontSize: '12.5px', fontWeight: 700 }}
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   className="btn-primary"
-                  style={{ height: '44px', borderRadius: '12px', fontSize: '13px', fontWeight: 800 }}
+                  style={{ height: '42px', borderRadius: '11px', fontSize: '12.5px', fontWeight: 800 }}
                 >
                   {editingPersonalTask ? 'Simpan Perubahan' : 'Simpan Quest'}
                 </button>
