@@ -10922,111 +10922,323 @@ export default function Page() {
         )}
 
         {/* ================================================================
-            TAB 5: PROFILE & SUPABASE AUTH ACCOUNT
+            TAB 5: PROFILE & SUPABASE AUTH ACCOUNT (HUNTER LICENSE DESIGN)
            ================================================================ */}
         {activeTab === 'profile' && (
-          <>
-            <section className="hero compact">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                <label
-                  title="Ganti Foto Profil"
-                  className="portal-avatar-wrap"
+          <div style={{ display: 'grid', gap: '14px', animation: 'heroCardAppear 0.24s ease' }}>
+            {/* 1. UNIFIED HUNTER LICENSE HERO CARD */}
+            <section
+              style={{
+                position: 'relative',
+                padding: '18px 16px 16px',
+                borderRadius: '22px',
+                background:
+                  'radial-gradient(circle at 88% 18%, rgba(124, 58, 237, 0.22), transparent 52%), linear-gradient(155deg, rgba(24, 17, 42, 0.96), rgba(11, 8, 20, 0.99))',
+                border: '1px solid rgba(139, 92, 246, 0.32)',
+                boxShadow: '0 14px 36px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Top Row: Portal Avatar + Name/Email + Hex-Crest Rank Emblem */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '13px', minWidth: 0, flex: 1 }}>
+                  <label
+                    title="Ganti Foto Profil"
+                    className="portal-avatar-wrap"
+                    style={{
+                      width: '62px',
+                      height: '62px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <svg viewBox="0 0 100 100" className="portal-vortex-svg" aria-hidden="true">
+                      <g className="portal-ring-outer">
+                        <path d="M 50 6 A 44 44 0 0 1 92 38" fill="none" stroke="#67e8f9" strokeWidth="3.5" strokeLinecap="round" />
+                        <path d="M 90 68 A 44 44 0 0 1 22 86" fill="none" stroke="#a855f7" strokeWidth="4" strokeLinecap="round" />
+                        <path d="M 10 64 A 44 44 0 0 1 32 10" fill="none" stroke="#c084fc" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="10 8" />
+                      </g>
+                      <g className="portal-ring-inner">
+                        <path d="M 50 13 A 37 37 0 0 1 84 65" fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
+                        <path d="M 62 85 A 37 37 0 0 1 14 42" fill="none" stroke="#c084fc" strokeWidth="2.2" strokeLinecap="round" />
+                      </g>
+                    </svg>
+                    <div className="portal-avatar-core" style={{ fontSize: '21px' }}>
+                      {currentUser.avatarUrl ? (
+                        <img
+                          src={currentUser.avatarUrl}
+                          alt={currentUser.username}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <span
+                      style={{
+                        position: 'absolute',
+                        right: '-1px',
+                        bottom: '-1px',
+                        zIndex: 3,
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '999px',
+                        background: '#130d24',
+                        border: '1px solid rgba(56, 189, 248, 0.6)',
+                        color: '#67e8f9',
+                        display: 'grid',
+                        placeItems: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.65)',
+                      }}
+                    >
+                      <Pencil size={10} />
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        const reader = new FileReader()
+                        reader.onload = () => {
+                          const img = new Image()
+                          img.onload = () => {
+                            const canvas = document.createElement('canvas')
+                            canvas.width = 160
+                            canvas.height = 160
+                            const ctx = canvas.getContext('2d')
+                            if (!ctx) return
+                            const minDim = Math.min(img.width, img.height)
+                            const sx = (img.width - minDim) / 2
+                            const sy = (img.height - minDim) / 2
+                            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 160, 160)
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+                            const updatedUser = { ...currentUser, avatarUrl: dataUrl }
+                            setUsers((prev) =>
+                              prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
+                            )
+                            saveCloudProfile(updatedUser)
+                            showToast('Foto profil berhasil diperbarui!')
+                          }
+                          if (typeof reader.result === 'string') img.src = reader.result
+                        }
+                        reader.readAsDataURL(file)
+                      }}
+                    />
+                  </label>
+
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <h1
+                      style={{
+                        margin: 0,
+                        fontSize: '20px',
+                        fontWeight: 900,
+                        color: '#f5f2ff',
+                        letterSpacing: '-0.02em',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {currentUser.username}
+                    </h1>
+                    <p
+                      style={{
+                        margin: '2px 0 7px',
+                        fontSize: '11.5px',
+                        color: '#9a8fb2',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {currentUser.email}
+                    </p>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: '999px',
+                          background: 'rgba(56, 189, 248, 0.14)',
+                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          color: '#67e8f9',
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                        }}
+                      >
+                        Level {currentLevel}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          color: '#c4b5fd',
+                        }}
+                      >
+                        {effectiveXp.toLocaleString('id-ID')} XP
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Animated Hex-Crest Rank Emblem (Matches Home) */}
+                <div className="rank-hex-emblem" style={{ transform: 'scale(0.86)', transformOrigin: 'center right', flexShrink: 0 }}>
+                  <svg className="rank-hex-svg" viewBox="0 0 106 102" fill="none">
+                    <defs>
+                      <linearGradient id="profHexOuterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#f3e8ff" />
+                        <stop offset="45%" stopColor="#a855f7" />
+                        <stop offset="100%" stopColor="#6d28d9" />
+                      </linearGradient>
+                      <radialGradient id="profHexCoreGrad" cx="50%" cy="28%" r="72%">
+                        <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
+                        <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
+                        <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
+                      </radialGradient>
+                      <linearGradient id="profWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
+                        <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
+                      </linearGradient>
+                    </defs>
+                    <g className="rank-svg-orbit-cw">
+                      <circle cx="53" cy="51" r="47" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="1" strokeDasharray="6 6" />
+                      <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
+                      <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
+                    </g>
+                    <g className="rank-svg-orbit-ccw">
+                      <circle cx="53" cy="51" r="43" stroke="rgba(216, 180, 254, 0.35)" strokeWidth="1.2" strokeDasharray="24 66" strokeLinecap="round" />
+                    </g>
+                    <g className="rank-svg-wings">
+                      <path d="M15 34 L3 25 L8 42 L15 46 Z" fill="url(#profWingGrad)" />
+                      <path d="M15 50 L1 47 L7 60 L15 62 Z" fill="url(#profWingGrad)" opacity="0.75" />
+                      <path d="M91 34 L103 25 L98 42 L91 46 Z" fill="url(#profWingGrad)" />
+                      <path d="M91 50 L105 47 L99 60 L91 62 Z" fill="url(#profWingGrad)" opacity="0.75" />
+                    </g>
+                    <polygon points="53,8 90,28 90,74 53,94 16,74 16,28" fill="url(#profHexCoreGrad)" stroke="url(#profHexOuterGrad)" strokeWidth="2" strokeLinejoin="round" />
+                    <polygon className="rank-svg-laser-glow" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="rgba(216, 180, 254, 0.42)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                    <polygon className="rank-svg-laser-border" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="#f3e8ff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                    <polygon points="53,13 85,31 85,71 53,89 21,71 21,31" fill="none" stroke="rgba(192, 132, 252, 0.28)" strokeWidth="1" />
+                    <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
+                    <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
+                  </svg>
+                  <div className="rank-hex-content">
+                    <span className="rank-hex-label">RANK</span>
+                    <strong className="rank-hex-letter">{currentRank}</strong>
+                    <span className="rank-hex-sub">HUNTER</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* XP Progress Bar inside Hunter License */}
+              <div style={{ marginTop: '14px' }}>
+                <div
                   style={{
-                    width: '60px',
-                    height: '60px',
-                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    color: '#b8add1',
+                    marginBottom: '6px',
                   }}
                 >
-                  <svg viewBox="0 0 100 100" className="portal-vortex-svg" aria-hidden="true">
-                    <g className="portal-ring-outer">
-                      <path d="M 50 6 A 44 44 0 0 1 92 38" fill="none" stroke="#67e8f9" strokeWidth="3.5" strokeLinecap="round" />
-                      <path d="M 90 68 A 44 44 0 0 1 22 86" fill="none" stroke="#a855f7" strokeWidth="4" strokeLinecap="round" />
-                      <path d="M 10 64 A 44 44 0 0 1 32 10" fill="none" stroke="#c084fc" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="10 8" />
-                    </g>
-                    <g className="portal-ring-inner">
-                      <path d="M 50 13 A 37 37 0 0 1 84 65" fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
-                      <path d="M 62 85 A 37 37 0 0 1 14 42" fill="none" stroke="#c084fc" strokeWidth="2.2" strokeLinecap="round" />
-                    </g>
-                  </svg>
-                  <div className="portal-avatar-core" style={{ fontSize: '20px' }}>
-                    {currentUser.avatarUrl ? (
-                      <img
-                        src={currentUser.avatarUrl}
-                        alt={currentUser.username}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      const reader = new FileReader()
-                      reader.onload = () => {
-                        const img = new Image()
-                        img.onload = () => {
-                          const canvas = document.createElement('canvas')
-                          canvas.width = 160
-                          canvas.height = 160
-                          const ctx = canvas.getContext('2d')
-                          if (!ctx) return
-                          const minDim = Math.min(img.width, img.height)
-                          const sx = (img.width - minDim) / 2
-                          const sy = (img.height - minDim) / 2
-                          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 160, 160)
-                          const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
-                          const updatedUser = { ...currentUser, avatarUrl: dataUrl }
-                          setUsers((prev) =>
-                            prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
-                          )
-                          saveCloudProfile(updatedUser)
-                          showToast('Foto profil berhasil diperbarui!')
-                        }
-                        if (typeof reader.result === 'string') img.src = reader.result
-                      }
-                      reader.readAsDataURL(file)
+                  <span>Progres Level {currentLevel}</span>
+                  <span style={{ color: '#67e8f9' }}>{levelProgress}%</span>
+                </div>
+                <div
+                  style={{
+                    height: '6px',
+                    borderRadius: '999px',
+                    background: '#0a0714',
+                    border: '1px solid rgba(139, 92, 246, 0.22)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${Math.max(4, levelProgress)}%`,
+                      height: '100%',
+                      borderRadius: '999px',
+                      background: 'linear-gradient(90deg, #7c3aed, #38bdf8)',
+                      boxShadow: '0 0 10px rgba(56, 189, 248, 0.5)',
                     }}
                   />
-                </label>
-                <div style={{ minWidth: 0 }}>
-                  <p className="eyebrow">HUNTER PROFILE • TAP FOTO UNTUK GANTI</p>
-                  <h1 style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {currentUser.username}
-                  </h1>
-                  <p className="quest-date" style={{ marginTop: '4px' }}>{currentUser.email}</p>
                 </div>
               </div>
-              <div className="rank-badge">
-                <span>RANK</span>
-                <strong>{currentRank}</strong>
+
+              {/* 3-Column Symmetric Stats Dock */}
+              <div
+                style={{
+                  marginTop: '14px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                  gap: '8px',
+                }}
+              >
+                <div
+                  style={{
+                    padding: '10px 8px',
+                    borderRadius: '13px',
+                    background: 'rgba(10, 7, 20, 0.72)',
+                    border: '1px solid rgba(56, 189, 248, 0.2)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ display: 'inline-flex', color: '#67e8f9', marginBottom: '4px' }}>
+                    <CheckCircle2 size={15} />
+                  </div>
+                  <b style={{ display: 'block', fontSize: '16px', fontWeight: 900, color: '#f5f2ff' }}>
+                    {completedPersonalCount}
+                  </b>
+                  <small style={{ fontSize: '10px', color: '#9a8fb2' }}>Quest Selesai</small>
+                </div>
+
+                <div
+                  style={{
+                    padding: '10px 8px',
+                    borderRadius: '13px',
+                    background: 'rgba(10, 7, 20, 0.72)',
+                    border: '1px solid rgba(168, 85, 247, 0.22)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ display: 'inline-flex', color: '#c084fc', marginBottom: '4px' }}>
+                    <Shield size={15} />
+                  </div>
+                  <b style={{ display: 'block', fontSize: '16px', fontWeight: 900, color: '#f5f2ff' }}>
+                    {userJoinedClanIds.length}
+                  </b>
+                  <small style={{ fontSize: '10px', color: '#9a8fb2' }}>Clan Diikuti</small>
+                </div>
+
+                <div
+                  style={{
+                    padding: '10px 8px',
+                    borderRadius: '13px',
+                    background: 'rgba(10, 7, 20, 0.72)',
+                    border: '1px solid rgba(251, 146, 60, 0.22)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{ display: 'inline-flex', color: '#fb923c', marginBottom: '4px' }}>
+                    <Flame size={15} />
+                  </div>
+                  <b style={{ display: 'block', fontSize: '16px', fontWeight: 900, color: '#f5f2ff' }}>
+                    {currentUser.streak}
+                  </b>
+                  <small style={{ fontSize: '10px', color: '#9a8fb2' }}>Hari Streak</small>
+                </div>
               </div>
             </section>
 
-            <section className="level-card profile-card" style={{ marginBottom: '18px' }}>
-              <strong>Level {currentLevel} Hunter</strong>
-              <span>{effectiveXp.toLocaleString('id-ID')} total XP</span>
-              <div className="profile-stats">
-                <div>
-                  <b>{completedPersonalCount}</b>
-                  <small>Quest selesai</small>
-                </div>
-                <div>
-                  <b>{userJoinedClanIds.length}</b>
-                  <small>Clan diikuti</small>
-                </div>
-                <div>
-                  <b>{currentUser.streak}</b>
-                  <small>Streak</small>
-                </div>
-              </div>
-            </section>
-
-            {/* NAVIGASI KE HALAMAN CATEGORY MASTERY (DIPINDAHKAN KE HALAMAN TERSENDIRI) */}
+            {/* 2. CATEGORY MASTERY SHORTCUT CARD */}
             <div
               onClick={() => {
                 setActiveTab('home')
@@ -11037,27 +11249,24 @@ export default function Page() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '13px 15px',
-                borderRadius: '14px',
-                background: 'linear-gradient(135deg, rgba(24, 18, 43, 0.92), rgba(32, 22, 56, 0.88))',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, rgba(24, 18, 43, 0.92), rgba(15, 11, 28, 0.96))',
                 border: '1px solid rgba(168, 85, 247, 0.28)',
                 cursor: 'pointer',
-                marginBottom: '18px',
-                transition: 'all 0.2s ease',
               }}
               title="Buka Halaman Category Mastery"
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
                 <div
                   style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '10px',
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '11px',
                     background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(124, 58, 237, 0.15))',
                     border: '1px solid rgba(168, 85, 247, 0.35)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '18px',
                     flexShrink: 0,
                   }}
                 >
@@ -11071,11 +11280,11 @@ export default function Page() {
                     {unlockedMasteries.length > 0 && (
                       <span
                         style={{
-                          fontSize: '9px',
+                          fontSize: '9.5px',
                           fontWeight: 800,
-                          padding: '1px 5px',
-                          borderRadius: '5px',
-                          background: 'rgba(168, 85, 247, 0.25)',
+                          padding: '2px 6px',
+                          borderRadius: '999px',
+                          background: 'rgba(168, 85, 247, 0.22)',
                           border: '1px solid rgba(192, 132, 252, 0.45)',
                           color: '#e9d5ff',
                         }}
@@ -11084,42 +11293,83 @@ export default function Page() {
                       </span>
                     )}
                   </div>
-                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#c4b5fd' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#a89cc2' }}>
                     {activeMasteries.length > 0
-                      ? `${activeMasteries.length} kategori aktif terdaftar • Buka halaman mastery`
+                      ? `${activeMasteries.length} kategori aktif • Lihat spesialisasi XP`
                       : 'Lihat spesialisasi & total XP kategori hunter'}
                   </p>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#c4b5fd', fontSize: '11.5px', fontWeight: 700, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#67e8f9', fontSize: '11.5px', fontWeight: 700, flexShrink: 0 }}>
                 <span>Buka</span>
                 <ChevronRight size={15} />
               </div>
             </div>
 
-
-            <section className="clan-card" style={{ marginBottom: '16px' }}>
-              <span className="modal-label">STATUS DATABASE SUPABASE</span>
-              <p style={{ margin: '4px 0 10px', fontSize: '11px', color: '#b7a4d5', lineHeight: 1.5 }}>
-                {isSupabaseConfigured
-                  ? '✅ Terhubung ke Supabase Project kamu.'
-                  : '⚡ Berjalan dalam Mode Multi-User Aktif. Masukkan URL & Anon Key Supabase kamu di file .env.local dan jalankan supabase/schema.sql untuk sinkronisasi cloud.'}
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => {
-                    setAuthMode('register')
-                    setIsAuthModalOpen(true)
-                  }}
-                >
-                  <UserPlus size={13} style={{ display: 'inline', marginRight: '5px' }} />
-                  Daftar / Ganti Akun Hunter
-                </button>
+            {/* 3. ACCOUNT & CLOUD SYNC CARD */}
+            <section
+              style={{
+                padding: '14px 15px',
+                borderRadius: '16px',
+                background: 'linear-gradient(145deg, rgba(20, 15, 34, 0.9), rgba(12, 9, 22, 0.96))',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '999px',
+                      background: isSupabaseConfigured ? '#38bdf8' : '#a855f7',
+                      boxShadow: isSupabaseConfigured
+                        ? '0 0 8px rgba(56, 189, 248, 0.8)'
+                        : '0 0 8px rgba(168, 85, 247, 0.8)',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <strong style={{ fontSize: '12.5px', fontWeight: 800, color: '#f3f1ff' }}>
+                    {isSupabaseConfigured ? 'Cloud Sync Aktif' : 'Akun Hunter'}
+                  </strong>
+                </div>
+                <p style={{ margin: '3px 0 0', fontSize: '10.5px', color: '#9a8fb2' }}>
+                  {isSupabaseConfigured
+                    ? 'Data quest & level tersimpan otomatis'
+                    : 'Kelola atau ganti akun Hunter'}
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('register')
+                  setIsAuthModalOpen(true)
+                }}
+                style={{
+                  padding: '9px 13px',
+                  borderRadius: '11px',
+                  background: 'linear-gradient(135deg, #7c3aed, #9333ea)',
+                  border: '1px solid rgba(192, 132, 252, 0.5)',
+                  color: '#ffffff',
+                  fontSize: '11.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 14px rgba(124, 58, 237, 0.35)',
+                }}
+              >
+                <UserPlus size={14} />
+                <span>Ganti Akun</span>
+              </button>
             </section>
-          </>
+          </div>
         )}
       </>
     )}
