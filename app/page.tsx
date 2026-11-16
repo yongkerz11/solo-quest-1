@@ -1433,6 +1433,7 @@ export default function Page() {
   const [featuredCategoryName, setFeaturedCategoryName] = useState<string | null>(null)
   const [historyFilter, setHistoryFilter] = useState<'all' | 'gym' | 'other'>('all')
   const [historyDateFilter, setHistoryDateFilter] = useState<string>('all')
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState<string[]>([])
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
   const [showCompletedDayQuests, setShowCompletedDayQuests] = useState<boolean>(false)
 
@@ -8084,17 +8085,34 @@ export default function Page() {
                       )
                     }
 
-                    return filteredHistory.map((item) => (
+                    return filteredHistory.map((item) => {
+                      const canExpand = item.isGym
+                      const isExpanded = expandedHistoryIds.includes(item.id)
+                      const toggleExpand = () => {
+                        if (!canExpand) return
+                        setExpandedHistoryIds((prev) =>
+                          prev.includes(item.id)
+                            ? prev.filter((id) => id !== item.id)
+                            : [...prev, item.id]
+                        )
+                      }
+
+                      return (
                       <div
                         key={item.id}
+                        onClick={toggleExpand}
                         style={{
                           padding: '14px',
                           borderRadius: '16px',
                           background: 'linear-gradient(145deg, rgba(22, 17, 36, 0.94), rgba(14, 11, 24, 0.98))',
-                          border: '1px solid rgba(139, 92, 246, 0.24)',
+                          border: isExpanded
+                            ? '1px solid rgba(168, 85, 247, 0.48)'
+                            : '1px solid rgba(139, 92, 246, 0.24)',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '10px',
+                          cursor: canExpand ? 'pointer' : 'default',
+                          transition: 'border-color 0.15s ease',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
@@ -8125,8 +8143,27 @@ export default function Page() {
                                   <span>{item.fullDateLabel}</span>
                                 </span>
                               </div>
-                              <span style={{ fontSize: '10.5px', color: '#8a80a0', display: 'block', marginTop: '2px' }}>
-                                {item.category} {item.isGym && item.exercises.length > 0 ? `• ${item.exercises.length} Gerakan • ${item.totalSets} Set` : ''}
+                              <span
+                                style={{
+                                  fontSize: '10.5px',
+                                  color: '#9a8fb2',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  marginTop: '2px',
+                                }}
+                              >
+                                <span>
+                                  {item.category}{' '}
+                                  {item.isGym && item.exercises.length > 0
+                                    ? `• ${item.exercises.length} Gerakan (${item.totalSets} Set)`
+                                    : ''}
+                                </span>
+                                {canExpand && (
+                                  <span style={{ color: '#c4b5fd', display: 'inline-flex', alignItems: 'center' }}>
+                                    {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                  </span>
+                                )}
                               </span>
                             </div>
                           </div>
@@ -8176,9 +8213,10 @@ export default function Page() {
                           </div>
                         </div>
 
-                        {/* Breakdown Gerakan Latihan jika Gym */}
-                        {item.isGym && item.exercises.length > 0 && (
+                        {/* Breakdown Gerakan Latihan jika Gym (hanya tampil saat dibuka / expanded) */}
+                        {isExpanded && item.isGym && item.exercises.length > 0 && (
                           <div
+                            onClick={(e) => e.stopPropagation()}
                             style={{
                               display: 'grid',
                               gap: '6px',
@@ -8207,10 +8245,11 @@ export default function Page() {
                           </div>
                         )}
 
-                        {item.isGym && (
+                        {isExpanded && item.isGym && (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation()
                               setIsHistoryPageOpen(false)
                               setActiveWorkoutQuest({ type: 'personal', id: item.questId })
                             }}
@@ -8235,7 +8274,8 @@ export default function Page() {
                           </button>
                         )}
                       </div>
-                    ))
+                      )
+                    })
                   })()}
                 </div>
               </div>
