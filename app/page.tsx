@@ -5207,7 +5207,43 @@ export default function Page() {
                     </div>
                   </button>
 
-                  {/* Menu 2: Settings */}
+                  {/* Menu 2: History Quest */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSettingsMenuOpen(false)
+                      setActiveTab('home')
+                      setIsHistoryPageOpen(true)
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 12px',
+                      borderRadius: '9px',
+                      background: 'transparent',
+                      border: 0,
+                      color: '#f3f1ff',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#251745')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <Clock size={15} color="#67e8f9" />
+                    <div>
+                      <div>History Quest</div>
+                      <small style={{ display: 'block', fontSize: '9px', color: '#9382b0', fontWeight: 400 }}>
+                        Riwayat &amp; filter tanggal
+                      </small>
+                    </div>
+                  </button>
+
+                  {/* Menu 3: Settings */}
                   <button
                     type="button"
                     onClick={() => {
@@ -9317,154 +9353,204 @@ export default function Page() {
                   })()}
                 </section>
 
-                {/* 3. HISTORY QUEST HARI INI DENGAN SHOW MORE KE RIWAYAT LENGKAP */}
+                {/* 3. STATISTIK KATEGORI HUNTER (RADAR CHART MINIMALIS - GANTI HISTORY DI DASHBOARD) */}
                 <section className="section-block">
                   <div className="section-title">
                     <div>
-                      <span className="eyebrow">TODAY&apos;S ACTIVITY</span>
-                      <h2>History Quest Hari Ini</h2>
+                      <span className="eyebrow">SYSTEM STATUS</span>
+                      <h2>Statistik Kategori</h2>
                     </div>
                     <button
                       type="button"
                       className="show-more-btn"
-                      onClick={() => setIsHistoryPageOpen(true)}
+                      onClick={() => setIsMasteryPageOpen(true)}
                     >
-                      <span>Show More</span>
+                      <span>Mastery</span>
                       <ChevronRight size={13} />
                     </button>
                   </div>
 
-                  <div className="task-list">
-                    {(() => {
-                      const todayHistoryItems = userHistoryItems.filter(
-                        (item) => item.isoDate === todayIsoStr
-                      )
-                      const pastHistoryCount = userHistoryItems.length - todayHistoryItems.length
+                  {(() => {
+                    const SHORT_CAT_LABELS: Record<string, string> = {
+                      'Kerja / Karir': 'KARIR',
+                      'Gym': 'GYM',
+                      'Rutinitas & Sehat': 'RUTIN',
+                      'Belajar / Skill': 'SKILL',
+                      'Kreativitas & Hobi': 'HOBI',
+                      'Mindset & Ibadah': 'MIND',
+                      'Keuangan': 'FIN',
+                      'Istirahat & Reset': 'REST',
+                    }
 
-                      if (todayHistoryItems.length === 0) {
-                        return (
-                          <div
-                            style={{
-                              padding: '22px 16px',
-                              borderRadius: '16px',
-                              background: '#0e0c16',
-                              border: '1px dashed #28213a',
-                              textAlign: 'center',
-                              fontSize: '11.5px',
-                              color: '#b8add1',
-                            }}
-                          >
-                            <p style={{ margin: '0 0 10px' }}>
-                              Belum ada quest yang diselesaikan hari ini.
-                              {pastHistoryCount > 0
-                                ? ` (${pastHistoryCount} riwayat hari sebelumnya tersimpan di halaman History)`
-                                : ''}
-                            </p>
-                            <button
-                              type="button"
-                              className="show-more-btn"
-                              onClick={() =>
-                                pastHistoryCount > 0
-                                  ? setIsHistoryPageOpen(true)
-                                  : setActiveTab('calendar')
-                              }
-                            >
-                              <span>
-                                {pastHistoryCount > 0
-                                  ? `Lihat Riwayat Sebelumnya (${pastHistoryCount})`
-                                  : 'Mulai dari My Quest'}
-                              </span>
-                              <ChevronRight size={13} />
-                            </button>
-                          </div>
-                        )
+                    const displayCats = (topMasteryCategories.length > 0 ? topMasteryCategories : categoryMasteries).slice(0, 4)
+                    const radarSource = [
+                      ...topMasteryCategories,
+                      ...categoryMasteries.filter((c) => !topMasteryCategories.some((t) => t.name === c.name)),
+                    ].slice(0, 5)
+                    const maxCatXp = Math.max(50, ...radarSource.map((c) => c.xp))
+
+                    const cx = 80
+                    const cy = 80
+                    const maxR = 56
+                    const ringScales = [1, 0.67, 0.34]
+                    const getAxisPoint = (idx: number, ratio: number) => {
+                      const angle = -Math.PI / 2 + (idx * 2 * Math.PI) / 5
+                      return {
+                        x: +(cx + Math.cos(angle) * maxR * ratio).toFixed(1),
+                        y: +(cy + Math.sin(angle) * maxR * ratio).toFixed(1),
                       }
+                    }
 
-                      return todayHistoryItems.map((item) => {
-                        const firstEx = item.exercises[0]
-                        const summaryText =
-                          item.isGym && firstEx
-                            ? `${item.category} • ${firstEx.name} (${firstEx.setsCount} Set)`
-                            : item.category
+                    const dataPoints = radarSource.map((c, idx) => {
+                      const ratio = c.xp > 0 ? Math.max(0.24, Math.min(1, c.xp / maxCatXp)) : 0.16
+                      return getAxisPoint(idx, ratio)
+                    })
+                    const polygonStr = dataPoints.map((p) => `${p.x},${p.y}`).join(' ')
 
-                        return (
-                          <div
-                            key={item.id}
-                            className="history-quest-card"
-                            onClick={() => setIsHistoryPageOpen(true)}
-                          >
-                            <div className="history-icon-box">
-                              {item.isGym ? <Dumbbell size={18} /> : renderCategoryIcon(item.category, 18)}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
-                                <strong
+                    return (
+                      <div
+                        onClick={() => setIsMasteryPageOpen(true)}
+                        style={{
+                          background: 'linear-gradient(155deg, rgba(22, 16, 38, 0.96), rgba(10, 7, 19, 0.99))',
+                          border: '1px solid rgba(139, 92, 246, 0.26)',
+                          borderRadius: '18px',
+                          padding: '14px',
+                          display: 'grid',
+                          gridTemplateColumns: '148px minmax(0, 1fr)',
+                          gap: '12px',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <svg viewBox="0 0 160 160" style={{ width: '148px', height: '148px', display: 'block' }}>
+                          {ringScales.map((sc, rIdx) => (
+                            <polygon
+                              key={rIdx}
+                              points={[0, 1, 2, 3, 4]
+                                .map((i) => {
+                                  const pt = getAxisPoint(i, sc)
+                                  return `${pt.x},${pt.y}`
+                                })
+                                .join(' ')}
+                              fill="none"
+                              stroke="#261f3d"
+                              strokeWidth="1"
+                            />
+                          ))}
+                          {[0, 1, 2, 3, 4].map((i) => {
+                            const outer = getAxisPoint(i, 1)
+                            return (
+                              <line
+                                key={i}
+                                x1={cx}
+                                y1={cy}
+                                x2={outer.x}
+                                y2={outer.y}
+                                stroke="#241c38"
+                                strokeWidth="1"
+                              />
+                            )
+                          })}
+                          <polygon
+                            points={polygonStr}
+                            fill="rgba(168, 85, 247, 0.34)"
+                            stroke="#67e8f9"
+                            strokeWidth="2"
+                          />
+                          {dataPoints.map((pt, idx) => (
+                            <circle
+                              key={idx}
+                              cx={pt.x}
+                              cy={pt.y}
+                              r="3"
+                              fill={idx === 0 ? '#67e8f9' : '#c084fc'}
+                            />
+                          ))}
+                          {radarSource.map((cat, idx) => {
+                            const lblPos = getAxisPoint(idx, 1.24)
+                            const shortLbl =
+                              SHORT_CAT_LABELS[cat.name] || cat.name.slice(0, 5).toUpperCase()
+                            return (
+                              <text
+                                key={cat.name}
+                                x={lblPos.x}
+                                y={lblPos.y + 3}
+                                textAnchor="middle"
+                                fill={idx === 0 && cat.xp > 0 ? '#67e8f9' : '#b8add1'}
+                                fontSize="8"
+                                fontWeight={idx === 0 ? '800' : '700'}
+                              >
+                                {shortLbl}
+                              </text>
+                            )
+                          })}
+                        </svg>
+
+                        <div style={{ display: 'grid', gap: '9px', minWidth: 0 }}>
+                          {displayCats.map((cat, idx) => {
+                            const pct = Math.max(
+                              cat.xp > 0 ? 12 : 4,
+                              Math.min(100, Math.round((cat.xp / maxCatXp) * 100))
+                            )
+                            return (
+                              <div key={cat.name} style={{ minWidth: 0 }}>
+                                <div
                                   style={{
-                                    fontSize: '13px',
-                                    color: '#f5f2ff',
-                                    fontWeight: 700,
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                  }}
-                                >
-                                  {item.title}
-                                </strong>
-                                <span
-                                  style={{
-                                    fontSize: '9.5px',
-                                    padding: '1px 7px',
-                                    borderRadius: '99px',
-                                    background: 'rgba(168, 85, 247, 0.14)',
-                                    border: '1px solid rgba(168, 85, 247, 0.28)',
-                                    color: '#d8b4fe',
-                                    fontWeight: 600,
-                                    flexShrink: 0,
-                                    display: 'inline-flex',
+                                    display: 'flex',
                                     alignItems: 'center',
-                                    gap: '4px',
+                                    justifyContent: 'space-between',
+                                    gap: '6px',
+                                    fontSize: '10.5px',
+                                    fontWeight: 700,
+                                    marginBottom: '4px',
                                   }}
                                 >
-                                  <CalendarDays size={9} />
-                                  <span>{item.fullDateLabel}</span>
-                                </span>
+                                  <span
+                                    style={{
+                                      color: '#f5f2ff',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {cat.name}
+                                  </span>
+                                  <span
+                                    style={{
+                                      color: idx === 0 && cat.xp > 0 ? '#67e8f9' : '#c084fc',
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {cat.xp} XP
+                                  </span>
+                                </div>
+                                <div
+                                  style={{
+                                    height: '5px',
+                                    borderRadius: '999px',
+                                    background: '#140f24',
+                                    overflow: 'hidden',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      width: `${pct}%`,
+                                      height: '100%',
+                                      borderRadius: '999px',
+                                      background:
+                                        idx === 0
+                                          ? 'linear-gradient(90deg, #7c3aed, #38bdf8)'
+                                          : '#a855f7',
+                                    }}
+                                  />
+                                </div>
                               </div>
-                              <small
-                                style={{
-                                  display: 'block',
-                                  marginTop: '3px',
-                                  fontSize: '10.5px',
-                                  color: '#8c82a3',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                }}
-                              >
-                                {summaryText}
-                              </small>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                              <span
-                                style={{
-                                  fontSize: '10.5px',
-                                  fontWeight: 800,
-                                  color: '#67e8f9',
-                                  background: 'rgba(56, 189, 248, 0.15)',
-                                  border: '1px solid rgba(56, 189, 248, 0.42)',
-                                  boxShadow: '0 0 10px rgba(56, 189, 248, 0.18)',
-                                  padding: '3px 8px',
-                                  borderRadius: '8px',
-                                }}
-                              >
-                                +{item.xp} XP
-                              </span>
-                              <ChevronRight size={15} color="#7c738f" />
-                            </div>
-                          </div>
-                        )
-                      })
-                    })()}
-                  </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </section>
               </>
             )}
