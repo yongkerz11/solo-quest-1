@@ -3275,30 +3275,14 @@ export default function Page() {
       )
 
       const mimeCandidates = [
-        'video/mp4;codecs=avc1',
-        'video/mp4',
-        'video/webm;codecs=vp9',
         'video/webm;codecs=vp8',
+        'video/webm;codecs=vp9',
         'video/webm',
+        'video/mp4',
       ]
-      const supportedMime = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || 'video/webm'
+      const supportedMime = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || ''
       const isMp4 = supportedMime.includes('mp4')
       setTimelapseVideoExt(isMp4 ? 'mp4' : 'webm')
-
-      const stream = canvas.captureStream(30)
-      const recorder = new MediaRecorder(stream, { mimeType: supportedMime })
-      const chunks: BlobPart[] = []
-      recorder.ondataavailable = (ev) => {
-        if (ev.data && ev.data.size > 0) chunks.push(ev.data)
-      }
-
-      const donePromise = new Promise<Blob>((resolve) => {
-        recorder.onstop = () => {
-          resolve(new Blob(chunks, { type: supportedMime }))
-        }
-      })
-
-      recorder.start()
 
       const drawFrame = (im: HTMLImageElement, photo: typeof userGymPhotos[number], dayNum: number) => {
         ctx.fillStyle = '#070410'
@@ -3340,13 +3324,50 @@ export default function Page() {
         ctx.fillText(`RANKERZ • ${photo.questTitle.toUpperCase()}`, 24, canvas.height - 18)
       }
 
+      // Render frame awal sebelum start agar stream langsung memiliki frame valid
+      drawFrame(loadedImgs[0], userGymPhotos[0], 1)
+
+      const stream = canvas.captureStream(30)
+      const recorder = supportedMime
+        ? new MediaRecorder(stream, { mimeType: supportedMime, videoBitsPerSecond: 2_500_000 })
+        : new MediaRecorder(stream)
+      const chunks: BlobPart[] = []
+      recorder.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size > 0) chunks.push(ev.data)
+      }
+
+      const donePromise = new Promise<Blob>((resolve) => {
+        recorder.onstop = () => {
+          resolve(new Blob(chunks, { type: supportedMime || recorder.mimeType || 'video/webm' }))
+        }
+      })
+
+      recorder.start(100)
+
+      // Pump frames continuously at ~30fps so MediaRecorder captures every photo reliably
+      let activeIdx = 0
+      let isRecording = true
+      const pumpFrames = () => {
+        if (!isRecording) return
+        drawFrame(loadedImgs[activeIdx], userGymPhotos[activeIdx], activeIdx + 1)
+        requestAnimationFrame(pumpFrames)
+      }
+      requestAnimationFrame(pumpFrames)
+
       for (let i = 0; i < loadedImgs.length; i++) {
-        drawFrame(loadedImgs[i], userGymPhotos[i], i + 1)
+        activeIdx = i
         await new Promise((r) => setTimeout(r, timelapseSpeedMs))
       }
 
+      // Tambah jeda singkat agar frame terakhir terekam utuh sebelum stop
+      await new Promise((r) => setTimeout(r, 150))
+      isRecording = false
       recorder.stop()
+
       const videoBlob = await donePromise
+      if (videoBlob.size === 0) {
+        throw new Error('Empty video blob generated')
+      }
       if (timelapseVideoUrl) {
         URL.revokeObjectURL(timelapseVideoUrl)
       }
@@ -7414,10 +7435,12 @@ export default function Page() {
                     {timelapseVideoUrl && (
                       <div style={{ display: 'grid', gap: '8px' }}>
                         <video
+                          key={timelapseVideoUrl}
                           src={timelapseVideoUrl}
                           controls
                           autoPlay
                           loop
+                          muted
                           playsInline
                           style={{
                             width: '100%',
