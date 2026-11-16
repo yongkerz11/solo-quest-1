@@ -7885,165 +7885,109 @@ export default function Page() {
                   ))}
                 </div>
 
-                {/* Filter Tanggal (Date Filter + Kalender + Chip Tanggal Tersedia) */}
-                {(() => {
-                  const uniqueHistoryDates = Array.from(
-                    new Map(userHistoryItems.map((it) => [it.isoDate, it.fullDateLabel])).entries()
-                  )
-
-                  return (
-                    <div
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: '13px',
-                        background: '#0e0b18',
-                        border: '1px solid rgba(139, 92, 246, 0.24)',
-                        marginBottom: '14px',
-                        display: 'grid',
-                        gap: '8px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <span
+                {/* Filter Tanggal (1 Baris Simple & Clean) */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '3px',
+                      borderRadius: '10px',
+                      background: '#0e0b18',
+                      border: '1px solid #261f3d',
+                    }}
+                  >
+                    {[
+                      { key: 'all', label: 'Semua' },
+                      { key: 'today', label: 'Hari Ini' },
+                      { key: '7days', label: '7 Hari' },
+                    ].map((dTab) => {
+                      const isSelected = historyDateFilter === dTab.key
+                      return (
+                        <button
+                          key={dTab.key}
+                          type="button"
+                          onClick={() => setHistoryDateFilter(dTab.key)}
                           style={{
-                            fontSize: '10px',
-                            fontWeight: 800,
-                            letterSpacing: '0.06em',
-                            color: '#c4b5fd',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
+                            padding: '5px 10px',
+                            borderRadius: '7px',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: isSelected
+                              ? '1px solid rgba(56, 189, 248, 0.45)'
+                              : '1px solid transparent',
+                            background: isSelected ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
+                            color: isSelected ? '#67e8f9' : '#9a8fb2',
+                            transition: 'all 0.15s ease',
                           }}
                         >
-                          <CalendarDays size={12} color="#a855f7" />
-                          <span>FILTER TANGGAL</span>
-                        </span>
+                          {dTab.label}
+                        </button>
+                      )
+                    })}
+                  </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <input
-                            type="date"
-                            value={/^\d{4}-\d{2}-\d{2}$/.test(historyDateFilter) ? historyDateFilter : ''}
-                            onChange={(e) => {
-                              const val = e.target.value
-                              setHistoryDateFilter(val ? val : 'all')
-                            }}
-                            aria-label="Pilih tanggal riwayat"
-                            style={{
-                              padding: '4px 8px',
-                              borderRadius: '7px',
-                              background: '#161126',
-                              border: '1px solid rgba(168, 85, 247, 0.35)',
-                              color: '#f3f1ff',
-                              fontSize: '10.5px',
-                              fontWeight: 600,
-                              colorScheme: 'dark',
-                              cursor: 'pointer',
-                            }}
-                          />
-                          {historyDateFilter !== 'all' && (
-                            <button
-                              type="button"
-                              onClick={() => setHistoryDateFilter('all')}
-                              style={{
-                                padding: '4px 8px',
-                                borderRadius: '7px',
-                                background: 'rgba(239, 68, 68, 0.14)',
-                                border: '1px solid rgba(239, 68, 68, 0.35)',
-                                color: '#fca5a5',
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <input
+                      type="date"
+                      value={/^\d{4}-\d{2}-\d{2}$/.test(historyDateFilter) ? historyDateFilter : ''}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setHistoryDateFilter(val ? val : 'all')
+                      }}
+                      aria-label="Pilih tanggal riwayat"
+                      style={{
+                        padding: '5px 8px',
+                        borderRadius: '9px',
+                        background: /^\d{4}-\d{2}-\d{2}$/.test(historyDateFilter)
+                          ? 'rgba(56, 189, 248, 0.14)'
+                          : '#0e0b18',
+                        border: /^\d{4}-\d{2}-\d{2}$/.test(historyDateFilter)
+                          ? '1px solid rgba(56, 189, 248, 0.45)'
+                          : '1px solid #261f3d',
+                        color: '#f3f1ff',
+                        fontSize: '10.5px',
+                        fontWeight: 600,
+                        colorScheme: 'dark',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    {/^\d{4}-\d{2}-\d{2}$/.test(historyDateFilter) && (
+                      <button
+                        type="button"
+                        onClick={() => setHistoryDateFilter('all')}
+                        aria-label="Reset tanggal"
                         style={{
-                          display: 'flex',
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '8px',
+                          background: 'rgba(239, 68, 68, 0.14)',
+                          border: '1px solid rgba(239, 68, 68, 0.35)',
+                          color: '#fca5a5',
+                          display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '5px',
-                          flexWrap: 'wrap',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
                         }}
                       >
-                        {[
-                          { key: 'all', label: 'Semua Tanggal' },
-                          { key: 'today', label: 'Hari Ini' },
-                          { key: 'yesterday', label: 'Kemarin' },
-                          { key: '7days', label: '7 Hari Terakhir' },
-                        ].map((dTab) => {
-                          const isSelected = historyDateFilter === dTab.key
-                          return (
-                            <button
-                              key={dTab.key}
-                              type="button"
-                              onClick={() => setHistoryDateFilter(dTab.key)}
-                              style={{
-                                padding: '5px 9px',
-                                borderRadius: '999px',
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                border: isSelected
-                                  ? '1px solid rgba(56, 189, 248, 0.55)'
-                                  : '1px solid rgba(168, 85, 247, 0.22)',
-                                background: isSelected
-                                  ? 'rgba(56, 189, 248, 0.18)'
-                                  : 'rgba(22, 16, 38, 0.8)',
-                                color: isSelected ? '#67e8f9' : '#c4b5fd',
-                                transition: 'all 0.15s ease',
-                              }}
-                            >
-                              {dTab.label}
-                            </button>
-                          )
-                        })}
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                        {uniqueHistoryDates.map(([iso, fullLabel]) => {
-                          const isSelected = historyDateFilter === iso
-                          return (
-                            <button
-                              key={iso}
-                              type="button"
-                              onClick={() => setHistoryDateFilter(isSelected ? 'all' : iso)}
-                              style={{
-                                padding: '5px 9px',
-                                borderRadius: '999px',
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                border: isSelected
-                                  ? '1px solid #a855f7'
-                                  : '1px solid rgba(139, 92, 246, 0.2)',
-                                background: isSelected
-                                  ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(88, 28, 135, 0.55))'
-                                  : 'rgba(18, 13, 30, 0.85)',
-                                color: isSelected ? '#ffffff' : '#b8add1',
-                                transition: 'all 0.15s ease',
-                              }}
-                            >
-                              {fullLabel}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Daftar Lengkap History Quest */}
-                <div style={{ display: 'grid', gap: '10px' }}>
+                {/* Daftar Lengkap History Quest (Dikelompokkan Per Tanggal di Luar Card) */}
+                <div style={{ display: 'grid', gap: '16px' }}>
                   {(() => {
                     const yesterdayObj = new Date()
                     yesterdayObj.setDate(yesterdayObj.getDate() - 1)
@@ -8085,195 +8029,236 @@ export default function Page() {
                       )
                     }
 
-                    return filteredHistory.map((item) => {
-                      const canExpand = item.isGym
-                      const isExpanded = expandedHistoryIds.includes(item.id)
-                      const toggleExpand = () => {
-                        if (!canExpand) return
-                        setExpandedHistoryIds((prev) =>
-                          prev.includes(item.id)
-                            ? prev.filter((id) => id !== item.id)
-                            : [...prev, item.id]
-                        )
-                      }
+                    // Group items by isoDate (tanggal di luar card)
+                    const groupedByDate = Array.from(
+                      filteredHistory.reduce((map, item) => {
+                        const arr = map.get(item.isoDate) || []
+                        arr.push(item)
+                        map.set(item.isoDate, arr)
+                        return map
+                      }, new Map<string, typeof filteredHistory>()).entries()
+                    )
 
+                    const formatSectionDateHeading = (iso: string) => {
+                      const parsed = new Date(`${iso}T00:00:00`)
+                      if (isNaN(parsed.getTime())) return iso
+                      const formatted = parsed.toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })
+                      if (iso === todayIsoStr) return `Hari Ini • ${formatted}`
+                      if (iso === yesterdayIsoStr) return `Kemarin • ${formatted}`
+                      return formatted
+                    }
+
+                    return groupedByDate.map(([isoDate, dateItems]) => {
+                      const groupTotalXp = dateItems.reduce((sum, it) => sum + findCategory(it.category).xp, 0)
                       return (
-                      <div
-                        key={item.id}
-                        onClick={toggleExpand}
-                        style={{
-                          padding: '14px',
-                          borderRadius: '16px',
-                          background: 'linear-gradient(145deg, rgba(22, 17, 36, 0.94), rgba(14, 11, 24, 0.98))',
-                          border: isExpanded
-                            ? '1px solid rgba(168, 85, 247, 0.48)'
-                            : '1px solid rgba(139, 92, 246, 0.24)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '10px',
-                          cursor: canExpand ? 'pointer' : 'default',
-                          transition: 'border-color 0.15s ease',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
-                            <div className="history-icon-box">
-                              {item.isGym ? <Dumbbell size={18} /> : renderCategoryIcon(item.category, 18)}
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
-                                <strong style={{ fontSize: '13.5px', color: '#f5f2ff', fontWeight: 700 }}>
-                                  {item.title}
-                                </strong>
-                                <span
-                                  style={{
-                                    fontSize: '9.5px',
-                                    padding: '2px 8px',
-                                    borderRadius: '99px',
-                                    background: 'rgba(168, 85, 247, 0.16)',
-                                    border: '1px solid rgba(168, 85, 247, 0.35)',
-                                    color: '#e9d5ff',
-                                    fontWeight: 700,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                  }}
-                                >
-                                  <CalendarDays size={10} />
-                                  <span>{item.fullDateLabel}</span>
-                                </span>
-                              </div>
-                              <span
-                                style={{
-                                  fontSize: '10.5px',
-                                  color: '#9a8fb2',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '5px',
-                                  marginTop: '2px',
-                                }}
-                              >
-                                <span>
-                                  {item.category}{' '}
-                                  {item.isGym && item.exercises.length > 0
-                                    ? `• ${item.exercises.length} Gerakan (${item.totalSets} Set)`
-                                    : ''}
-                                </span>
-                                {canExpand && (
-                                  <span style={{ color: '#c4b5fd', display: 'inline-flex', alignItems: 'center' }}>
-                                    {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                                  </span>
-                                )}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div
-                              style={{
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                color: '#67e8f9',
-                                background: 'rgba(56, 189, 248, 0.15)',
-                                border: '1px solid rgba(56, 189, 248, 0.42)',
-                                boxShadow: '0 0 10px rgba(56, 189, 248, 0.18)',
-                                padding: '4px 9px',
-                                borderRadius: '8px',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              +{item.xp} XP
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (confirm(`Hapus riwayat quest "${item.title}" (${item.fullDateLabel})?`)) {
-                                  handleDeleteHistoryItem(item.questId, item.dateLabel, item.isoDate)
-                                }
-                              }}
-                              style={{
-                                width: '28px',
-                                height: '28px',
-                                borderRadius: '7px',
-                                background: 'rgba(239, 68, 68, 0.12)',
-                                border: '1px solid rgba(239, 68, 68, 0.28)',
-                                color: '#ff85a2',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.15s ease',
-                              }}
-                              title="Hapus dari History Quest"
-                              aria-label="Hapus dari History Quest"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Breakdown Gerakan Latihan jika Gym (hanya tampil saat dibuka / expanded) */}
-                        {isExpanded && item.isGym && item.exercises.length > 0 && (
+                        <div key={isoDate} style={{ display: 'grid', gap: '8px' }}>
+                          {/* Header Tanggal di Luar Card */}
                           <div
-                            onClick={(e) => e.stopPropagation()}
                             style={{
-                              display: 'grid',
-                              gap: '6px',
-                              padding: '10px',
-                              borderRadius: '11px',
-                              background: 'rgba(10, 8, 19, 0.7)',
-                              border: '1px solid rgba(139, 92, 246, 0.14)',
-                            }}
-                          >
-                            {item.exercises.map((ex, idx) => (
-                              <div
-                                key={idx}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  fontSize: '11px',
-                                }}
-                              >
-                                <span style={{ color: '#e2d9f3', fontWeight: 600 }}>{ex.name}</span>
-                                <span style={{ color: '#b9a6dc', fontWeight: 700 }}>
-                                  {ex.setsCount} Set • {ex.weight} kg × {ex.reps} reps
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {isExpanded && item.isGym && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setIsHistoryPageOpen(false)
-                              setActiveWorkoutQuest({ type: 'personal', id: item.questId })
-                            }}
-                            style={{
-                              width: '100%',
-                              padding: '7px 10px',
-                              borderRadius: '9px',
-                              background: 'rgba(124, 58, 237, 0.14)',
-                              border: '1px solid rgba(168, 85, 247, 0.3)',
-                              color: '#d8b4fe',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '5px',
+                              justifyContent: 'space-between',
+                              padding: '0 4px',
                             }}
                           >
-                            <span>Buka Detail Workout</span>
-                            <ChevronRight size={13} />
-                          </button>
-                        )}
-                      </div>
+                            <span
+                              style={{
+                                fontSize: '11.5px',
+                                fontWeight: 800,
+                                color: isoDate === todayIsoStr ? '#67e8f9' : '#c4b5fd',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <CalendarDays size={12} />
+                              <span>{formatSectionDateHeading(isoDate)}</span>
+                            </span>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#8a80a0' }}>
+                              {dateItems.length} Quest • +{groupTotalXp} XP
+                            </span>
+                          </div>
+
+                          {/* List Card Quest Bersih (Tanpa Tanggal di Dalam Card) */}
+                          <div style={{ display: 'grid', gap: '8px' }}>
+                            {dateItems.map((item) => {
+                              const canExpand = item.isGym
+                              const isExpanded = expandedHistoryIds.includes(item.id)
+                              const toggleExpand = () => {
+                                if (!canExpand) return
+                                setExpandedHistoryIds((prev) =>
+                                  prev.includes(item.id)
+                                    ? prev.filter((id) => id !== item.id)
+                                    : [...prev, item.id]
+                                )
+                              }
+
+                              return (
+                                <div
+                                  key={item.id}
+                                  onClick={toggleExpand}
+                                  style={{
+                                    padding: '13px 14px',
+                                    borderRadius: '15px',
+                                    background: 'linear-gradient(145deg, rgba(22, 17, 36, 0.94), rgba(14, 11, 24, 0.98))',
+                                    border: isExpanded
+                                      ? '1px solid rgba(168, 85, 247, 0.48)'
+                                      : '1px solid rgba(139, 92, 246, 0.24)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '10px',
+                                    cursor: canExpand ? 'pointer' : 'default',
+                                    transition: 'border-color 0.15s ease',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                                      <div className="history-icon-box">
+                                        {item.isGym ? <Dumbbell size={18} /> : renderCategoryIcon(item.category, 18)}
+                                      </div>
+                                      <div style={{ minWidth: 0 }}>
+                                        <strong style={{ display: 'block', fontSize: '13.5px', color: '#f5f2ff', fontWeight: 700 }}>
+                                          {item.title}
+                                        </strong>
+                                        <span
+                                          style={{
+                                            fontSize: '10.5px',
+                                            color: '#9a8fb2',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            marginTop: '2px',
+                                          }}
+                                        >
+                                          <span>
+                                            {item.category}{' '}
+                                            {item.isGym && item.exercises.length > 0
+                                              ? `• ${item.exercises.length} Gerakan (${item.totalSets} Set)`
+                                              : ''}
+                                          </span>
+                                          {canExpand && (
+                                            <span style={{ color: '#c4b5fd', display: 'inline-flex', alignItems: 'center' }}>
+                                              {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <div
+                                        style={{
+                                          fontSize: '11px',
+                                          fontWeight: 800,
+                                          color: '#67e8f9',
+                                          background: 'rgba(56, 189, 248, 0.15)',
+                                          border: '1px solid rgba(56, 189, 248, 0.42)',
+                                          boxShadow: '0 0 10px rgba(56, 189, 248, 0.18)',
+                                          padding: '4px 9px',
+                                          borderRadius: '8px',
+                                          whiteSpace: 'nowrap',
+                                        }}
+                                      >
+                                        +{item.xp} XP
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          if (confirm(`Hapus riwayat quest "${item.title}" (${item.fullDateLabel})?`)) {
+                                            handleDeleteHistoryItem(item.questId, item.dateLabel, item.isoDate)
+                                          }
+                                        }}
+                                        style={{
+                                          width: '28px',
+                                          height: '28px',
+                                          borderRadius: '7px',
+                                          background: 'rgba(239, 68, 68, 0.12)',
+                                          border: '1px solid rgba(239, 68, 68, 0.28)',
+                                          color: '#ff85a2',
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          transition: 'all 0.15s ease',
+                                        }}
+                                        title="Hapus dari History Quest"
+                                        aria-label="Hapus dari History Quest"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Breakdown Gerakan Latihan jika Gym (hanya tampil saat dibuka / expanded) */}
+                                  {isExpanded && item.isGym && item.exercises.length > 0 && (
+                                    <div
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{
+                                        display: 'grid',
+                                        gap: '6px',
+                                        padding: '10px',
+                                        borderRadius: '11px',
+                                        background: 'rgba(10, 8, 19, 0.7)',
+                                        border: '1px solid rgba(139, 92, 246, 0.14)',
+                                      }}
+                                    >
+                                      {item.exercises.map((ex, idx) => (
+                                        <div
+                                          key={idx}
+                                          style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            fontSize: '11px',
+                                          }}
+                                        >
+                                          <span style={{ color: '#e2d9f3', fontWeight: 600 }}>{ex.name}</span>
+                                          <span style={{ color: '#b9a6dc', fontWeight: 700 }}>
+                                            {ex.setsCount} Set • {ex.weight} kg × {ex.reps} reps
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {isExpanded && item.isGym && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setIsHistoryPageOpen(false)
+                                        setActiveWorkoutQuest({ type: 'personal', id: item.questId })
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 10px',
+                                        borderRadius: '9px',
+                                        background: 'rgba(124, 58, 237, 0.14)',
+                                        border: '1px solid rgba(168, 85, 247, 0.3)',
+                                        color: '#d8b4fe',
+                                        fontSize: '11px',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '5px',
+                                      }}
+                                    >
+                                      <span>Buka Detail Workout</span>
+                                      <ChevronRight size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
                       )
                     })
                   })()}
