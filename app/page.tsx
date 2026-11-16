@@ -55,6 +55,9 @@ import {
   Moon,
   Wallet,
   Sun,
+  Camera,
+  Film,
+  Download,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import {
@@ -1524,7 +1527,23 @@ export default function Page() {
   const [restDurationPreset, setRestDurationPreset] = useState<number>(60)
   const restEndTimeRef = useRef<number | null>(null)
   const [isAddingExercise, setIsAddingExercise] = useState(false)
-  const [workoutSubPage, setWorkoutSubPage] = useState<'overview' | 'library' | 'programs'>('overview')
+  const [workoutSubPage, setWorkoutSubPage] = useState<'overview' | 'library' | 'programs' | 'photos'>('overview')
+  const [gymProgressPhotos, setGymProgressPhotos] = useState<Array<{
+    id: string
+    userId: string
+    dateIso: string
+    questTitle: string
+    dataUrl: string
+    createdAt: number
+  }>>([])
+  const [photoUploadDate, setPhotoUploadDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const [timelapseSpeedMs, setTimelapseSpeedMs] = useState<number>(250)
+  const [isGeneratingTimelapse, setIsGeneratingTimelapse] = useState<boolean>(false)
+  const [timelapseVideoUrl, setTimelapseVideoUrl] = useState<string | null>(null)
+  const [timelapseVideoExt, setTimelapseVideoExt] = useState<'mp4' | 'webm'>('webm')
+  const [liveFlipIdx, setLiveFlipIdx] = useState<number | null>(null)
+  const gymPhotoInputRef = useRef<HTMLInputElement | null>(null)
+  const liveFlipTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [replacingExerciseId, setReplacingExerciseId] = useState<string | null>(null)
   const [isQuestProgramPageOpen, setIsQuestProgramPageOpen] = useState<boolean>(false)
   const [newExerciseName, setNewExerciseName] = useState('')
@@ -1828,6 +1847,18 @@ export default function Page() {
           } else {
             localStorage.removeItem('solo_rest_timer_target')
           }
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+
+    try {
+      const savedPhotos = localStorage.getItem('solo_gym_photos_v1')
+      if (savedPhotos) {
+        const parsedPhotos = JSON.parse(savedPhotos)
+        if (Array.isArray(parsedPhotos)) {
+          setGymProgressPhotos(parsedPhotos)
         }
       }
     } catch (e) {
@@ -2329,6 +2360,25 @@ export default function Page() {
       syncWithCloud()
     }
   }, [mounted, currentUser?.id, currentUser?.username])
+
+  // Save Gym progress photos to localStorage
+  useEffect(() => {
+    if (!mounted) return
+    try {
+      localStorage.setItem('solo_gym_photos_v1', JSON.stringify(gymProgressPhotos))
+    } catch (e) {
+      console.error(e)
+    }
+  }, [gymProgressPhotos, mounted])
+
+  // Cleanup live flip interval on unmount or leave photos subpage
+  useEffect(() => {
+    if (workoutSubPage !== 'photos' && liveFlipTimerRef.current) {
+      clearInterval(liveFlipTimerRef.current)
+      liveFlipTimerRef.current = null
+      setLiveFlipIdx(null)
+    }
+  }, [workoutSubPage])
 
   // Reset harian otomatis ketika berganti hari / tengah malam (midnight rollover):
   // Jika quest belum selesai pada hari ini (!compSet.has(todayIso)) dan tidak sedang dibuka di sesi workout aktif,
@@ -3118,6 +3168,197 @@ export default function Page() {
     setActiveExerciseId(null)
     stopRestCountdown(false)
     showToast('🎉 Sesi Workout Selesai! Riwayat beban berhasil diperbarui!')
+  }
+
+  // ============================================================================
+  // AFTER-GYM PROGRESS PHOTO & TIMELAPSE VIDEO GENERATOR
+  // ============================================================================
+
+  const userGymPhotos = gymProgressPhotos
+    .filter(
+      (p) =>
+        p.userId === currentUser.id ||
+        (currentUser.username && p.userId === currentUser.username)
+    )
+    .sort((a, b) => a.dateIso.localeCompare(b.dateIso) || a.createdAt - b.createdAt)
+
+  const handleUploadGymPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const img = new Image()
+      img.onload = () => {
+        const maxSide = 720
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height))
+        const w = Math.max(1, Math.round(img.width * scale))
+        const h = Math.max(1, Math.round(img.height * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(img, 0, 0, w, h)
+        const compressedUrl = canvas.toDataURL('image/jpeg', 0.78)
+        const newPhoto = {
+          id: `gphoto-${Date.now()}`,
+          userId: currentUser.id,
+          dateIso: photoUploadDate || new Date().toISOString().slice(0, 10),
+          questTitle: currentWorkoutQuest?.title || 'Gym Workout',
+          dataUrl: compressedUrl,
+          createdAt: Date.now(),
+        }
+        setGymProgressPhotos((prev) => [...prev, newPhoto])
+        setTimelapseVideoUrl(null)
+        showToast('📸 Foto After-Gym berhasil disimpan!')
+      }
+      if (typeof reader.result === 'string') {
+        img.src = reader.result
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleDeleteGymPhoto = (photoId: string) => {
+    setGymProgressPhotos((prev) => prev.filter((p) => p.id !== photoId))
+    setTimelapseVideoUrl(null)
+    showToast('Foto progres dihapus.')
+  }
+
+  const toggleLiveFlipPreview = () => {
+    if (liveFlipTimerRef.current) {
+      clearInterval(liveFlipTimerRef.current)
+      liveFlipTimerRef.current = null
+      setLiveFlipIdx(null)
+      return
+    }
+    if (userGymPhotos.length === 0) return
+    let idx = 0
+    setLiveFlipIdx(0)
+    liveFlipTimerRef.current = setInterval(() => {
+      idx = (idx + 1) % userGymPhotos.length
+      setLiveFlipIdx(idx)
+    }, timelapseSpeedMs)
+  }
+
+  const handleGenerateTimelapseVideo = async () => {
+    if (userGymPhotos.length < 2) {
+      showToast('Tambahkan minimal 2 foto berbeda hari untuk membuat video timelapse!')
+      return
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      showToast('Browser tidak mendukung perekaman video otomatis.')
+      return
+    }
+
+    setIsGeneratingTimelapse(true)
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = 540
+      canvas.height = 720
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Canvas 2D unavailable')
+
+      // Load all images first
+      const loadedImgs = await Promise.all(
+        userGymPhotos.map(
+          (p) =>
+            new Promise<HTMLImageElement>((resolve, reject) => {
+              const im = new Image()
+              im.onload = () => resolve(im)
+              im.onerror = reject
+              im.src = p.dataUrl
+            })
+        )
+      )
+
+      const mimeCandidates = [
+        'video/mp4;codecs=avc1',
+        'video/mp4',
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm',
+      ]
+      const supportedMime = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || 'video/webm'
+      const isMp4 = supportedMime.includes('mp4')
+      setTimelapseVideoExt(isMp4 ? 'mp4' : 'webm')
+
+      const stream = canvas.captureStream(30)
+      const recorder = new MediaRecorder(stream, { mimeType: supportedMime })
+      const chunks: BlobPart[] = []
+      recorder.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size > 0) chunks.push(ev.data)
+      }
+
+      const donePromise = new Promise<Blob>((resolve) => {
+        recorder.onstop = () => {
+          resolve(new Blob(chunks, { type: supportedMime }))
+        }
+      })
+
+      recorder.start()
+
+      const drawFrame = (im: HTMLImageElement, photo: typeof userGymPhotos[number], dayNum: number) => {
+        ctx.fillStyle = '#070410'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        // Center-crop cover fit
+        const scale = Math.max(canvas.width / im.width, canvas.height / im.height)
+        const dw = im.width * scale
+        const dh = im.height * scale
+        const dx = (canvas.width - dw) / 2
+        const dy = (canvas.height - dh) / 2
+        ctx.drawImage(im, dx, dy, dw, dh)
+
+        // Bottom dark gradient overlay
+        const grad = ctx.createLinearGradient(0, canvas.height - 170, 0, canvas.height)
+        grad.addColorStop(0, 'rgba(7, 4, 16, 0)')
+        grad.addColorStop(1, 'rgba(7, 4, 16, 0.92)')
+        ctx.fillStyle = grad
+        ctx.fillRect(0, canvas.height - 170, canvas.width, 170)
+
+        // Day pill
+        ctx.fillStyle = 'rgba(124, 58, 237, 0.88)'
+        ctx.fillRect(24, canvas.height - 96, 86, 28)
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 14px Inter, sans-serif'
+        ctx.fillText(`DAY #${dayNum}`, 36, canvas.height - 77)
+
+        // Date & Quest title
+        const parsed = new Date(`${photo.dateIso}T00:00:00`)
+        const prettyDate = !isNaN(parsed.getTime())
+          ? parsed.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+          : photo.dateIso
+        ctx.fillStyle = '#f5f2ff'
+        ctx.font = 'bold 24px Inter, sans-serif'
+        ctx.fillText(prettyDate, 24, canvas.height - 42)
+
+        ctx.fillStyle = '#67e8f9'
+        ctx.font = 'bold 13px Inter, sans-serif'
+        ctx.fillText(`RANKERZ • ${photo.questTitle.toUpperCase()}`, 24, canvas.height - 18)
+      }
+
+      for (let i = 0; i < loadedImgs.length; i++) {
+        drawFrame(loadedImgs[i], userGymPhotos[i], i + 1)
+        await new Promise((r) => setTimeout(r, timelapseSpeedMs))
+      }
+
+      recorder.stop()
+      const videoBlob = await donePromise
+      if (timelapseVideoUrl) {
+        URL.revokeObjectURL(timelapseVideoUrl)
+      }
+      const url = URL.createObjectURL(videoBlob)
+      setTimelapseVideoUrl(url)
+      showToast('🎬 Video timelapse perkembangan badan berhasil dibuat!')
+    } catch (err) {
+      console.error(err)
+      showToast('Gagal membuat video timelapse. Coba gunakan browser Chrome/Edge.')
+    } finally {
+      setIsGeneratingTimelapse(false)
+    }
   }
 
   // ============================================================================
@@ -6946,6 +7187,396 @@ export default function Page() {
                   </div>
                 )
               })()
+            ) : workoutSubPage === 'photos' ? (
+              /* ============================================================
+                 HALAMAN KHUSUS: AFTER-GYM PHOTO & BODY TIMELAPSE GENERATOR
+                 ============================================================ */
+              <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => setWorkoutSubPage('overview')}
+                      style={{
+                        background: '#171226',
+                        border: '1px solid #32254a',
+                        borderRadius: '10px',
+                        width: '34px',
+                        height: '34px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#d5beff',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                      title="Kembali ke Daftar Gerakan"
+                      aria-label="Kembali ke Daftar Gerakan"
+                    >
+                      <ArrowLeft size={16} />
+                    </button>
+                    <div>
+                      <div className="eyebrow" style={{ color: '#67e8f9', fontSize: '9px' }}>
+                        BODY TRANSFORMATION
+                      </div>
+                      <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#ffffff', margin: '2px 0 0' }}>
+                        After-Gym Photo &amp; Timelapse
+                      </h2>
+                    </div>
+                  </div>
+                  <span className="completion">{userGymPhotos.length} Foto</span>
+                </div>
+
+                {/* Hidden File Input */}
+                <input
+                  ref={gymPhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUploadGymPhoto}
+                  style={{ display: 'none' }}
+                />
+
+                {/* Card Upload Foto After-Gym */}
+                <div
+                  style={{
+                    padding: '14px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(155deg, rgba(22, 16, 38, 0.96), rgba(11, 8, 20, 0.99))',
+                    border: '1px solid rgba(139, 92, 246, 0.28)',
+                    marginBottom: '14px',
+                    display: 'grid',
+                    gap: '10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#e9d5ff' }}>
+                      Tanggal Foto Progres
+                    </span>
+                    <input
+                      type="date"
+                      value={photoUploadDate}
+                      onChange={(e) => setPhotoUploadDate(e.target.value)}
+                      style={{
+                        padding: '5px 8px',
+                        borderRadius: '8px',
+                        background: '#0a0814',
+                        border: '1px solid rgba(168, 85, 247, 0.35)',
+                        color: '#f3f1ff',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        colorScheme: 'dark',
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => gymPhotoInputRef.current?.click()}
+                    className="btn-primary"
+                    style={{
+                      width: '100%',
+                      height: '42px',
+                      borderRadius: '11px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '7px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Camera size={15} />
+                    <span>Upload / Ambil Foto After-Gym</span>
+                  </button>
+                </div>
+
+                {/* Card Video Timelapse Generator */}
+                {userGymPhotos.length > 0 && (
+                  <div
+                    style={{
+                      padding: '14px',
+                      borderRadius: '16px',
+                      background: 'linear-gradient(155deg, rgba(16, 22, 38, 0.96), rgba(10, 8, 20, 0.99))',
+                      border: '1px solid rgba(56, 189, 248, 0.32)',
+                      marginBottom: '14px',
+                      display: 'grid',
+                      gap: '10px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <div>
+                        <strong style={{ fontSize: '13px', color: '#f5f2ff', display: 'block' }}>
+                          Timelapse Perkembangan Badan
+                        </strong>
+                        <span style={{ fontSize: '10px', color: '#9a8fb2' }}>
+                          Gabungkan foto dari hari ke hari menjadi video cepat
+                        </span>
+                      </div>
+                      <Film size={18} color="#67e8f9" />
+                    </div>
+
+                    {/* Speed Selector */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                      {[
+                        { ms: 250, label: '0.25s • Cepat' },
+                        { ms: 500, label: '0.5s • Sedang' },
+                        { ms: 1000, label: '1.0s • Santai' },
+                      ].map((spd) => (
+                        <button
+                          key={spd.ms}
+                          type="button"
+                          onClick={() => setTimelapseSpeedMs(spd.ms)}
+                          style={{
+                            padding: '6px 4px',
+                            borderRadius: '8px',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            background: timelapseSpeedMs === spd.ms ? 'rgba(56, 189, 248, 0.18)' : '#0d0a16',
+                            border:
+                              timelapseSpeedMs === spd.ms
+                                ? '1px solid rgba(56, 189, 248, 0.55)'
+                                : '1px solid rgba(139, 92, 246, 0.2)',
+                            color: timelapseSpeedMs === spd.ms ? '#67e8f9' : '#b8add1',
+                          }}
+                        >
+                          {spd.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Live Flip Preview Frame */}
+                    {liveFlipIdx !== null && userGymPhotos[liveFlipIdx] && (
+                      <div
+                        style={{
+                          position: 'relative',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          border: '1px solid rgba(56, 189, 248, 0.45)',
+                          background: '#070410',
+                          aspectRatio: '3 / 4',
+                          maxHeight: '320px',
+                          margin: '0 auto',
+                          width: '100%',
+                        }}
+                      >
+                        <img
+                          src={userGymPhotos[liveFlipIdx].dataUrl}
+                          alt={`Day ${liveFlipIdx + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            padding: '18px 12px 10px',
+                            background: 'linear-gradient(transparent, rgba(7,4,16,0.92))',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-end',
+                          }}
+                        >
+                          <div>
+                            <span
+                              style={{
+                                fontSize: '9.5px',
+                                fontWeight: 800,
+                                padding: '2px 7px',
+                                borderRadius: '6px',
+                                background: '#7c3aed',
+                                color: '#fff',
+                              }}
+                            >
+                              DAY #{liveFlipIdx + 1}
+                            </span>
+                            <div style={{ fontSize: '13px', fontWeight: 800, color: '#fff', marginTop: '4px' }}>
+                              {userGymPhotos[liveFlipIdx].dateIso}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#67e8f9' }}>
+                            RANKERZ
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Generated Video Player */}
+                    {timelapseVideoUrl && (
+                      <div style={{ display: 'grid', gap: '8px' }}>
+                        <video
+                          src={timelapseVideoUrl}
+                          controls
+                          autoPlay
+                          loop
+                          playsInline
+                          style={{
+                            width: '100%',
+                            maxHeight: '340px',
+                            borderRadius: '12px',
+                            background: '#070410',
+                            border: '1px solid rgba(56, 189, 248, 0.45)',
+                          }}
+                        />
+                        <a
+                          href={timelapseVideoUrl}
+                          download={`rankerz-progress-timelapse.${timelapseVideoExt}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '9px 12px',
+                            borderRadius: '10px',
+                            background: 'rgba(56, 189, 248, 0.16)',
+                            border: '1px solid rgba(56, 189, 248, 0.45)',
+                            color: '#67e8f9',
+                            fontSize: '11.5px',
+                            fontWeight: 800,
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <Download size={14} />
+                          <span>Download Video Timelapse</span>
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={toggleLiveFlipPreview}
+                        style={{
+                          height: '38px',
+                          borderRadius: '10px',
+                          background: liveFlipIdx !== null ? 'rgba(239, 68, 68, 0.18)' : 'rgba(168, 85, 247, 0.14)',
+                          border: liveFlipIdx !== null ? '1px solid rgba(239, 68, 68, 0.45)' : '1px solid rgba(168, 85, 247, 0.35)',
+                          color: liveFlipIdx !== null ? '#fca5a5' : '#e9d5ff',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '5px',
+                        }}
+                      >
+                        {liveFlipIdx !== null ? <Pause size={12} /> : <Play size={12} />}
+                        <span>{liveFlipIdx !== null ? 'Stop Preview' : 'Preview Cepat'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isGeneratingTimelapse || userGymPhotos.length < 2}
+                        onClick={handleGenerateTimelapseVideo}
+                        style={{
+                          height: '38px',
+                          borderRadius: '10px',
+                          background:
+                            userGymPhotos.length < 2
+                              ? '#1a1529'
+                              : 'linear-gradient(135deg, #0284c7, #7c3aed)',
+                          border:
+                            userGymPhotos.length < 2
+                              ? '1px solid #2b2340'
+                              : '1px solid rgba(56, 189, 248, 0.55)',
+                          color: userGymPhotos.length < 2 ? '#786e8e' : '#ffffff',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          cursor: userGymPhotos.length < 2 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '5px',
+                        }}
+                      >
+                        <Film size={13} />
+                        <span>
+                          {isGeneratingTimelapse
+                            ? 'Membuat Video...'
+                            : userGymPhotos.length < 2
+                              ? 'Butuh Min. 2 Foto'
+                              : 'Generate Video'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Galeri Foto After-Gym Per Hari */}
+                {userGymPhotos.length === 0 ? (
+                  <div className="lock-banner" style={{ padding: '24px 16px' }}>
+                    <Camera size={28} color="#67e8f9" style={{ margin: '0 auto 6px', opacity: 0.85 }} />
+                    <strong style={{ display: 'block', fontSize: '13px', color: '#f5f2ff' }}>
+                      Belum Ada Foto After-Gym
+                    </strong>
+                    <p style={{ margin: '5px auto 0', maxWidth: '270px', fontSize: '11px', color: '#b8add1' }}>
+                      Upload foto progres setelah latihan setiap hari, lalu gabungkan jadi video timelapse perubahan badan kamu!
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '9px' }}>
+                    {userGymPhotos.map((photo, idx) => (
+                      <div
+                        key={photo.id}
+                        style={{
+                          borderRadius: '13px',
+                          overflow: 'hidden',
+                          background: '#120e1e',
+                          border: '1px solid rgba(139, 92, 246, 0.25)',
+                          position: 'relative',
+                        }}
+                      >
+                        <img
+                          src={photo.dataUrl}
+                          alt={`After Gym Day ${idx + 1}`}
+                          style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', display: 'block' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGymPhoto(photo.id)}
+                          aria-label="Hapus foto"
+                          style={{
+                            position: 'absolute',
+                            top: '6px',
+                            right: '6px',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '7px',
+                            background: 'rgba(10, 7, 18, 0.78)',
+                            border: '1px solid rgba(239, 68, 68, 0.45)',
+                            color: '#fca5a5',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                        <div style={{ padding: '7px 9px' }}>
+                          <span style={{ fontSize: '9px', fontWeight: 800, color: '#67e8f9', display: 'block' }}>
+                            DAY #{idx + 1} • {photo.dateIso}
+                          </span>
+                          <span style={{ fontSize: '10px', color: '#c4b5fd', fontWeight: 600 }}>
+                            {photo.questTitle}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
               /* ============================================================
                  HALAMAN UTAMA WORKOUT (LIST OF EXERCISES / OVERVIEW)
@@ -7111,6 +7742,30 @@ export default function Page() {
                     PENDING ({pendingWorkoutExercises.length})
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setWorkoutSubPage('photos')}
+                      style={{
+                        height: '28px',
+                        padding: '0 9px',
+                        borderRadius: '8px',
+                        background: 'rgba(56, 189, 248, 0.14)',
+                        border: '1px solid rgba(56, 189, 248, 0.42)',
+                        color: '#67e8f9',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Upload Foto After-Gym & Buat Video Timelapse"
+                    >
+                      <Camera size={11} color="#67e8f9" />
+                      <span>After-Gym{userGymPhotos.length > 0 ? ` (${userGymPhotos.length})` : ''}</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setWorkoutSubPage('programs')}
