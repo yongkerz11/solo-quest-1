@@ -1403,8 +1403,9 @@ export default function Page() {
   const rankSwipeStartXRef = useRef<number | null>(null)
   const [featuredCategoryName, setFeaturedCategoryName] = useState<string | null>(null)
   const [historyFilter, setHistoryFilter] = useState<'all' | 'gym' | 'other'>('all')
+  const [historyDateFilter, setHistoryDateFilter] = useState<string>('all')
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
-  const [showCompletedDayQuests, setShowCompletedDayQuests] = useState<boolean>(false)
+  const [showCompletedDayQuests, setShowCompletedDayQuests] = useState<boolean>(true)
 
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
@@ -1482,6 +1483,7 @@ export default function Page() {
   const [activeWorkoutQuest, setActiveWorkoutQuest] = useState<{
     type: 'personal' | 'clan'
     id: string
+    dateIso?: string
   } | null>(null)
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
   const [openExerciseDropdownId, setOpenExerciseDropdownId] = useState<string | null>(null)
@@ -1910,7 +1912,9 @@ export default function Page() {
       category: string
       icon: string
       xp: number
+      isoDate: string
       dateLabel: string
+      fullDateLabel: string
       timestamp: number
       isGym: boolean
       exercises: Array<{ name: string; setsCount: number; weight: number; reps: number }>
@@ -1919,7 +1923,25 @@ export default function Page() {
     }> = []
 
     const todayIso = new Date().toISOString().slice(0, 10)
+    const yesterdayDate = new Date()
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+    const yesterdayIso = yesterdayDate.toISOString().slice(0, 10)
     const todayShort = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+    const DAYS_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+
+    const formatFullDateId = (isoStr: string) => {
+      const parsed = new Date(`${isoStr}T00:00:00`)
+      if (isNaN(parsed.getTime())) return isoStr
+      const dayName = DAYS_ID[parsed.getDay()]
+      const dmy = parsed.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+      if (isoStr === todayIso) return `Hari Ini • ${dayName}, ${dmy}`
+      if (isoStr === yesterdayIso) return `Kemarin • ${dayName}, ${dmy}`
+      return `${dayName}, ${dmy}`
+    }
 
     userPersonalTasks.forEach((task) => {
       // HANYA QUEST YANG BENAR-BENAR TELAH SELESAI DIKERJAKAN YANG MASUK KE HISTORY QUEST
@@ -1943,15 +1965,19 @@ export default function Page() {
       const isGym = task.category.toLowerCase() === 'gym' || Boolean(task.workoutExercises && task.workoutExercises.length > 0)
 
       completionDates.forEach((isoDate) => {
-        const parsed = new Date(isoDate)
+        const parsed = new Date(`${isoDate}T00:00:00`)
         const dateLabel = !isNaN(parsed.getTime())
+          ? parsed.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+          : todayShort
+        const shortHistLookup = !isNaN(parsed.getTime())
           ? parsed.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
           : todayShort
+        const fullDateLabel = formatFullDateId(isoDate)
         const timestamp = !isNaN(parsed.getTime()) ? parsed.getTime() : Date.now()
 
         if (isGym && task.workoutExercises && task.workoutExercises.length > 0) {
           const exercises = task.workoutExercises.map((ex) => {
-            const histOnDate = ex.history?.find((h) => h.date === dateLabel)
+            const histOnDate = ex.history?.find((h) => h.date === shortHistLookup || h.date === dateLabel)
             const weights = ex.sets.map((s) => Number(s.weight) || 0)
             const maxW = histOnDate ? histOnDate.weight : weights.length > 0 ? Math.max(...weights) : 0
             const reps = (histOnDate && histOnDate.reps !== undefined) ? histOnDate.reps : (Number(ex.sets[0]?.reps) || 10)
@@ -1964,7 +1990,7 @@ export default function Page() {
           })
 
           const totalSets = exercises.reduce((acc, e) => acc + e.setsCount, 0)
-          const maxWeight = exercises.reduce((acc, e) => Math.max(acc, e.weight), 0)
+          const maxWeight = exercises.reduce((acc, e) => Math.max(acc, Number(e.weight) || 0), 0)
 
           items.push({
             id: `${task.id}-${isoDate}`,
@@ -1973,7 +1999,9 @@ export default function Page() {
             category: task.category,
             icon: task.icon,
             xp: task.xp,
+            isoDate,
             dateLabel,
+            fullDateLabel,
             timestamp,
             isGym: true,
             exercises,
@@ -1988,7 +2016,9 @@ export default function Page() {
             category: task.category,
             icon: task.icon,
             xp: task.xp,
+            isoDate,
             dateLabel,
+            fullDateLabel,
             timestamp,
             isGym: false,
             exercises: [],
@@ -2209,13 +2239,24 @@ export default function Page() {
         const normalizedCloudQuests = cloudQuests.map((t: any) => {
           const cat = findCategory(t.category)
           const existingLocal = personalTasks.find((lt) => lt.id === t.id)
-          const compDates = Array.isArray(t.completedDates) ? t.completedDates : []
           const skipDates = Array.from(
             new Set([
               ...(Array.isArray(t.skippedDates) ? t.skippedDates : []),
               ...(existingLocal?.skippedDates || []),
             ])
           )
+          const compSet = new Set<string>([
+            ...(Array.isArray(t.completedDates) ? t.completedDates : []),
+            ...(existingLocal?.completedDates || []),
+          ])
+          const exList: WorkoutExercise[] = Array.isArray(t.workoutExercises) ? t.workoutExercises : []
+          const hasCompletedEx =
+            cat.name.toLowerCase() === 'gym' &&
+            exList.some((ex) => Array.isArray(ex.sets) && ex.sets.length > 0 && ex.sets.every((s) => s.completed))
+          if (hasCompletedEx && isQuestForToday(t.schedule) && !skipDates.includes(todayIso)) {
+            compSet.add(todayIso)
+          }
+          const compDates = Array.from(compSet)
           return {
             ...t,
             category: cat.name,
@@ -2254,25 +2295,117 @@ export default function Page() {
   }, [mounted, currentUser?.id, currentUser?.username])
 
   // Reset harian otomatis ketika berganti hari / tengah malam (midnight rollover)
+  // + Sinkronisasi otomatis quest Gym yang sudah memiliki >= 1 gerakan selesai
   useEffect(() => {
     if (!mounted) return
     const todayIso = new Date().toISOString().slice(0, 10)
     setPersonalTasks((prev) => {
       let changed = false
       const updated = prev.map((t) => {
-        const compDates = Array.isArray(t.completedDates) ? t.completedDates : []
-        const skipDates = Array.isArray(t.skippedDates) ? t.skippedDates : []
-        const isDoneToday = compDates.includes(todayIso)
-        const isSkippedToday = skipDates.includes(todayIso)
-        if (t.done !== isDoneToday || t.skipped !== isSkippedToday) {
+        const compSet = new Set(Array.isArray(t.completedDates) ? t.completedDates : [])
+        const skipSet = new Set(Array.isArray(t.skippedDates) ? t.skippedDates : [])
+        const isGymTask = t.category.toLowerCase() === 'gym'
+        const hasCompletedEx =
+          isGymTask &&
+          Boolean(
+            t.workoutExercises?.some(
+              (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+            )
+          )
+
+        if (hasCompletedEx) {
+          const sched = Array.isArray(t.schedule) ? t.schedule : []
+          const isSpecificDays = sched.length > 0 && !sched.includes('Everyday')
+
+          if (isSpecificDays) {
+            // Cari hari jadwal quest ini yang sudah lewat / hari ini pada minggu berjalan
+            const matchingDays = currentWeekDays.filter(
+              (d) => !d.isFuture && sched.includes(d.code) && !skipSet.has(d.isoDate)
+            )
+            if (matchingDays.length > 0) {
+              const targetDay = matchingDays[matchingDays.length - 1]
+              if (!compSet.has(targetDay.isoDate)) {
+                compSet.add(targetDay.isoDate)
+                skipSet.delete(targetDay.isoDate)
+                skipSet.delete(`unskip:${targetDay.isoDate}`)
+                changed = true
+              }
+              // Bersihkan tanggal di minggu ini yang tidak sesuai jadwal spesifik quest Gym tersebut
+              currentWeekDays.forEach((d) => {
+                if (!sched.includes(d.code) && compSet.has(d.isoDate)) {
+                  compSet.delete(d.isoDate)
+                  changed = true
+                }
+              })
+            }
+          } else if (isQuestForToday(sched) && !skipSet.has(todayIso) && !compSet.has(todayIso)) {
+            compSet.add(todayIso)
+            changed = true
+          }
+        }
+
+        const nextCompDates = Array.from(compSet)
+        const nextSkipDates = Array.from(skipSet)
+        const isDoneToday = compSet.has(todayIso)
+        const isSkippedToday = skipSet.has(todayIso)
+
+        if (
+          t.done !== isDoneToday ||
+          t.skipped !== isSkippedToday ||
+          nextCompDates.length !== (t.completedDates?.length ?? 0) ||
+          nextSkipDates.length !== (t.skippedDates?.length ?? 0)
+        ) {
           changed = true
-          return { ...t, done: isDoneToday, skipped: isSkippedToday }
+          const updatedTask = {
+            ...t,
+            done: isDoneToday,
+            skipped: isSkippedToday,
+            completedDates: nextCompDates,
+            skippedDates: nextSkipDates,
+          }
+          if (currentUser) {
+            saveCloudQuest(updatedTask, currentUser.username)
+          }
+          return updatedTask
         }
         return t
       })
       return changed ? updated : prev
     })
   }, [timeTick, mounted])
+
+  // Jika user membuka halaman workout pada quest Gym yang sudah memiliki >= 1 gerakan selesai,
+  // pastikan tanggal target (dateIso / hari ini) langsung tercentang selesai.
+  useEffect(() => {
+    if (!mounted || !activeWorkoutQuest || activeWorkoutQuest.type !== 'personal') return
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const targetDateIso = activeWorkoutQuest.dateIso || todayIso
+    if (targetDateIso > todayIso) return
+
+    const target = personalTasks.find((t) => t.id === activeWorkoutQuest.id)
+    if (!target) return
+    const hasCompletedEx = Boolean(
+      target.workoutExercises?.some(
+        (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+      )
+    )
+    if (hasCompletedEx && !target.completedDates?.includes(targetDateIso)) {
+      const nextComp = Array.from(new Set([...(target.completedDates || []), targetDateIso]))
+      const nextSkip = (target.skippedDates || []).filter(
+        (d) => d !== targetDateIso && d !== `unskip:${targetDateIso}`
+      )
+      const isTargetToday = targetDateIso === todayIso
+      const updatedTask: PersonalTask = {
+        ...target,
+        done: isTargetToday ? true : target.done,
+        skipped: isTargetToday ? false : target.skipped,
+        completedDates: nextComp,
+        skippedDates: nextSkip,
+      }
+      setPersonalTasks((curr) => curr.map((t) => (t.id === target.id ? updatedTask : t)))
+      saveCloudQuest(updatedTask, currentUser.username)
+    }
+  }, [activeWorkoutQuest?.id, activeWorkoutQuest?.dateIso, mounted])
 
   // Sinkronisasi otomatis XP hunter & Daily All-Clear Bonus ke state serta profil cloud
   useEffect(() => {
@@ -2342,11 +2475,15 @@ export default function Page() {
 
     if (type === 'personal') {
       const todayIso = new Date().toISOString().slice(0, 10)
+      const targetDateIso = activeWorkoutQuest?.dateIso || todayIso
+      const isTargetToday = targetDateIso === todayIso
       const target = personalTasks.find((t) => t.id === questId)
       const prevHadCompletedExercise = (target?.workoutExercises ?? []).some(
         (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
       )
-      const wasDoneToday = Boolean(target?.done || target?.completedDates?.includes(todayIso))
+      const wasDoneOnTargetDate = Boolean(
+        (isTargetToday && target?.done) || target?.completedDates?.includes(targetDateIso)
+      )
 
       const buildUpdatedTask = (t: PersonalTask): PersonalTask => {
         const prevCompleted = new Set(t.completedDates || [])
@@ -2355,14 +2492,21 @@ export default function Page() {
         let nextSkipped = t.skipped
 
         if (hasCompletedExercise) {
-          nextDone = true
-          nextSkipped = false
-          prevCompleted.add(todayIso)
-          prevSkipped.delete(todayIso)
-          prevSkipped.delete(`unskip:${todayIso}`)
-        } else if (prevHadCompletedExercise && wasDoneToday) {
-          nextDone = false
-          prevCompleted.delete(todayIso)
+          if (isTargetToday) {
+            nextDone = true
+            nextSkipped = false
+          }
+          prevCompleted.add(targetDateIso)
+          prevSkipped.delete(targetDateIso)
+          prevSkipped.delete(`unskip:${targetDateIso}`)
+        } else if (prevHadCompletedExercise && wasDoneOnTargetDate) {
+          if (isTargetToday) {
+            nextDone = false
+          }
+          prevCompleted.delete(targetDateIso)
+          if (targetDateIso < todayIso) {
+            prevSkipped.add(`unskip:${targetDateIso}`)
+          }
         }
 
         return {
@@ -7592,7 +7736,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Filter Tabs */}
+                {/* Filter Tabs Kategori */}
                 <div
                   style={{
                     display: 'grid',
@@ -7602,7 +7746,7 @@ export default function Page() {
                     borderRadius: '11px',
                     background: '#0e0b18',
                     border: '1px solid #261f3d',
-                    marginBottom: '14px',
+                    marginBottom: '10px',
                   }}
                 >
                   {[
@@ -7637,12 +7781,185 @@ export default function Page() {
                   ))}
                 </div>
 
+                {/* Filter Tanggal (Date Filter + Kalender + Chip Tanggal Tersedia) */}
+                {(() => {
+                  const uniqueHistoryDates = Array.from(
+                    new Map(userHistoryItems.map((it) => [it.isoDate, it.fullDateLabel])).entries()
+                  )
+
+                  return (
+                    <div
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '13px',
+                        background: '#0e0b18',
+                        border: '1px solid rgba(139, 92, 246, 0.24)',
+                        marginBottom: '14px',
+                        display: 'grid',
+                        gap: '8px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            letterSpacing: '0.06em',
+                            color: '#c4b5fd',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                          }}
+                        >
+                          <CalendarDays size={12} color="#a855f7" />
+                          <span>FILTER TANGGAL</span>
+                        </span>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <input
+                            type="date"
+                            value={/^\d{4}-\d{2}-\d{2}$/.test(historyDateFilter) ? historyDateFilter : ''}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setHistoryDateFilter(val ? val : 'all')
+                            }}
+                            aria-label="Pilih tanggal riwayat"
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '7px',
+                              background: '#161126',
+                              border: '1px solid rgba(168, 85, 247, 0.35)',
+                              color: '#f3f1ff',
+                              fontSize: '10.5px',
+                              fontWeight: 600,
+                              colorScheme: 'dark',
+                              cursor: 'pointer',
+                            }}
+                          />
+                          {historyDateFilter !== 'all' && (
+                            <button
+                              type="button"
+                              onClick={() => setHistoryDateFilter('all')}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '7px',
+                                background: 'rgba(239, 68, 68, 0.14)',
+                                border: '1px solid rgba(239, 68, 68, 0.35)',
+                                color: '#fca5a5',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        {[
+                          { key: 'all', label: 'Semua Tanggal' },
+                          { key: 'today', label: 'Hari Ini' },
+                          { key: 'yesterday', label: 'Kemarin' },
+                          { key: '7days', label: '7 Hari Terakhir' },
+                        ].map((dTab) => {
+                          const isSelected = historyDateFilter === dTab.key
+                          return (
+                            <button
+                              key={dTab.key}
+                              type="button"
+                              onClick={() => setHistoryDateFilter(dTab.key)}
+                              style={{
+                                padding: '5px 9px',
+                                borderRadius: '999px',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                border: isSelected
+                                  ? '1px solid rgba(56, 189, 248, 0.55)'
+                                  : '1px solid rgba(168, 85, 247, 0.22)',
+                                background: isSelected
+                                  ? 'rgba(56, 189, 248, 0.18)'
+                                  : 'rgba(22, 16, 38, 0.8)',
+                                color: isSelected ? '#67e8f9' : '#c4b5fd',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {dTab.label}
+                            </button>
+                          )
+                        })}
+
+                        {uniqueHistoryDates.map(([iso, fullLabel]) => {
+                          const isSelected = historyDateFilter === iso
+                          return (
+                            <button
+                              key={iso}
+                              type="button"
+                              onClick={() => setHistoryDateFilter(isSelected ? 'all' : iso)}
+                              style={{
+                                padding: '5px 9px',
+                                borderRadius: '999px',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                border: isSelected
+                                  ? '1px solid #a855f7'
+                                  : '1px solid rgba(139, 92, 246, 0.2)',
+                                background: isSelected
+                                  ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(88, 28, 135, 0.55))'
+                                  : 'rgba(18, 13, 30, 0.85)',
+                                color: isSelected ? '#ffffff' : '#b8add1',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {fullLabel}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
+
                 {/* Daftar Lengkap History Quest */}
                 <div style={{ display: 'grid', gap: '10px' }}>
                   {(() => {
+                    const yesterdayObj = new Date()
+                    yesterdayObj.setDate(yesterdayObj.getDate() - 1)
+                    const yesterdayIsoStr = yesterdayObj.toISOString().slice(0, 10)
+                    const sevenDaysAgoObj = new Date()
+                    sevenDaysAgoObj.setDate(sevenDaysAgoObj.getDate() - 6)
+                    const sevenDaysAgoIsoStr = sevenDaysAgoObj.toISOString().slice(0, 10)
+
                     const filteredHistory = userHistoryItems.filter((item) => {
-                      if (historyFilter === 'gym') return item.isGym
-                      if (historyFilter === 'other') return !item.isGym
+                      if (historyFilter === 'gym' && !item.isGym) return false
+                      if (historyFilter === 'other' && item.isGym) return false
+
+                      if (historyDateFilter === 'today') return item.isoDate === todayIsoStr
+                      if (historyDateFilter === 'yesterday') return item.isoDate === yesterdayIsoStr
+                      if (historyDateFilter === '7days') {
+                        return item.isoDate >= sevenDaysAgoIsoStr && item.isoDate <= todayIsoStr
+                      }
+                      if (historyDateFilter !== 'all') {
+                        return item.isoDate === historyDateFilter
+                      }
                       return true
                     })
 
@@ -7659,7 +7976,7 @@ export default function Page() {
                             fontSize: '12px',
                           }}
                         >
-                          Belum ada riwayat pada kategori ini.
+                          Belum ada riwayat pada filter tanggal / kategori ini.
                         </div>
                       )
                     }
@@ -7690,15 +8007,19 @@ export default function Page() {
                                 <span
                                   style={{
                                     fontSize: '9.5px',
-                                    padding: '2px 7px',
+                                    padding: '2px 8px',
                                     borderRadius: '99px',
-                                    background: 'rgba(168, 85, 247, 0.14)',
-                                    border: '1px solid rgba(168, 85, 247, 0.28)',
-                                    color: '#d8b4fe',
-                                    fontWeight: 600,
+                                    background: 'rgba(168, 85, 247, 0.16)',
+                                    border: '1px solid rgba(168, 85, 247, 0.35)',
+                                    color: '#e9d5ff',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
                                   }}
                                 >
-                                  {item.dateLabel}
+                                  <CalendarDays size={10} />
+                                  <span>{item.fullDateLabel}</span>
                                 </span>
                               </div>
                               <span style={{ fontSize: '10.5px', color: '#8a80a0', display: 'block', marginTop: '2px' }}>
@@ -7727,8 +8048,8 @@ export default function Page() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                if (confirm(`Hapus riwayat quest "${item.title}" (${item.dateLabel})?`)) {
-                                  handleDeleteHistoryItem(item.questId, item.dateLabel, item.id.split('-').slice(1).join('-'))
+                                if (confirm(`Hapus riwayat quest "${item.title}" (${item.fullDateLabel})?`)) {
+                                  handleDeleteHistoryItem(item.questId, item.dateLabel, item.isoDate)
                                 }
                               }}
                               style={{
@@ -8495,7 +8816,7 @@ export default function Page() {
                           type="button"
                           onClick={() => {
                             setSelectedWeekDay(day.code)
-                            setShowCompletedDayQuests(false)
+                            setShowCompletedDayQuests(true)
                           }}
                           className={`week-day-pill ${isSelected ? 'selected' : ''} ${day.isToday ? 'today-ring' : ''}`}
                         >
@@ -8515,11 +8836,36 @@ export default function Page() {
                   {(() => {
                     const isPastDay = Boolean(activeScheduleDayObj.isPast)
                     const isFutureDay = Boolean(activeScheduleDayObj.isFuture)
-                    const isTaskDoneOnDay = (t: PersonalTask) =>
-                      Boolean(
+                    const isTaskDoneOnDay = (t: PersonalTask) => {
+                      if (
                         t.completedDates?.includes(activeScheduleDayObj.isoDate) ||
-                          (activeScheduleDayObj.isToday && t.done)
-                      )
+                        (activeScheduleDayObj.isToday && t.done)
+                      ) {
+                        return true
+                      }
+                      if (
+                        !isFutureDay &&
+                        t.category.toLowerCase() === 'gym' &&
+                        t.workoutExercises?.some(
+                          (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+                        ) &&
+                        !t.skippedDates?.includes(activeScheduleDayObj.isoDate)
+                      ) {
+                        const sched = Array.isArray(t.schedule) ? t.schedule : []
+                        const isSpecificDayMatch =
+                          sched.length > 0 &&
+                          !sched.includes('Everyday') &&
+                          sched.includes(activeScheduleDayObj.code)
+                        if (
+                          activeScheduleDayObj.isToday ||
+                          isSpecificDayMatch ||
+                          t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
+                        ) {
+                          return true
+                        }
+                      }
+                      return false
+                    }
                     const isTaskSkippedOnDay = (t: PersonalTask) => {
                       if (isFutureDay || isTaskDoneOnDay(t)) return false
                       if (isPastDay) {
@@ -8794,12 +9140,48 @@ export default function Page() {
                                   </span>
                                 ) : (
                                   <>
+                                    {isDoneOnDay && (
+                                      <span
+                                        onClick={() => {
+                                          if (isGym) {
+                                            setWorkoutSubPage('overview')
+                                            setActiveWorkoutQuest({
+                                              type: 'personal',
+                                              id: task.id,
+                                              dateIso: activeScheduleDayObj.isoDate,
+                                            })
+                                          }
+                                        }}
+                                        style={{
+                                          padding: '4px 8px',
+                                          borderRadius: '7px',
+                                          background: 'rgba(56, 189, 248, 0.15)',
+                                          border: '1px solid rgba(56, 189, 248, 0.42)',
+                                          color: '#67e8f9',
+                                          fontSize: '10px',
+                                          fontWeight: 800,
+                                          cursor: isGym ? 'pointer' : 'default',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '3px',
+                                        }}
+                                        title={isGym ? 'Selesai • Klik untuk lihat detail workout' : 'Quest Selesai'}
+                                      >
+                                        <Check size={9} strokeWidth={3} />
+                                        <span>Selesai</span>
+                                      </span>
+                                    )}
+
                                     {isGym && !isDoneOnDay && !isSkipped && (
                                       <button
                                         type="button"
                                         onClick={() => {
                                           setWorkoutSubPage('overview')
-                                          setActiveWorkoutQuest({ type: 'personal', id: task.id })
+                                          setActiveWorkoutQuest({
+                                            type: 'personal',
+                                            id: task.id,
+                                            dateIso: activeScheduleDayObj.isoDate,
+                                          })
                                         }}
                                         style={{
                                           padding: '4px 8px',
@@ -8861,12 +9243,12 @@ export default function Page() {
                   })()}
                 </section>
 
-                {/* 3. HISTORY QUEST DENGAN SHOW MORE */}
+                {/* 3. HISTORY QUEST HARI INI DENGAN SHOW MORE KE RIWAYAT LENGKAP */}
                 <section className="section-block">
                   <div className="section-title">
                     <div>
-                      <span className="eyebrow">RECENT ACTIVITY</span>
-                      <h2>History Quest</h2>
+                      <span className="eyebrow">TODAY&apos;S ACTIVITY</span>
+                      <h2>History Quest Hari Ini</h2>
                     </div>
                     <button
                       type="button"
@@ -8879,30 +9261,52 @@ export default function Page() {
                   </div>
 
                   <div className="task-list">
-                    {userHistoryItems.length === 0 ? (
-                      <div
-                        style={{
-                          padding: '22px 16px',
-                          borderRadius: '16px',
-                          background: '#0e0c16',
-                          border: '1px dashed #28213a',
-                          textAlign: 'center',
-                          fontSize: '11.5px',
-                          color: '#b8add1',
-                        }}
-                      >
-                        <p style={{ margin: '0 0 10px' }}>Belum ada riwayat quest yang tercatat.</p>
-                        <button
-                          type="button"
-                          className="show-more-btn"
-                          onClick={() => setActiveTab('calendar')}
-                        >
-                          <span>Mulai dari My Quest</span>
-                          <ChevronRight size={13} />
-                        </button>
-                      </div>
-                    ) : (
-                      userHistoryItems.slice(0, 3).map((item) => {
+                    {(() => {
+                      const todayHistoryItems = userHistoryItems.filter(
+                        (item) => item.isoDate === todayIsoStr
+                      )
+                      const pastHistoryCount = userHistoryItems.length - todayHistoryItems.length
+
+                      if (todayHistoryItems.length === 0) {
+                        return (
+                          <div
+                            style={{
+                              padding: '22px 16px',
+                              borderRadius: '16px',
+                              background: '#0e0c16',
+                              border: '1px dashed #28213a',
+                              textAlign: 'center',
+                              fontSize: '11.5px',
+                              color: '#b8add1',
+                            }}
+                          >
+                            <p style={{ margin: '0 0 10px' }}>
+                              Belum ada quest yang diselesaikan hari ini.
+                              {pastHistoryCount > 0
+                                ? ` (${pastHistoryCount} riwayat hari sebelumnya tersimpan di halaman History)`
+                                : ''}
+                            </p>
+                            <button
+                              type="button"
+                              className="show-more-btn"
+                              onClick={() =>
+                                pastHistoryCount > 0
+                                  ? setIsHistoryPageOpen(true)
+                                  : setActiveTab('calendar')
+                              }
+                            >
+                              <span>
+                                {pastHistoryCount > 0
+                                  ? `Lihat Riwayat Sebelumnya (${pastHistoryCount})`
+                                  : 'Mulai dari My Quest'}
+                              </span>
+                              <ChevronRight size={13} />
+                            </button>
+                          </div>
+                        )
+                      }
+
+                      return todayHistoryItems.map((item) => {
                         const firstEx = item.exercises[0]
                         const summaryText =
                           item.isGym && firstEx
@@ -8919,7 +9323,7 @@ export default function Page() {
                               {item.isGym ? <Dumbbell size={18} /> : renderCategoryIcon(item.category, 18)}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
                                 <strong
                                   style={{
                                     fontSize: '13px',
@@ -8935,16 +9339,20 @@ export default function Page() {
                                 <span
                                   style={{
                                     fontSize: '9.5px',
-                                    padding: '1px 6px',
+                                    padding: '1px 7px',
                                     borderRadius: '99px',
                                     background: 'rgba(168, 85, 247, 0.14)',
                                     border: '1px solid rgba(168, 85, 247, 0.28)',
                                     color: '#d8b4fe',
                                     fontWeight: 600,
                                     flexShrink: 0,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
                                   }}
                                 >
-                                  {item.dateLabel}
+                                  <CalendarDays size={9} />
+                                  <span>{item.fullDateLabel}</span>
                                 </span>
                               </div>
                               <small
@@ -8981,7 +9389,7 @@ export default function Page() {
                           </div>
                         )
                       })
-                    )}
+                    })()}
                   </div>
                 </section>
               </>
@@ -9479,6 +9887,15 @@ export default function Page() {
                       (questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).map((task) => {
                         const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
                         const isSkipped = Boolean(task.skipped || task.skippedDates?.includes(new Date().toISOString().slice(0, 10)))
+                        const hasGymDoneEx =
+                          questScheduleTab === 'today' &&
+                          task.category.toLowerCase() === 'gym' &&
+                          Boolean(
+                            task.workoutExercises?.some(
+                              (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
+                            )
+                          ) &&
+                          !isSkipped
                         return (
                           <QuestCard
                             key={task.id}
@@ -9487,7 +9904,7 @@ export default function Page() {
                             title={task.title}
                             meta={task.category}
                             icon={task.icon}
-                            done={task.done}
+                            done={Boolean(task.done || hasGymDoneEx)}
                             completedDates={task.completedDates}
                             schedule={task.schedule}
                             isSkipped={isSkipped}
