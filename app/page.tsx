@@ -2280,22 +2280,27 @@ export default function Page() {
             ...(existingLocal?.completedDates || []),
           ])
           const exList: WorkoutExercise[] = Array.isArray(t.workoutExercises) ? t.workoutExercises : []
-          const hasCompletedEx =
-            cat.name.toLowerCase() === 'gym' &&
-            exList.some((ex) => Array.isArray(ex.sets) && ex.sets.length > 0 && ex.sets.every((s) => s.completed))
-          if (hasCompletedEx && isQuestForToday(t.schedule) && !skipDates.includes(todayIso)) {
-            compSet.add(todayIso)
-          }
           const compDates = Array.from(compSet)
+          const isDoneToday = compDates.includes(todayIso)
+          // Jika quest belum selesai hari ini, reset centang set sisa dari sesi hari sebelumnya
+          const cleanedExercises = isDoneToday
+            ? exList
+            : exList.map((ex) => ({
+                ...ex,
+                sets: Array.isArray(ex.sets)
+                  ? ex.sets.map((s) => (s.completed ? { ...s, completed: false } : s))
+                  : [],
+              }))
           return {
             ...t,
             category: cat.name,
             icon: cat.icon,
             xp: cat.xp,
-            done: compDates.includes(todayIso),
+            done: isDoneToday,
             skipped: skipDates.includes(todayIso),
             completedDates: compDates,
             skippedDates: skipDates,
+            workoutExercises: cleanedExercises,
           }
         })
         setPersonalTasks((prev) => {
@@ -2324,76 +2329,42 @@ export default function Page() {
     }
   }, [mounted, currentUser?.id, currentUser?.username])
 
-  // Reset harian otomatis ketika berganti hari / tengah malam (midnight rollover)
-  // + Sinkronisasi otomatis quest Gym yang sudah memiliki >= 1 gerakan selesai
+  // Reset harian otomatis ketika berganti hari / tengah malam (midnight rollover):
+  // Jika quest belum selesai pada hari ini (!compSet.has(todayIso)) dan tidak sedang dibuka di sesi workout aktif,
+  // pastikan seluruh set gerakan latihan (s.completed) direset kembali ke false agar sesi hari berikutnya mulai dari 0.
   useEffect(() => {
     if (!mounted) return
     const todayIso = new Date().toISOString().slice(0, 10)
     setPersonalTasks((prev) => {
       let changed = false
       const updated = prev.map((t) => {
-        const compSet = new Set(Array.isArray(t.completedDates) ? t.completedDates : [])
-        const skipSet = new Set(Array.isArray(t.skippedDates) ? t.skippedDates : [])
-        const isGymTask = t.category.toLowerCase() === 'gym'
-        const hasCompletedEx =
-          isGymTask &&
-          Boolean(
-            t.workoutExercises?.some(
-              (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
-            )
-          )
+        const compDates = Array.isArray(t.completedDates) ? t.completedDates : []
+        const skipDates = Array.isArray(t.skippedDates) ? t.skippedDates : []
+        const isDoneToday = compDates.includes(todayIso)
+        const isSkippedToday = skipDates.includes(todayIso)
+        const isCurrentlyActiveWorkout = activeWorkoutQuest?.id === t.id && !activeWorkoutQuest?.viewOnly
 
-        if (hasCompletedEx) {
-          const sched = Array.isArray(t.schedule) ? t.schedule : []
-          const isSpecificDays = sched.length > 0 && !sched.includes('Everyday')
+        const hasStaleCompletedSets =
+          !isDoneToday &&
+          !isCurrentlyActiveWorkout &&
+          Boolean(t.workoutExercises?.some((ex) => ex.sets.some((s) => s.completed)))
 
-          if (isSpecificDays) {
-            // Cari hari jadwal quest ini yang sudah lewat / hari ini pada minggu berjalan
-            const matchingDays = currentWeekDays.filter(
-              (d) => !d.isFuture && sched.includes(d.code) && !skipSet.has(d.isoDate)
-            )
-            if (matchingDays.length > 0) {
-              const targetDay = matchingDays[matchingDays.length - 1]
-              if (!compSet.has(targetDay.isoDate)) {
-                compSet.add(targetDay.isoDate)
-                skipSet.delete(targetDay.isoDate)
-                skipSet.delete(`unskip:${targetDay.isoDate}`)
-                changed = true
-              }
-              // Bersihkan tanggal di minggu ini yang tidak sesuai jadwal spesifik quest Gym tersebut
-              currentWeekDays.forEach((d) => {
-                if (!sched.includes(d.code) && compSet.has(d.isoDate)) {
-                  compSet.delete(d.isoDate)
-                  changed = true
-                }
-              })
-            }
-          } else if (isQuestForToday(sched) && !skipSet.has(todayIso) && !compSet.has(todayIso)) {
-            compSet.add(todayIso)
-            changed = true
-          }
-        }
-
-        const nextCompDates = Array.from(compSet)
-        const nextSkipDates = Array.from(skipSet)
-        const isDoneToday = compSet.has(todayIso)
-        const isSkippedToday = skipSet.has(todayIso)
-
-        if (
-          t.done !== isDoneToday ||
-          t.skipped !== isSkippedToday ||
-          nextCompDates.length !== (t.completedDates?.length ?? 0) ||
-          nextSkipDates.length !== (t.skippedDates?.length ?? 0)
-        ) {
+        if (t.done !== isDoneToday || t.skipped !== isSkippedToday || hasStaleCompletedSets) {
           changed = true
-          const updatedTask = {
+          const nextExercises = hasStaleCompletedSets
+            ? (t.workoutExercises || []).map((ex) => ({
+                ...ex,
+                sets: ex.sets.map((s) => (s.completed ? { ...s, completed: false } : s)),
+              }))
+            : t.workoutExercises
+
+          const updatedTask: PersonalTask = {
             ...t,
             done: isDoneToday,
             skipped: isSkippedToday,
-            completedDates: nextCompDates,
-            skippedDates: nextSkipDates,
+            workoutExercises: nextExercises,
           }
-          if (currentUser) {
+          if (hasStaleCompletedSets && currentUser) {
             saveCloudQuest(updatedTask, currentUser.username)
           }
           return updatedTask
@@ -2402,41 +2373,7 @@ export default function Page() {
       })
       return changed ? updated : prev
     })
-  }, [timeTick, mounted])
-
-  // Jika user membuka halaman workout pada quest Gym yang sudah memiliki >= 1 gerakan selesai,
-  // pastikan tanggal target (dateIso / hari ini) langsung tercentang selesai.
-  useEffect(() => {
-    if (!mounted || !activeWorkoutQuest || activeWorkoutQuest.type !== 'personal') return
-    if (activeWorkoutQuest.viewOnly) return
-    const todayIso = new Date().toISOString().slice(0, 10)
-    const targetDateIso = activeWorkoutQuest.dateIso || todayIso
-    if (targetDateIso > todayIso) return
-
-    const target = personalTasks.find((t) => t.id === activeWorkoutQuest.id)
-    if (!target) return
-    const hasCompletedEx = Boolean(
-      target.workoutExercises?.some(
-        (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
-      )
-    )
-    if (hasCompletedEx && !target.completedDates?.includes(targetDateIso)) {
-      const nextComp = Array.from(new Set([...(target.completedDates || []), targetDateIso]))
-      const nextSkip = (target.skippedDates || []).filter(
-        (d) => d !== targetDateIso && d !== `unskip:${targetDateIso}`
-      )
-      const isTargetToday = targetDateIso === todayIso
-      const updatedTask: PersonalTask = {
-        ...target,
-        done: isTargetToday ? true : target.done,
-        skipped: isTargetToday ? false : target.skipped,
-        completedDates: nextComp,
-        skippedDates: nextSkip,
-      }
-      setPersonalTasks((curr) => curr.map((t) => (t.id === target.id ? updatedTask : t)))
-      saveCloudQuest(updatedTask, currentUser.username)
-    }
-  }, [activeWorkoutQuest?.id, activeWorkoutQuest?.dateIso, mounted])
+  }, [timeTick, mounted, activeWorkoutQuest?.id, activeWorkoutQuest?.viewOnly])
 
   // Sinkronisasi otomatis XP hunter & Daily All-Clear Bonus ke state serta profil cloud
   useEffect(() => {
@@ -2466,7 +2403,13 @@ export default function Page() {
       (activeWorkoutQuest?.dateIso && activeWorkoutQuest.dateIso > todayIsoStr)
   )
 
-  const workoutQuestExercises: WorkoutExercise[] = currentWorkoutQuest?.workoutExercises ?? []
+  const rawWorkoutQuestExercises: WorkoutExercise[] = currentWorkoutQuest?.workoutExercises ?? []
+  const workoutQuestExercises: WorkoutExercise[] = isWorkoutViewOnly
+    ? rawWorkoutQuestExercises.map((ex) => ({
+        ...ex,
+        sets: ex.sets.map((s) => (s.completed ? { ...s, completed: false } : s)),
+      }))
+    : rawWorkoutQuestExercises
   const pendingWorkoutExercises = workoutQuestExercises.filter(
     (ex) => !(ex.sets.length > 0 && ex.sets.every((s) => s.completed))
   )
@@ -8960,36 +8903,11 @@ export default function Page() {
                   {(() => {
                     const isPastDay = Boolean(activeScheduleDayObj.isPast)
                     const isFutureDay = Boolean(activeScheduleDayObj.isFuture)
-                    const isTaskDoneOnDay = (t: PersonalTask) => {
-                      if (
+                    const isTaskDoneOnDay = (t: PersonalTask) =>
+                      Boolean(
                         t.completedDates?.includes(activeScheduleDayObj.isoDate) ||
-                        (activeScheduleDayObj.isToday && t.done)
-                      ) {
-                        return true
-                      }
-                      if (
-                        !isFutureDay &&
-                        t.category.toLowerCase() === 'gym' &&
-                        t.workoutExercises?.some(
-                          (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
-                        ) &&
-                        !t.skippedDates?.includes(activeScheduleDayObj.isoDate)
-                      ) {
-                        const sched = Array.isArray(t.schedule) ? t.schedule : []
-                        const isSpecificDayMatch =
-                          sched.length > 0 &&
-                          !sched.includes('Everyday') &&
-                          sched.includes(activeScheduleDayObj.code)
-                        if (
-                          activeScheduleDayObj.isToday ||
-                          isSpecificDayMatch ||
-                          t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
-                        ) {
-                          return true
-                        }
-                      }
-                      return false
-                    }
+                          (activeScheduleDayObj.isToday && t.done)
+                      )
                     const isTaskSkippedOnDay = (t: PersonalTask) => {
                       if (isFutureDay || isTaskDoneOnDay(t)) return false
                       if (isPastDay) {
