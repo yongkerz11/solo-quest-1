@@ -922,25 +922,54 @@ function QuestCard({
         {/* SISI KANAN: TOMBOL START (GYM) + BUTTON SKIP + MENU */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
           {viewOnly ? (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                borderRadius: '7px',
-                fontSize: '10px',
-                fontWeight: 700,
-                background: 'rgba(148, 163, 184, 0.1)',
-                border: '1px solid rgba(148, 163, 184, 0.25)',
-                color: '#9a8fb2',
-                cursor: 'not-allowed',
-              }}
-              title="Quest mendatang hanya bisa dilihat"
-            >
-              <Lock size={10} />
-              <span>Hanya Lihat</span>
-            </span>
+            isGym && onOpenWorkout ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenWorkout()
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '5px 9px',
+                  borderRadius: '7px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  background: 'rgba(124, 58, 237, 0.16)',
+                  border: '1px solid rgba(168, 85, 247, 0.45)',
+                  color: '#e9d5ff',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Lihat daftar gerakan Gym (Mode Hanya Lihat)"
+                aria-label="Lihat Gerakan"
+              >
+                <Eye size={11} color="#c084fc" />
+                <span>Lihat Gerakan</span>
+              </button>
+            ) : (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  borderRadius: '7px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  background: 'rgba(148, 163, 184, 0.1)',
+                  border: '1px solid rgba(148, 163, 184, 0.25)',
+                  color: '#9a8fb2',
+                  cursor: 'not-allowed',
+                }}
+                title="Quest mendatang hanya bisa dilihat"
+              >
+                <Lock size={10} />
+                <span>Hanya Lihat</span>
+              </span>
+            )
           ) : (
             <>
               {!isSkipped && !done && isGym && onOpenWorkout && (
@@ -1189,7 +1218,7 @@ function QuestCard({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Opsi Khusus Gym: Halaman Workout */}
-            {!viewOnly && isGym && onOpenWorkout && (
+            {isGym && onOpenWorkout && (
               <button
                 type="button"
                 onClick={() => {
@@ -1214,7 +1243,7 @@ function QuestCard({
                 }}
               >
                 <Dumbbell size={14} color="#38bdf8" />
-                <span>Buka Halaman Workout</span>
+                <span>{viewOnly ? 'Lihat Daftar Gerakan' : 'Buka Halaman Workout'}</span>
               </button>
             )}
 
@@ -1405,7 +1434,7 @@ export default function Page() {
   const [historyFilter, setHistoryFilter] = useState<'all' | 'gym' | 'other'>('all')
   const [historyDateFilter, setHistoryDateFilter] = useState<string>('all')
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
-  const [showCompletedDayQuests, setShowCompletedDayQuests] = useState<boolean>(true)
+  const [showCompletedDayQuests, setShowCompletedDayQuests] = useState<boolean>(false)
 
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
@@ -1484,6 +1513,7 @@ export default function Page() {
     type: 'personal' | 'clan'
     id: string
     dateIso?: string
+    viewOnly?: boolean
   } | null>(null)
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
   const [openExerciseDropdownId, setOpenExerciseDropdownId] = useState<string | null>(null)
@@ -2378,6 +2408,7 @@ export default function Page() {
   // pastikan tanggal target (dateIso / hari ini) langsung tercentang selesai.
   useEffect(() => {
     if (!mounted || !activeWorkoutQuest || activeWorkoutQuest.type !== 'personal') return
+    if (activeWorkoutQuest.viewOnly) return
     const todayIso = new Date().toISOString().slice(0, 10)
     const targetDateIso = activeWorkoutQuest.dateIso || todayIso
     if (targetDateIso > todayIso) return
@@ -2429,6 +2460,11 @@ export default function Page() {
       ? personalTasks.find((t) => t.id === activeWorkoutQuest.id)
       : clanQuests.find((cq) => cq.id === activeWorkoutQuest.id)
     : null
+
+  const isWorkoutViewOnly = Boolean(
+    activeWorkoutQuest?.viewOnly ||
+      (activeWorkoutQuest?.dateIso && activeWorkoutQuest.dateIso > todayIsoStr)
+  )
 
   const workoutQuestExercises: WorkoutExercise[] = currentWorkoutQuest?.workoutExercises ?? []
   const pendingWorkoutExercises = workoutQuestExercises.filter(
@@ -2549,6 +2585,10 @@ export default function Page() {
     exerciseId: string,
     setId: string
   ) => {
+    if (isWorkoutViewOnly) {
+      showToast('🔒 Quest ini belum masuk jadwal harinya — hanya bisa melihat daftar gerakan.')
+      return
+    }
     const targetQuest =
       type === 'personal'
         ? personalTasks.find((t) => t.id === questId)
@@ -2625,6 +2665,10 @@ export default function Page() {
     type: 'personal' | 'clan',
     exerciseId: string
   ) => {
+    if (isWorkoutViewOnly) {
+      showToast('🔒 Quest ini belum masuk jadwal harinya — hanya bisa melihat daftar gerakan.')
+      return
+    }
     const targetQuest =
       type === 'personal'
         ? personalTasks.find((t) => t.id === questId)
@@ -3072,6 +3116,10 @@ export default function Page() {
   }
 
   const handleCompleteWorkout = (questId: string, type: 'personal' | 'clan') => {
+    if (isWorkoutViewOnly) {
+      showToast('🔒 Quest ini belum masuk jadwal harinya — hanya bisa melihat daftar gerakan.')
+      return
+    }
     // Sinkronkan seluruh beban gerakan yang set-nya selesai ke riwayat real-time hari ini
     const targetQuest =
       type === 'personal'
@@ -4166,30 +4214,40 @@ export default function Page() {
                   height: '30px',
                   padding: 0,
                   borderRadius: '8px',
-                  background: isExerciseDone
-                    ? '#261742'
-                    : 'linear-gradient(135deg, #7c3aed, #9333ea)',
-                  border: isExerciseDone ? '1px solid #6c3cb8' : '1px solid #a855f7',
-                  color: isExerciseDone ? '#d8b4fe' : '#ffffff',
+                  background: isWorkoutViewOnly
+                    ? '#181424'
+                    : isExerciseDone
+                      ? '#261742'
+                      : 'linear-gradient(135deg, #7c3aed, #9333ea)',
+                  border: isWorkoutViewOnly
+                    ? '1px solid rgba(148, 163, 184, 0.3)'
+                    : isExerciseDone
+                      ? '1px solid #6c3cb8'
+                      : '1px solid #a855f7',
+                  color: isWorkoutViewOnly ? '#9a8fb2' : isExerciseDone ? '#d8b4fe' : '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
-                  boxShadow: isExerciseDone ? 'none' : '0 2px 10px rgba(139, 92, 246, 0.3)',
+                  cursor: isWorkoutViewOnly ? 'not-allowed' : 'pointer',
+                  boxShadow: isWorkoutViewOnly || isExerciseDone ? 'none' : '0 2px 10px rgba(139, 92, 246, 0.3)',
                   transition: 'all 0.15s ease',
                 }}
                 title={
-                  isExerciseDone
-                    ? 'Semua set selesai (Tap untuk reset kembali ke 0)'
-                    : `Selesaikan Set ${completedSetsCount + 1}/${totalSetsCount} & mulai timer`
+                  isWorkoutViewOnly
+                    ? 'Mode Hanya Lihat — Belum masuk hari jadwal quest'
+                    : isExerciseDone
+                      ? 'Semua set selesai (Tap untuk reset kembali ke 0)'
+                      : `Selesaikan Set ${completedSetsCount + 1}/${totalSetsCount} & mulai timer`
                 }
                 aria-label={
-                  isExerciseDone
-                    ? 'Semua set selesai'
-                    : `Selesaikan Set ${completedSetsCount + 1}`
+                  isWorkoutViewOnly
+                    ? 'Mode Hanya Lihat'
+                    : isExerciseDone
+                      ? 'Semua set selesai'
+                      : `Selesaikan Set ${completedSetsCount + 1}`
                 }
               >
-                <Check size={14} strokeWidth={3} />
+                {isWorkoutViewOnly ? <Lock size={12} color="#9a8fb2" /> : <Check size={14} strokeWidth={3} />}
               </button>
 
               {/* BUTTON 2: DROPDOWN EDIT & DELETE (TITIK TIGA) */}
@@ -6159,19 +6217,37 @@ export default function Page() {
                               width: '26px',
                               height: '26px',
                               borderRadius: '7px',
-                              background: set.completed ? '#8a51de' : 'transparent',
-                              border: set.completed ? '1px solid #a974f5' : '1px solid #55406f',
+                              background: isWorkoutViewOnly
+                                ? 'rgba(15, 11, 26, 0.7)'
+                                : set.completed
+                                  ? '#8a51de'
+                                  : 'transparent',
+                              border: isWorkoutViewOnly
+                                ? '1px solid rgba(148, 163, 184, 0.3)'
+                                : set.completed
+                                  ? '1px solid #a974f5'
+                                  : '1px solid #55406f',
                               color: '#ffffff',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              cursor: 'pointer',
-                              boxShadow: set.completed ? '0 0 10px rgba(138, 81, 222, 0.45)' : 'none',
+                              cursor: isWorkoutViewOnly ? 'not-allowed' : 'pointer',
+                              boxShadow: !isWorkoutViewOnly && set.completed ? '0 0 10px rgba(138, 81, 222, 0.45)' : 'none',
                               transition: 'all 0.15s ease',
                             }}
-                            title={set.completed ? 'Batalkan Set' : 'Selesaikan Set & Mulai Timer Istirahat'}
+                            title={
+                              isWorkoutViewOnly
+                                ? 'Mode Hanya Lihat — Belum masuk hari jadwal quest'
+                                : set.completed
+                                  ? 'Batalkan Set'
+                                  : 'Selesaikan Set & Mulai Timer Istirahat'
+                            }
                           >
-                            {set.completed && <Check size={13} strokeWidth={3} />}
+                            {isWorkoutViewOnly ? (
+                              <Lock size={11} color="#9a8fb2" />
+                            ) : (
+                              set.completed && <Check size={13} strokeWidth={3} />
+                            )}
                           </button>
                         </div>
 
@@ -6991,30 +7067,55 @@ export default function Page() {
                     >
                       {completedWorkoutSets}/{totalWorkoutSets} Set
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleCompleteWorkout(currentWorkoutQuest.id, activeWorkoutQuest.type)}
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
-                        border: '1px solid rgba(168, 85, 247, 0.6)',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 10px rgba(124, 58, 237, 0.35)',
-                        transition: 'all 0.15s ease',
-                      }}
-                      title="Selesaikan Workout & Tandai Quest Selesai"
-                      aria-label="Selesaikan Workout & Tandai Quest Selesai"
-                    >
-                      <Trophy size={13} color="#fbbf24" />
-                    </button>
+                    {!isWorkoutViewOnly && (
+                      <button
+                        type="button"
+                        onClick={() => handleCompleteWorkout(currentWorkoutQuest.id, activeWorkoutQuest.type)}
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '8px',
+                          background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+                          border: '1px solid rgba(168, 85, 247, 0.6)',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 10px rgba(124, 58, 237, 0.35)',
+                          transition: 'all 0.15s ease',
+                        }}
+                        title="Selesaikan Workout & Tandai Quest Selesai"
+                        aria-label="Selesaikan Workout & Tandai Quest Selesai"
+                      >
+                        <Trophy size={13} color="#fbbf24" />
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {isWorkoutViewOnly && (
+                  <div
+                    style={{
+                      marginBottom: '14px',
+                      padding: '10px 12px',
+                      borderRadius: '11px',
+                      background: 'rgba(148, 163, 184, 0.1)',
+                      border: '1px solid rgba(148, 163, 184, 0.28)',
+                      color: '#cbd5e1',
+                      fontSize: '11px',
+                      lineHeight: 1.45,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <Lock size={14} color="#c084fc" style={{ flexShrink: 0 }} />
+                    <span>
+                      <strong>Mode Hanya Lihat</strong> — Quest ini terjadwal untuk hari mendatang. Kamu bisa melihat &amp; merencanakan gerakan, namun belum bisa menyelesaikannya hari ini.
+                    </span>
+                  </div>
+                )}
 
                 {/* SECTION HEADER: PENDING + TOMBOL HALAMAN REFERENSI PROGRAM & HALAMAN LIBRARY */}
                 <div
@@ -7216,29 +7317,52 @@ export default function Page() {
 
                 {/* BOTTOM ACTION: SELESAIKAN WORKOUT */}
                 <div style={{ paddingTop: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleCompleteWorkout(currentWorkoutQuest.id, activeWorkoutQuest.type)}
-                    className="btn-primary"
-                    style={{
-                      width: '100%',
-                      height: '44px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: '12px',
-                      fontSize: '12.5px',
-                      fontWeight: 800,
-                      letterSpacing: '0.06em',
-                      textTransform: 'uppercase',
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 16px rgba(124, 58, 237, 0.35)',
-                      transition: 'all 0.15s ease',
-                    }}
-                    title="Selesaikan Workout & Tandai Quest Selesai"
-                  >
-                    Finish
-                  </button>
+                  {isWorkoutViewOnly ? (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '7px',
+                        borderRadius: '12px',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        background: 'rgba(148, 163, 184, 0.1)',
+                        border: '1px solid rgba(148, 163, 184, 0.28)',
+                        color: '#9a8fb2',
+                        cursor: 'not-allowed',
+                      }}
+                    >
+                      <Lock size={13} />
+                      <span>Belum Saatnya Dikerjakan (Hanya Lihat)</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleCompleteWorkout(currentWorkoutQuest.id, activeWorkoutQuest.type)}
+                      className="btn-primary"
+                      style={{
+                        width: '100%',
+                        height: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '12px',
+                        fontSize: '12.5px',
+                        fontWeight: 800,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 16px rgba(124, 58, 237, 0.35)',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Selesaikan Workout & Tandai Quest Selesai"
+                    >
+                      Finish
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -8816,7 +8940,7 @@ export default function Page() {
                           type="button"
                           onClick={() => {
                             setSelectedWeekDay(day.code)
-                            setShowCompletedDayQuests(true)
+                            setShowCompletedDayQuests(false)
                           }}
                           className={`week-day-pill ${isSelected ? 'selected' : ''} ${day.isToday ? 'today-ring' : ''}`}
                         >
@@ -9119,25 +9243,57 @@ export default function Page() {
 
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                                 {isFutureDay ? (
-                                  <span
-                                    style={{
-                                      padding: '4px 7px',
-                                      borderRadius: '7px',
-                                      background: 'rgba(148, 163, 184, 0.1)',
-                                      border: '1px solid rgba(148, 163, 184, 0.25)',
-                                      color: '#9a8fb2',
-                                      fontSize: '10px',
-                                      fontWeight: 700,
-                                      cursor: 'not-allowed',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '3px',
-                                    }}
-                                    title="Quest besok-besoknya hanya bisa dilihat"
-                                  >
-                                    <Lock size={9} />
-                                    <span>Hanya Lihat</span>
-                                  </span>
+                                  isGym ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setWorkoutSubPage('overview')
+                                        setActiveWorkoutQuest({
+                                          type: 'personal',
+                                          id: task.id,
+                                          dateIso: activeScheduleDayObj.isoDate,
+                                          viewOnly: true,
+                                        })
+                                      }}
+                                      style={{
+                                        padding: '4px 8px',
+                                        borderRadius: '7px',
+                                        background: 'rgba(124, 58, 237, 0.16)',
+                                        border: '1px solid rgba(168, 85, 247, 0.45)',
+                                        color: '#e9d5ff',
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                      }}
+                                      title="Lihat daftar gerakan Gym (Mode Hanya Lihat)"
+                                    >
+                                      <Eye size={10} color="#c084fc" />
+                                      <span>Lihat Gerakan</span>
+                                    </button>
+                                  ) : (
+                                    <span
+                                      style={{
+                                        padding: '4px 7px',
+                                        borderRadius: '7px',
+                                        background: 'rgba(148, 163, 184, 0.1)',
+                                        border: '1px solid rgba(148, 163, 184, 0.25)',
+                                        color: '#9a8fb2',
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        cursor: 'not-allowed',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                      }}
+                                      title="Quest besok-besoknya hanya bisa dilihat"
+                                    >
+                                      <Lock size={9} />
+                                      <span>Hanya Lihat</span>
+                                    </span>
+                                  )
                                 ) : (
                                   <>
                                     {isDoneOnDay && (
@@ -9914,7 +10070,11 @@ export default function Page() {
                             xp={task.xp}
                             onOpenWorkout={() => {
                               setWorkoutSubPage('overview')
-                              setActiveWorkoutQuest({ type: 'personal', id: task.id })
+                              setActiveWorkoutQuest({
+                                type: 'personal',
+                                id: task.id,
+                                viewOnly: questScheduleTab === 'upcoming',
+                              })
                             }}
                             onToggle={() => handleTogglePersonal(task.id)}
                             onSkip={() => handleSkipPersonal(task.id)}
