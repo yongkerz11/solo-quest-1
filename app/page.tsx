@@ -8094,12 +8094,12 @@ export default function Page() {
                           </span>
                         </button>
 
-                        {/* SEPARATED DROPDOWN: RIWAYAT FOTO TERSIMPAN */}
+                        {/* SEPARATED DROPDOWN: HUNTER RECORD (RIWAYAT FOTO) */}
                         <div
                           style={{
-                            borderRadius: '14px',
-                            background: 'rgba(18, 14, 30, 0.72)',
-                            border: '1px solid rgba(139, 92, 246, 0.24)',
+                            borderRadius: '10px',
+                            background: 'rgba(6, 9, 18, 0.94)',
+                            border: '1px solid rgba(56, 189, 248, 0.16)',
                             overflow: 'hidden',
                           }}
                         >
@@ -8108,63 +8108,93 @@ export default function Page() {
                             onClick={() => setIsPhotoHistoryOpen((prev) => !prev)}
                             style={{
                               width: '100%',
-                              padding: '11px 14px',
+                              padding: '12px 14px',
                               background: 'transparent',
                               border: 'none',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
                               cursor: 'pointer',
-                              color: '#e9d5ff',
+                              textAlign: 'left',
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '11.5px', fontWeight: 800, letterSpacing: '0.03em' }}>
-                                Riwayat Foto ({userGymPhotos.length})
-                              </span>
-                              <span style={{ fontSize: '10px', color: '#9a8fb2', fontWeight: 500 }}>
-                                {isPhotoHistoryOpen ? 'Tutup daftar' : 'Lihat & kelola foto'}
-                              </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div
+                                style={{
+                                  width: '36px',
+                                  height: '36px',
+                                  borderRadius: '6px',
+                                  background: 'rgba(10, 17, 32, 0.95)',
+                                  border: '1px solid rgba(56, 189, 248, 0.24)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                                  <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                                  <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                                  <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                                  <line x1="8" y1="12" x2="16" y2="12" />
+                                </svg>
+                              </div>
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: '12px',
+                                    fontWeight: 800,
+                                    color: '#f1f5f9',
+                                    letterSpacing: '0.09em',
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  HUNTER RECORD
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px', fontWeight: 500 }}>
+                                  {userGymPhotos.length} foto tersimpan
+                                </div>
+                              </div>
                             </div>
                             {isPhotoHistoryOpen ? (
-                              <ChevronUp size={16} color="#a78bfa" />
+                              <ChevronUp size={16} color="#94a3b8" />
                             ) : (
-                              <ChevronDown size={16} color="#a78bfa" />
+                              <ChevronDown size={16} color="#94a3b8" />
                             )}
                           </button>
 
                           {isPhotoHistoryOpen && (
                             <div
                               style={{
-                                padding: '0 12px 12px',
-                                borderTop: '1px solid rgba(139, 92, 246, 0.16)',
-                                display: 'grid',
-                                gap: '10px',
+                                borderTop: '1px solid rgba(56, 189, 248, 0.12)',
+                                padding: '0 14px 6px',
                               }}
                             >
-                              {/* Date picker untuk foto baru */}
+                              {/* Discreet Date Picker Row */}
                               <div
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  paddingTop: '10px',
+                                  padding: '10px 0',
+                                  borderBottom: '1px solid rgba(56, 189, 248, 0.08)',
                                   fontSize: '11px',
                                 }}
                               >
-                                <span style={{ color: '#9a8fb2', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                  <CalendarDays size={13} color="#a78bfa" /> Tanggal foto baru:
+                                <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <CalendarDays size={13} color="#38bdf8" /> Tanggal foto baru
                                 </span>
                                 <input
                                   type="date"
                                   value={photoUploadDate}
                                   onChange={(e) => setPhotoUploadDate(e.target.value)}
                                   style={{
-                                    padding: '3px 6px',
-                                    borderRadius: '6px',
-                                    background: '#070410',
-                                    border: '1px solid rgba(139, 92, 246, 0.3)',
-                                    color: '#f3f1ff',
+                                    padding: '3px 7px',
+                                    borderRadius: '5px',
+                                    background: '#080c17',
+                                    border: '1px solid rgba(56, 189, 248, 0.22)',
+                                    color: '#e2e8f0',
                                     fontSize: '11px',
                                     fontWeight: 600,
                                     colorScheme: 'dark',
@@ -8172,144 +8202,193 @@ export default function Page() {
                                 />
                               </div>
 
-                              {/* 3-Column Photo Grid */}
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
-                                {userGymPhotos.map((photo, idx) => (
-                                  <div
-                                    key={photo.id}
-                                    onClick={() => {
-                                      setActiveGymPhotoIdx(idx)
-                                      if (isPlayingTimelapse && liveFlipTimerRef.current) {
-                                        clearInterval(liveFlipTimerRef.current)
-                                        liveFlipTimerRef.current = null
-                                        setIsPlayingTimelapse(false)
-                                      }
-                                    }}
-                                    style={{
-                                      borderRadius: '11px',
-                                      overflow: 'hidden',
-                                      background: '#120e1e',
-                                      border:
-                                        idx === currentGymPhotoIdx
-                                          ? '2px solid #67e8f9'
-                                          : '1px solid rgba(139, 92, 246, 0.25)',
-                                      position: 'relative',
-                                      cursor: 'pointer',
-                                      boxShadow: idx === currentGymPhotoIdx ? '0 0 12px rgba(103, 232, 249, 0.3)' : 'none',
-                                    }}
-                                  >
-                                    <img
-                                      src={photo.dataUrl}
-                                      alt={`Photo Day ${idx + 1}`}
-                                      style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', display: 'block' }}
-                                    />
-                                    <div
-                                      style={{
-                                        position: 'absolute',
-                                        top: '4px',
-                                        left: '4px',
-                                        display: 'flex',
-                                        gap: '3px',
-                                      }}
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          openPhotoCropper({
-                                            imageSrc: photo.dataUrl,
-                                            aspectRatio: '3/4',
-                                            target: 'gym-edit',
-                                            targetPhotoId: photo.id,
-                                            title: 'Crop & Zoom Foto',
-                                          })
+                              {/* Clean Horizontal Rows (Newest First) */}
+                              <div>
+                                {[...userGymPhotos]
+                                  .map((photo, idx) => ({ photo, idx }))
+                                  .reverse()
+                                  .map(({ photo, idx }, rowPos, arr) => {
+                                    const todayIso = new Date().toISOString().slice(0, 10)
+                                    const isToday = photo.dateIso === todayIso
+                                    const parsedDate = new Date(`${photo.dateIso}T00:00:00`)
+                                    const dateLabel = isToday
+                                      ? 'TODAY'
+                                      : !isNaN(parsedDate.getTime())
+                                        ? parsedDate
+                                            .toLocaleDateString('en-US', { month: 'short', day: '2-digit' })
+                                            .toUpperCase()
+                                        : photo.dateIso
+                                    const timeLabel = photo.createdAt
+                                      ? new Date(photo.createdAt).toLocaleTimeString('id-ID', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          hour12: false,
+                                        })
+                                      : '00:00'
+                                    const isSelected = idx === currentGymPhotoIdx
+
+                                    return (
+                                      <div
+                                        key={photo.id}
+                                        onClick={() => {
+                                          setActiveGymPhotoIdx(idx)
+                                          if (isPlayingTimelapse && liveFlipTimerRef.current) {
+                                            clearInterval(liveFlipTimerRef.current)
+                                            liveFlipTimerRef.current = null
+                                            setIsPlayingTimelapse(false)
+                                          }
                                         }}
-                                        aria-label="Crop foto"
-                                        title="Crop & Zoom"
                                         style={{
-                                          width: '20px',
-                                          height: '20px',
-                                          borderRadius: '5px',
-                                          background: 'rgba(7, 4, 16, 0.82)',
-                                          border: '1px solid rgba(139, 92, 246, 0.45)',
-                                          color: '#e9d5ff',
                                           display: 'flex',
                                           alignItems: 'center',
-                                          justifyContent: 'center',
+                                          justifyContent: 'space-between',
+                                          gap: '12px',
+                                          padding: '12px 0',
+                                          borderBottom:
+                                            rowPos < arr.length - 1
+                                              ? '1px solid rgba(56, 189, 248, 0.08)'
+                                              : 'none',
                                           cursor: 'pointer',
                                         }}
                                       >
-                                        <Sliders size={10} />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          setReplacingGymPhotoId(photo.id)
-                                          gymReplaceInputRef.current?.click()
-                                        }}
-                                        aria-label="Ganti foto"
-                                        title="Ganti Foto"
-                                        style={{
-                                          width: '20px',
-                                          height: '20px',
-                                          borderRadius: '5px',
-                                          background: 'rgba(7, 4, 16, 0.82)',
-                                          border: '1px solid rgba(56, 189, 248, 0.45)',
-                                          color: '#67e8f9',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          cursor: 'pointer',
-                                        }}
-                                      >
-                                        <RotateCcw size={10} />
-                                      </button>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleDeleteGymPhoto(photo.id)
-                                      }}
-                                      aria-label="Hapus foto"
-                                      style={{
-                                        position: 'absolute',
-                                        top: '4px',
-                                        right: '4px',
-                                        width: '20px',
-                                        height: '20px',
-                                        borderRadius: '5px',
-                                        background: 'rgba(7, 4, 16, 0.8)',
-                                        border: '1px solid rgba(239, 68, 68, 0.45)',
-                                        color: '#fca5a5',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: 'pointer',
-                                      }}
-                                    >
-                                      <Trash2 size={10} />
-                                    </button>
-                                    <div
-                                      style={{
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        left: 0,
-                                        right: 0,
-                                        padding: '12px 5px 4px',
-                                        background: 'linear-gradient(transparent, rgba(7, 4, 16, 0.9))',
-                                      }}
-                                    >
-                                      <span style={{ fontSize: '8.5px', fontWeight: 800, color: '#67e8f9', display: 'block' }}>
-                                        DAY #{idx + 1}
-                                      </span>
-                                      <span style={{ fontSize: '8px', color: '#b8add1' }}>
-                                        {photo.dateIso.slice(5)}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                                          <img
+                                            src={photo.dataUrl}
+                                            alt={`Day ${idx + 1}`}
+                                            style={{
+                                              width: '44px',
+                                              height: '44px',
+                                              borderRadius: '4px',
+                                              objectFit: 'cover',
+                                              border: isSelected
+                                                ? '1px solid rgba(56, 189, 248, 0.65)'
+                                                : '1px solid rgba(56, 189, 248, 0.18)',
+                                              flexShrink: 0,
+                                            }}
+                                          />
+                                          <div style={{ minWidth: 0 }}>
+                                            <div
+                                              style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                fontSize: '11.5px',
+                                                fontWeight: 800,
+                                                color: '#f8fafc',
+                                                letterSpacing: '0.04em',
+                                              }}
+                                            >
+                                              <span>DAY {String(idx + 1).padStart(2, '0')}</span>
+                                              <span style={{ color: '#38bdf8', fontSize: '10px' }}>•</span>
+                                              <span>{dateLabel}</span>
+                                            </div>
+                                            <div
+                                              style={{
+                                                fontSize: '11px',
+                                                color: '#64748b',
+                                                marginTop: '3px',
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                              }}
+                                            >
+                                              {photo.questTitle} / {timeLabel}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              openPhotoCropper({
+                                                imageSrc: photo.dataUrl,
+                                                aspectRatio: '3/4',
+                                                target: 'gym-edit',
+                                                targetPhotoId: photo.id,
+                                                title: 'Crop & Zoom Foto',
+                                              })
+                                            }}
+                                            aria-label="Crop foto"
+                                            title="Crop & Zoom"
+                                            style={{
+                                              width: '26px',
+                                              height: '26px',
+                                              borderRadius: '6px',
+                                              background: 'rgba(15, 23, 42, 0.7)',
+                                              border: '1px solid rgba(56, 189, 248, 0.16)',
+                                              color: '#94a3b8',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              cursor: 'pointer',
+                                            }}
+                                          >
+                                            <Sliders size={11} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setReplacingGymPhotoId(photo.id)
+                                              gymReplaceInputRef.current?.click()
+                                            }}
+                                            aria-label="Ganti foto"
+                                            title="Ganti Foto"
+                                            style={{
+                                              width: '26px',
+                                              height: '26px',
+                                              borderRadius: '6px',
+                                              background: 'rgba(15, 23, 42, 0.7)',
+                                              border: '1px solid rgba(56, 189, 248, 0.16)',
+                                              color: '#94a3b8',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              cursor: 'pointer',
+                                            }}
+                                          >
+                                            <RotateCcw size={11} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleDeleteGymPhoto(photo.id)
+                                            }}
+                                            aria-label="Hapus foto"
+                                            title="Hapus Foto"
+                                            style={{
+                                              width: '26px',
+                                              height: '26px',
+                                              borderRadius: '6px',
+                                              background: 'rgba(15, 23, 42, 0.7)',
+                                              border: '1px solid rgba(239, 68, 68, 0.22)',
+                                              color: '#f87171',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              cursor: 'pointer',
+                                            }}
+                                          >
+                                            <Trash2 size={11} />
+                                          </button>
+                                          <div
+                                            style={{
+                                              width: '22px',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              color: '#38bdf8',
+                                            }}
+                                          >
+                                            {isSelected ? <Check size={15} /> : <Plus size={15} />}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
                               </div>
                             </div>
                           )}

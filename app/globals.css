@@ -4,7 +4,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root { color-scheme: dark; --background: #080811; --foreground: #f3f1ff; --border: rgba(255,255,255,.1); --radius: .75rem; }
+:root { color-scheme: dark; --background: #04050a; --foreground: #f3f1ff; --border: rgba(255,255,255,.08); --radius: .75rem; }
 * { box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar { display: none; width: 0; height: 0; }
 html, body {
@@ -12,13 +12,13 @@ html, body {
   touch-action: pan-x pan-y;
   -webkit-text-size-adjust: 100%;
 }
-body { margin: 0; background: #05050b; color: var(--foreground); font-family: Arial, Helvetica, sans-serif; }
+body { margin: 0; background: #030408; color: var(--foreground); font-family: Arial, Helvetica, sans-serif; }
 button { font: inherit; color: inherit; }
 .app-shell {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  background: radial-gradient(circle at 50% 0%, rgba(78,38,134,.25), transparent 38%), #05050b;
+  background: radial-gradient(circle at 50% 0%, rgba(54, 28, 98, 0.13), transparent 42%), #030408;
   touch-action: pan-x pan-y;
 }
 .phone-frame {
@@ -26,7 +26,7 @@ button { font: inherit; color: inherit; }
   max-width: 430px;
   min-height: 100vh;
   padding: max(36px, calc(env(safe-area-inset-top, 0px) + 20px)) 20px calc(env(safe-area-inset-bottom, 0px) + 96px);
-  background: linear-gradient(180deg, #0d0c18 0%, #090811 76%, #0b0914 100%);
+  background: linear-gradient(180deg, #070811 0%, #04050a 76%, #05060c 100%);
   overflow: hidden;
   touch-action: pan-x pan-y;
 }
@@ -155,10 +155,10 @@ button { font: inherit; color: inherit; }
   padding: 20px 18px 16px;
   border-radius: 24px;
   background:
-    radial-gradient(circle at 82% 32%, rgba(139, 92, 246, 0.26) 0%, transparent 52%),
-    radial-gradient(circle at 15% 0%, rgba(109, 40, 217, 0.2) 0%, transparent 48%),
-    linear-gradient(145deg, rgba(34, 19, 68, 0.94) 0%, rgba(14, 10, 26, 0.98) 58%, rgba(22, 13, 42, 0.97) 100%);
-  border: 1px solid rgba(168, 85, 247, 0.48);
+    radial-gradient(circle at 82% 32%, rgba(88, 52, 168, 0.14) 0%, transparent 52%),
+    radial-gradient(circle at 15% 0%, rgba(76, 36, 150, 0.11) 0%, transparent 48%),
+    linear-gradient(145deg, rgba(16, 14, 28, 0.96) 0%, rgba(7, 8, 15, 0.99) 58%, rgba(11, 10, 20, 0.98) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.28);
   margin-bottom: 22px;
   animation:
     heroCardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1),
