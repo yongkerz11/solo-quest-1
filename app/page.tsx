@@ -1542,6 +1542,8 @@ export default function Page() {
   const [timelapseVideoUrl, setTimelapseVideoUrl] = useState<string | null>(null)
   const [timelapseVideoExt, setTimelapseVideoExt] = useState<'mp4' | 'webm'>('webm')
   const [liveFlipIdx, setLiveFlipIdx] = useState<number | null>(null)
+  const [activeGymPhotoIdx, setActiveGymPhotoIdx] = useState<number>(0)
+  const [isPlayingTimelapse, setIsPlayingTimelapse] = useState<boolean>(false)
   const gymPhotoInputRef = useRef<HTMLInputElement | null>(null)
   const liveFlipTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [replacingExerciseId, setReplacingExerciseId] = useState<string | null>(null)
@@ -2373,9 +2375,12 @@ export default function Page() {
 
   // Cleanup live flip interval on unmount or leave photos subpage
   useEffect(() => {
-    if (workoutSubPage !== 'photos' && liveFlipTimerRef.current) {
-      clearInterval(liveFlipTimerRef.current)
-      liveFlipTimerRef.current = null
+    if (workoutSubPage !== 'photos') {
+      if (liveFlipTimerRef.current) {
+        clearInterval(liveFlipTimerRef.current)
+        liveFlipTimerRef.current = null
+      }
+      setIsPlayingTimelapse(false)
       setLiveFlipIdx(null)
     }
   }, [workoutSubPage])
@@ -3210,7 +3215,11 @@ export default function Page() {
           dataUrl: compressedUrl,
           createdAt: Date.now(),
         }
-        setGymProgressPhotos((prev) => [...prev, newPhoto])
+        setGymProgressPhotos((prev) => {
+          const next = [...prev, newPhoto]
+          setActiveGymPhotoIdx(next.length - 1)
+          return next
+        })
         setTimelapseVideoUrl(null)
         showToast('📸 Foto After-Gym berhasil disimpan!')
       }
@@ -3223,25 +3232,47 @@ export default function Page() {
 
   const handleDeleteGymPhoto = (photoId: string) => {
     setGymProgressPhotos((prev) => prev.filter((p) => p.id !== photoId))
+    setActiveGymPhotoIdx((prev) => Math.max(0, prev - 1))
     setTimelapseVideoUrl(null)
     showToast('Foto progres dihapus.')
   }
 
-  const toggleLiveFlipPreview = () => {
-    if (liveFlipTimerRef.current) {
-      clearInterval(liveFlipTimerRef.current)
-      liveFlipTimerRef.current = null
+  const toggleTimelapsePlayback = () => {
+    if (isPlayingTimelapse) {
+      if (liveFlipTimerRef.current) {
+        clearInterval(liveFlipTimerRef.current)
+        liveFlipTimerRef.current = null
+      }
+      setIsPlayingTimelapse(false)
       setLiveFlipIdx(null)
       return
     }
     if (userGymPhotos.length === 0) return
-    let idx = 0
-    setLiveFlipIdx(0)
+    setIsPlayingTimelapse(true)
+    let idx = activeGymPhotoIdx % userGymPhotos.length
+    setActiveGymPhotoIdx(idx)
+    setLiveFlipIdx(idx)
     liveFlipTimerRef.current = setInterval(() => {
       idx = (idx + 1) % userGymPhotos.length
+      setActiveGymPhotoIdx(idx)
       setLiveFlipIdx(idx)
     }, timelapseSpeedMs)
   }
+
+  const changeTimelapseSpeed = (spdMs: number) => {
+    setTimelapseSpeedMs(spdMs)
+    if (isPlayingTimelapse && liveFlipTimerRef.current) {
+      clearInterval(liveFlipTimerRef.current)
+      let idx = activeGymPhotoIdx % userGymPhotos.length
+      liveFlipTimerRef.current = setInterval(() => {
+        idx = (idx + 1) % userGymPhotos.length
+        setActiveGymPhotoIdx(idx)
+        setLiveFlipIdx(idx)
+      }, spdMs)
+    }
+  }
+
+  const toggleLiveFlipPreview = toggleTimelapsePlayback
 
   const handleGenerateTimelapseVideo = async () => {
     if (userGymPhotos.length < 2) {
@@ -3251,6 +3282,13 @@ export default function Page() {
     if (typeof MediaRecorder === 'undefined') {
       showToast('Browser tidak mendukung perekaman video otomatis.')
       return
+    }
+
+    if (liveFlipTimerRef.current) {
+      clearInterval(liveFlipTimerRef.current)
+      liveFlipTimerRef.current = null
+      setIsPlayingTimelapse(false)
+      setLiveFlipIdx(null)
     }
 
     setIsGeneratingTimelapse(true)
@@ -3282,7 +3320,8 @@ export default function Page() {
       ]
       const supportedMime = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || ''
       const isMp4 = supportedMime.includes('mp4')
-      setTimelapseVideoExt(isMp4 ? 'mp4' : 'webm')
+      const ext = isMp4 ? 'mp4' : 'webm'
+      setTimelapseVideoExt(ext)
 
       const drawFrame = (im: HTMLImageElement, photo: typeof userGymPhotos[number], dayNum: number) => {
         ctx.fillStyle = '#070410'
@@ -3297,14 +3336,15 @@ export default function Page() {
         ctx.drawImage(im, dx, dy, dw, dh)
 
         // Bottom dark gradient overlay
-        const grad = ctx.createLinearGradient(0, canvas.height - 170, 0, canvas.height)
+        const grad = ctx.createLinearGradient(0, canvas.height - 180, 0, canvas.height)
         grad.addColorStop(0, 'rgba(7, 4, 16, 0)')
-        grad.addColorStop(1, 'rgba(7, 4, 16, 0.92)')
+        grad.addColorStop(0.5, 'rgba(7, 4, 16, 0.72)')
+        grad.addColorStop(1, 'rgba(7, 4, 16, 0.94)')
         ctx.fillStyle = grad
-        ctx.fillRect(0, canvas.height - 170, canvas.width, 170)
+        ctx.fillRect(0, canvas.height - 180, canvas.width, 180)
 
         // Day pill
-        ctx.fillStyle = 'rgba(124, 58, 237, 0.88)'
+        ctx.fillStyle = 'rgba(124, 58, 237, 0.92)'
         ctx.fillRect(24, canvas.height - 96, 86, 28)
         ctx.fillStyle = '#ffffff'
         ctx.font = 'bold 14px Inter, sans-serif'
@@ -3316,8 +3356,8 @@ export default function Page() {
           ? parsed.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
           : photo.dateIso
         ctx.fillStyle = '#f5f2ff'
-        ctx.font = 'bold 24px Inter, sans-serif'
-        ctx.fillText(prettyDate, 24, canvas.height - 42)
+        ctx.font = 'bold 22px Inter, sans-serif'
+        ctx.fillText(prettyDate, 24, canvas.height - 44)
 
         ctx.fillStyle = '#67e8f9'
         ctx.font = 'bold 13px Inter, sans-serif'
@@ -3345,17 +3385,17 @@ export default function Page() {
       recorder.start(100)
 
       // Pump frames continuously at ~30fps so MediaRecorder captures every photo reliably
-      let activeIdx = 0
+      let activeRecIdx = 0
       let isRecording = true
       const pumpFrames = () => {
         if (!isRecording) return
-        drawFrame(loadedImgs[activeIdx], userGymPhotos[activeIdx], activeIdx + 1)
+        drawFrame(loadedImgs[activeRecIdx], userGymPhotos[activeRecIdx], activeRecIdx + 1)
         requestAnimationFrame(pumpFrames)
       }
       requestAnimationFrame(pumpFrames)
 
       for (let i = 0; i < loadedImgs.length; i++) {
-        activeIdx = i
+        activeRecIdx = i
         await new Promise((r) => setTimeout(r, timelapseSpeedMs))
       }
 
@@ -3373,7 +3413,16 @@ export default function Page() {
       }
       const url = URL.createObjectURL(videoBlob)
       setTimelapseVideoUrl(url)
-      showToast('🎬 Video timelapse perkembangan badan berhasil dibuat!')
+
+      // Auto trigger download langsung tanpa perlu card player kaku
+      const downloadLink = document.createElement('a')
+      downloadLink.href = url
+      downloadLink.download = `rankerz-timelapse-${new Date().toISOString().slice(0, 10)}.${ext}`
+      document.body.appendChild(downloadLink)
+      downloadLink.click()
+      document.body.removeChild(downloadLink)
+
+      showToast('🎬 Video timelapse berhasil di-download!')
     } catch (err) {
       console.error(err)
       showToast('Gagal membuat video timelapse. Coba gunakan browser Chrome/Edge.')
@@ -7212,394 +7261,524 @@ export default function Page() {
               /* ============================================================
                  HALAMAN KHUSUS: AFTER-GYM PHOTO & BODY TIMELAPSE GENERATOR
                  ============================================================ */
-              <div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                    marginBottom: '16px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
-                    <button
-                      type="button"
-                      onClick={() => setWorkoutSubPage('overview')}
+              (() => {
+                const currentGymPhotoIdx = Math.min(activeGymPhotoIdx, Math.max(0, userGymPhotos.length - 1))
+                const currentGymPhoto = userGymPhotos[currentGymPhotoIdx]
+                const formattedDate = currentGymPhoto ? (() => {
+                  const d = new Date(`${currentGymPhoto.dateIso}T00:00:00`)
+                  return !isNaN(d.getTime())
+                    ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : currentGymPhoto.dateIso
+                })() : ''
+
+                return (
+                  <div>
+                    {/* TOP BAR */}
+                    <div
                       style={{
-                        background: '#171226',
-                        border: '1px solid #32254a',
-                        borderRadius: '10px',
-                        width: '34px',
-                        height: '34px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#d5beff',
-                        cursor: 'pointer',
-                        flexShrink: 0,
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                        marginBottom: '16px',
                       }}
-                      title="Kembali ke Daftar Gerakan"
-                      aria-label="Kembali ke Daftar Gerakan"
                     >
-                      <ArrowLeft size={16} />
-                    </button>
-                    <div>
-                      <div className="eyebrow" style={{ color: '#67e8f9', fontSize: '9px' }}>
-                        BODY TRANSFORMATION
-                      </div>
-                      <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#ffffff', margin: '2px 0 0' }}>
-                        After-Gym Photo &amp; Timelapse
-                      </h2>
-                    </div>
-                  </div>
-                  <span className="completion">{userGymPhotos.length} Foto</span>
-                </div>
-
-                {/* Hidden File Input */}
-                <input
-                  ref={gymPhotoInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleUploadGymPhoto}
-                  style={{ display: 'none' }}
-                />
-
-                {/* Card Upload Foto After-Gym */}
-                <div
-                  style={{
-                    padding: '14px',
-                    borderRadius: '16px',
-                    background: 'linear-gradient(155deg, rgba(22, 16, 38, 0.96), rgba(11, 8, 20, 0.99))',
-                    border: '1px solid rgba(139, 92, 246, 0.28)',
-                    marginBottom: '14px',
-                    display: 'grid',
-                    gap: '10px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                    <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#e9d5ff' }}>
-                      Tanggal Foto Progres
-                    </span>
-                    <input
-                      type="date"
-                      value={photoUploadDate}
-                      onChange={(e) => setPhotoUploadDate(e.target.value)}
-                      style={{
-                        padding: '5px 8px',
-                        borderRadius: '8px',
-                        background: '#0a0814',
-                        border: '1px solid rgba(168, 85, 247, 0.35)',
-                        color: '#f3f1ff',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        colorScheme: 'dark',
-                      }}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => gymPhotoInputRef.current?.click()}
-                    className="btn-primary"
-                    style={{
-                      width: '100%',
-                      height: '42px',
-                      borderRadius: '11px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '7px',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Camera size={15} />
-                    <span>Upload / Ambil Foto After-Gym</span>
-                  </button>
-                </div>
-
-                {/* Card Video Timelapse Generator */}
-                {userGymPhotos.length > 0 && (
-                  <div
-                    style={{
-                      padding: '14px',
-                      borderRadius: '16px',
-                      background: 'linear-gradient(155deg, rgba(16, 22, 38, 0.96), rgba(10, 8, 20, 0.99))',
-                      border: '1px solid rgba(56, 189, 248, 0.32)',
-                      marginBottom: '14px',
-                      display: 'grid',
-                      gap: '10px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <div>
-                        <strong style={{ fontSize: '13px', color: '#f5f2ff', display: 'block' }}>
-                          Timelapse Perkembangan Badan
-                        </strong>
-                        <span style={{ fontSize: '10px', color: '#9a8fb2' }}>
-                          Gabungkan foto dari hari ke hari menjadi video cepat
-                        </span>
-                      </div>
-                      <Film size={18} color="#67e8f9" />
-                    </div>
-
-                    {/* Speed Selector */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                      {[
-                        { ms: 250, label: '0.25s • Cepat' },
-                        { ms: 500, label: '0.5s • Sedang' },
-                        { ms: 1000, label: '1.0s • Santai' },
-                      ].map((spd) => (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
                         <button
-                          key={spd.ms}
                           type="button"
-                          onClick={() => setTimelapseSpeedMs(spd.ms)}
+                          onClick={() => setWorkoutSubPage('overview')}
                           style={{
-                            padding: '6px 4px',
-                            borderRadius: '8px',
-                            fontSize: '10px',
-                            fontWeight: 700,
+                            background: '#171226',
+                            border: '1px solid #32254a',
+                            borderRadius: '10px',
+                            width: '34px',
+                            height: '34px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#d5beff',
                             cursor: 'pointer',
-                            background: timelapseSpeedMs === spd.ms ? 'rgba(56, 189, 248, 0.18)' : '#0d0a16',
-                            border:
-                              timelapseSpeedMs === spd.ms
-                                ? '1px solid rgba(56, 189, 248, 0.55)'
-                                : '1px solid rgba(139, 92, 246, 0.2)',
-                            color: timelapseSpeedMs === spd.ms ? '#67e8f9' : '#b8add1',
+                            flexShrink: 0,
                           }}
+                          title="Kembali ke Daftar Gerakan"
+                          aria-label="Kembali ke Daftar Gerakan"
                         >
-                          {spd.label}
+                          <ArrowLeft size={16} />
                         </button>
-                      ))}
+                        <div>
+                          <div className="eyebrow" style={{ color: '#67e8f9', fontSize: '9px' }}>
+                            BODY TRANSFORMATION
+                          </div>
+                          <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#ffffff', margin: '2px 0 0' }}>
+                            After-Gym Timelapse
+                          </h2>
+                        </div>
+                      </div>
+                      <span className="completion">{userGymPhotos.length} Foto</span>
                     </div>
 
-                    {/* Live Flip Preview Frame */}
-                    {liveFlipIdx !== null && userGymPhotos[liveFlipIdx] && (
+                    {/* Hidden File Input */}
+                    <input
+                      ref={gymPhotoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUploadGymPhoto}
+                      style={{ display: 'none' }}
+                    />
+
+                    {userGymPhotos.length === 0 ? (
+                      /* EMPTY STATE */
                       <div
                         style={{
-                          position: 'relative',
-                          borderRadius: '12px',
-                          overflow: 'hidden',
-                          border: '1px solid rgba(56, 189, 248, 0.45)',
-                          background: '#070410',
-                          aspectRatio: '3 / 4',
-                          maxHeight: '320px',
-                          margin: '0 auto',
-                          width: '100%',
+                          padding: '36px 20px',
+                          borderRadius: '20px',
+                          background: 'linear-gradient(155deg, rgba(22, 16, 38, 0.95), rgba(11, 8, 20, 0.99))',
+                          border: '1px solid rgba(139, 92, 246, 0.28)',
+                          textAlign: 'center',
+                          display: 'grid',
+                          gap: '14px',
+                          justifyItems: 'center',
                         }}
                       >
-                        <img
-                          src={userGymPhotos[liveFlipIdx].dataUrl}
-                          alt={`Day ${liveFlipIdx + 1}`}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                        />
                         <div
                           style={{
-                            position: 'absolute',
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            padding: '18px 12px 10px',
-                            background: 'linear-gradient(transparent, rgba(7,4,16,0.92))',
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '16px',
+                            background: 'rgba(124, 58, 237, 0.16)',
+                            border: '1px solid rgba(124, 58, 237, 0.35)',
                             display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-end',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#c4b5fd',
                           }}
                         >
-                          <div>
-                            <span
-                              style={{
-                                fontSize: '9.5px',
-                                fontWeight: 800,
-                                padding: '2px 7px',
-                                borderRadius: '6px',
-                                background: '#7c3aed',
-                                color: '#fff',
-                              }}
-                            >
-                              DAY #{liveFlipIdx + 1}
-                            </span>
-                            <div style={{ fontSize: '13px', fontWeight: 800, color: '#fff', marginTop: '4px' }}>
-                              {userGymPhotos[liveFlipIdx].dateIso}
+                          <Camera size={26} />
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#f5f2ff', margin: 0 }}>
+                            Mulai Dokumentasi Tubuhmu
+                          </h3>
+                          <p style={{ fontSize: '11.5px', color: '#9a8fb2', margin: '6px auto 0', maxWidth: '280px', lineHeight: 1.5 }}>
+                            Ambil foto setelah gym setiap hari untuk melihat transformasi fisikmu dalam timelapse cepat!
+                          </p>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', maxWidth: '300px' }}>
+                          <input
+                            type="date"
+                            value={photoUploadDate}
+                            onChange={(e) => setPhotoUploadDate(e.target.value)}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: '10px',
+                              background: '#0d0a16',
+                              border: '1px solid rgba(139, 92, 246, 0.3)',
+                              color: '#e9d5ff',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              colorScheme: 'dark',
+                            }}
+                            title="Pilih Tanggal Foto"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => gymPhotoInputRef.current?.click()}
+                            className="btn-primary"
+                            style={{
+                              flex: 1,
+                              height: '42px',
+                              borderRadius: '11px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '7px',
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Camera size={15} />
+                            <span>Ambil Foto Pertama</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* HERO TIMELAPSE VIEWER & CONTROLS */
+                      <div style={{ display: 'grid', gap: '12px' }}>
+                        {/* HERO FRAME */}
+                        <div
+                          style={{
+                            position: 'relative',
+                            borderRadius: '18px',
+                            overflow: 'hidden',
+                            background: '#070410',
+                            border: '1px solid rgba(139, 92, 246, 0.35)',
+                            aspectRatio: '3 / 4',
+                            maxHeight: '440px',
+                            width: '100%',
+                            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.55), 0 0 25px rgba(124, 58, 237, 0.12)',
+                          }}
+                        >
+                          <img
+                            src={currentGymPhoto.dataUrl}
+                            alt={`Day ${currentGymPhotoIdx + 1}`}
+                            onClick={toggleTimelapsePlayback}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              display: 'block',
+                              cursor: 'pointer',
+                            }}
+                          />
+
+                          {/* TOP OVERLAY: STORY PROGRESS DASHES & BADGES */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              padding: '10px 12px',
+                              background: 'linear-gradient(rgba(7, 4, 16, 0.8), transparent)',
+                              display: 'grid',
+                              gap: '8px',
+                            }}
+                          >
+                            {/* Segmented Dashes */}
+                            <div style={{ display: 'flex', gap: '3px', width: '100%' }}>
+                              {userGymPhotos.map((_, i) => (
+                                <div
+                                  key={i}
+                                  style={{
+                                    height: '3px',
+                                    flex: 1,
+                                    borderRadius: '2px',
+                                    background:
+                                      i === currentGymPhotoIdx
+                                        ? '#67e8f9'
+                                        : i < currentGymPhotoIdx
+                                          ? 'rgba(124, 58, 237, 0.85)'
+                                          : 'rgba(255, 255, 255, 0.2)',
+                                    transition: 'background 0.15s ease',
+                                  }}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Info Chip & Speed Controls */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '3px 8px',
+                                  borderRadius: '8px',
+                                  background: 'rgba(10, 7, 18, 0.72)',
+                                  backdropFilter: 'blur(8px)',
+                                  border: '1px solid rgba(139, 92, 246, 0.35)',
+                                }}
+                              >
+                                <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#67e8f9' }}>
+                                  DAY #{currentGymPhotoIdx + 1}
+                                </span>
+                                <span style={{ fontSize: '9px', color: '#b8add1' }}>•</span>
+                                <span style={{ fontSize: '9.5px', fontWeight: 600, color: '#f3f1ff' }}>
+                                  {formattedDate}
+                                </span>
+                              </div>
+
+                              {/* Micro Speed Buttons */}
+                              <div
+                                style={{
+                                  display: 'inline-flex',
+                                  borderRadius: '8px',
+                                  background: 'rgba(10, 7, 18, 0.72)',
+                                  backdropFilter: 'blur(8px)',
+                                  border: '1px solid rgba(139, 92, 246, 0.35)',
+                                  padding: '2px',
+                                  gap: '2px',
+                                }}
+                              >
+                                {[
+                                  { ms: 250, label: '0.25s' },
+                                  { ms: 500, label: '0.5s' },
+                                  { ms: 1000, label: '1.0s' },
+                                ].map((spd) => (
+                                  <button
+                                    key={spd.ms}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      changeTimelapseSpeed(spd.ms)
+                                    }}
+                                    style={{
+                                      padding: '2px 6px',
+                                      borderRadius: '6px',
+                                      fontSize: '9px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      background: timelapseSpeedMs === spd.ms ? '#7c3aed' : 'transparent',
+                                      border: 'none',
+                                      color: timelapseSpeedMs === spd.ms ? '#ffffff' : '#9a8fb2',
+                                    }}
+                                  >
+                                    {spd.label}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                          <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#67e8f9' }}>
-                            RANKERZ
-                          </span>
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Generated Video Player */}
-                    {timelapseVideoUrl && (
-                      <div style={{ display: 'grid', gap: '8px' }}>
-                        <video
-                          key={timelapseVideoUrl}
-                          src={timelapseVideoUrl}
-                          controls
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          style={{
-                            width: '100%',
-                            maxHeight: '340px',
-                            borderRadius: '12px',
-                            background: '#070410',
-                            border: '1px solid rgba(56, 189, 248, 0.45)',
-                          }}
-                        />
-                        <a
-                          href={timelapseVideoUrl}
-                          download={`rankerz-progress-timelapse.${timelapseVideoExt}`}
+                          {/* CENTER PLAY/PAUSE FLOATING TOGGLE */}
+                          <button
+                            type="button"
+                            onClick={toggleTimelapsePlayback}
+                            aria-label={isPlayingTimelapse ? 'Pause timelapse' : 'Play timelapse'}
+                            style={{
+                              position: 'absolute',
+                              top: '50%',
+                              left: '50%',
+                              transform: 'translate(-50%, -50%)',
+                              width: '54px',
+                              height: '54px',
+                              borderRadius: '50%',
+                              background: isPlayingTimelapse ? 'rgba(10, 7, 18, 0.55)' : 'rgba(124, 58, 237, 0.88)',
+                              backdropFilter: 'blur(10px)',
+                              border: isPlayingTimelapse
+                                ? '1px solid rgba(255, 255, 255, 0.3)'
+                                : '2px solid rgba(103, 232, 249, 0.8)',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              boxShadow: '0 0 20px rgba(124, 58, 237, 0.55)',
+                              opacity: isPlayingTimelapse ? 0.35 : 0.95,
+                              transition: 'opacity 0.2s, background 0.2s, transform 0.2s',
+                            }}
+                          >
+                            {isPlayingTimelapse ? (
+                              <Pause size={22} />
+                            ) : (
+                              <Play size={22} style={{ marginLeft: '3px' }} />
+                            )}
+                          </button>
+
+                          {/* BOTTOM OVERLAY: BRANDING & TITLE */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              padding: '26px 14px 10px',
+                              background: 'linear-gradient(transparent, rgba(7, 4, 16, 0.95))',
+                              display: 'flex',
+                              alignItems: 'flex-end',
+                              justifyContent: 'space-between',
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            <div>
+                              <span style={{ fontSize: '9px', fontWeight: 800, color: '#67e8f9', letterSpacing: '0.05em' }}>
+                                RANKERZ TIMELAPSE
+                              </span>
+                              <div style={{ fontSize: '13px', fontWeight: 800, color: '#ffffff', marginTop: '1px' }}>
+                                {currentGymPhoto.questTitle}
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '9px', fontWeight: 700, color: '#b8add1' }}>
+                              {currentGymPhotoIdx + 1} / {userGymPhotos.length}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* COMPACT ACTION BAR */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => gymPhotoInputRef.current?.click()}
+                            className="btn-primary"
+                            style={{
+                              height: '42px',
+                              borderRadius: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '7px',
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Camera size={15} />
+                            <span>+ Ambil Foto Baru</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isGeneratingTimelapse || userGymPhotos.length < 2}
+                            onClick={handleGenerateTimelapseVideo}
+                            style={{
+                              height: '42px',
+                              borderRadius: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              cursor: userGymPhotos.length < 2 || isGeneratingTimelapse ? 'not-allowed' : 'pointer',
+                              background:
+                                userGymPhotos.length < 2
+                                  ? 'rgba(26, 21, 41, 0.6)'
+                                  : 'linear-gradient(135deg, rgba(2, 132, 199, 0.22), rgba(124, 58, 237, 0.25))',
+                              border:
+                                userGymPhotos.length < 2
+                                  ? '1px solid rgba(43, 35, 64, 0.6)'
+                                  : '1px solid rgba(56, 189, 248, 0.45)',
+                              color: userGymPhotos.length < 2 ? '#6b6180' : '#67e8f9',
+                            }}
+                          >
+                            <Download size={14} />
+                            <span>
+                              {isGeneratingTimelapse
+                                ? 'Menyiapkan...'
+                                : userGymPhotos.length < 2
+                                  ? 'Min. 2 Foto'
+                                  : 'Download Video'}
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* DISCREET DATE SELECTION CHIP */}
+                        <div
                           style={{
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            padding: '9px 12px',
+                            justifyContent: 'space-between',
+                            padding: '6px 12px',
                             borderRadius: '10px',
-                            background: 'rgba(56, 189, 248, 0.16)',
-                            border: '1px solid rgba(56, 189, 248, 0.45)',
-                            color: '#67e8f9',
-                            fontSize: '11.5px',
-                            fontWeight: 800,
-                            textDecoration: 'none',
+                            background: 'rgba(18, 14, 30, 0.65)',
+                            border: '1px solid rgba(139, 92, 246, 0.2)',
+                            fontSize: '11px',
                           }}
                         >
-                          <Download size={14} />
-                          <span>Download Video Timelapse</span>
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '8px' }}>
-                      <button
-                        type="button"
-                        onClick={toggleLiveFlipPreview}
-                        style={{
-                          height: '38px',
-                          borderRadius: '10px',
-                          background: liveFlipIdx !== null ? 'rgba(239, 68, 68, 0.18)' : 'rgba(168, 85, 247, 0.14)',
-                          border: liveFlipIdx !== null ? '1px solid rgba(239, 68, 68, 0.45)' : '1px solid rgba(168, 85, 247, 0.35)',
-                          color: liveFlipIdx !== null ? '#fca5a5' : '#e9d5ff',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '5px',
-                        }}
-                      >
-                        {liveFlipIdx !== null ? <Pause size={12} /> : <Play size={12} />}
-                        <span>{liveFlipIdx !== null ? 'Stop Preview' : 'Preview Cepat'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={isGeneratingTimelapse || userGymPhotos.length < 2}
-                        onClick={handleGenerateTimelapseVideo}
-                        style={{
-                          height: '38px',
-                          borderRadius: '10px',
-                          background:
-                            userGymPhotos.length < 2
-                              ? '#1a1529'
-                              : 'linear-gradient(135deg, #0284c7, #7c3aed)',
-                          border:
-                            userGymPhotos.length < 2
-                              ? '1px solid #2b2340'
-                              : '1px solid rgba(56, 189, 248, 0.55)',
-                          color: userGymPhotos.length < 2 ? '#786e8e' : '#ffffff',
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          cursor: userGymPhotos.length < 2 ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '5px',
-                        }}
-                      >
-                        <Film size={13} />
-                        <span>
-                          {isGeneratingTimelapse
-                            ? 'Membuat Video...'
-                            : userGymPhotos.length < 2
-                              ? 'Butuh Min. 2 Foto'
-                              : 'Generate Video'}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Galeri Foto After-Gym Per Hari */}
-                {userGymPhotos.length === 0 ? (
-                  <div className="lock-banner" style={{ padding: '24px 16px' }}>
-                    <Camera size={28} color="#67e8f9" style={{ margin: '0 auto 6px', opacity: 0.85 }} />
-                    <strong style={{ display: 'block', fontSize: '13px', color: '#f5f2ff' }}>
-                      Belum Ada Foto After-Gym
-                    </strong>
-                    <p style={{ margin: '5px auto 0', maxWidth: '270px', fontSize: '11px', color: '#b8add1' }}>
-                      Upload foto progres setelah latihan setiap hari, lalu gabungkan jadi video timelapse perubahan badan kamu!
-                    </p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '9px' }}>
-                    {userGymPhotos.map((photo, idx) => (
-                      <div
-                        key={photo.id}
-                        style={{
-                          borderRadius: '13px',
-                          overflow: 'hidden',
-                          background: '#120e1e',
-                          border: '1px solid rgba(139, 92, 246, 0.25)',
-                          position: 'relative',
-                        }}
-                      >
-                        <img
-                          src={photo.dataUrl}
-                          alt={`After Gym Day ${idx + 1}`}
-                          style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', display: 'block' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteGymPhoto(photo.id)}
-                          aria-label="Hapus foto"
-                          style={{
-                            position: 'absolute',
-                            top: '6px',
-                            right: '6px',
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '7px',
-                            background: 'rgba(10, 7, 18, 0.78)',
-                            border: '1px solid rgba(239, 68, 68, 0.45)',
-                            color: '#fca5a5',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                        <div style={{ padding: '7px 9px' }}>
-                          <span style={{ fontSize: '9px', fontWeight: 800, color: '#67e8f9', display: 'block' }}>
-                            DAY #{idx + 1} • {photo.dateIso}
+                          <span style={{ color: '#9a8fb2', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <CalendarDays size={13} color="#a78bfa" /> Tanggal foto baru:
                           </span>
-                          <span style={{ fontSize: '10px', color: '#c4b5fd', fontWeight: 600 }}>
-                            {photo.questTitle}
-                          </span>
+                          <input
+                            type="date"
+                            value={photoUploadDate}
+                            onChange={(e) => setPhotoUploadDate(e.target.value)}
+                            style={{
+                              padding: '3px 6px',
+                              borderRadius: '6px',
+                              background: '#070410',
+                              border: '1px solid rgba(139, 92, 246, 0.3)',
+                              color: '#f3f1ff',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              colorScheme: 'dark',
+                            }}
+                          />
+                        </div>
+
+                        {/* PHOTO THUMBNAILS STRIP */}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 2px 8px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#e9d5ff', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              Riwayat Foto ({userGymPhotos.length})
+                            </span>
+                            <span style={{ fontSize: '10px', color: '#9a8fb2' }}>
+                              Tap foto untuk preview
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+                            {userGymPhotos.map((photo, idx) => (
+                              <div
+                                key={photo.id}
+                                onClick={() => {
+                                  setActiveGymPhotoIdx(idx)
+                                  if (isPlayingTimelapse && liveFlipTimerRef.current) {
+                                    clearInterval(liveFlipTimerRef.current)
+                                    liveFlipTimerRef.current = null
+                                    setIsPlayingTimelapse(false)
+                                  }
+                                }}
+                                style={{
+                                  borderRadius: '11px',
+                                  overflow: 'hidden',
+                                  background: '#120e1e',
+                                  border:
+                                    idx === currentGymPhotoIdx
+                                      ? '2px solid #67e8f9'
+                                      : '1px solid rgba(139, 92, 246, 0.25)',
+                                  position: 'relative',
+                                  cursor: 'pointer',
+                                  boxShadow: idx === currentGymPhotoIdx ? '0 0 12px rgba(103, 232, 249, 0.3)' : 'none',
+                                }}
+                              >
+                                <img
+                                  src={photo.dataUrl}
+                                  alt={`Photo Day ${idx + 1}`}
+                                  style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', display: 'block' }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteGymPhoto(photo.id)
+                                  }}
+                                  aria-label="Hapus foto"
+                                  style={{
+                                    position: 'absolute',
+                                    top: '4px',
+                                    right: '4px',
+                                    width: '20px',
+                                    height: '20px',
+                                    borderRadius: '5px',
+                                    background: 'rgba(7, 4, 16, 0.8)',
+                                    border: '1px solid rgba(239, 68, 68, 0.45)',
+                                    color: '#fca5a5',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <Trash2 size={10} />
+                                </button>
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    padding: '12px 5px 4px',
+                                    background: 'linear-gradient(transparent, rgba(7, 4, 16, 0.9))',
+                                  }}
+                                >
+                                  <span style={{ fontSize: '8.5px', fontWeight: 800, color: '#67e8f9', display: 'block' }}>
+                                    DAY #{idx + 1}
+                                  </span>
+                                  <span style={{ fontSize: '8px', color: '#b8add1' }}>
+                                    {photo.dateIso.slice(5)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
+                )
+              })()
             ) : (
               /* ============================================================
                  HALAMAN UTAMA WORKOUT (LIST OF EXERCISES / OVERVIEW)
