@@ -8553,7 +8553,69 @@ export default function Page() {
                   </div>
                 )}
 
-                {/* SECTION HEADER: PENDING + TOMBOL HALAMAN REFERENSI PROGRAM & HALAMAN LIBRARY */}
+                {/* QUICK ACTION PILLS: AFTER-GYM & REFERENSI PROGRAM */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '8px',
+                    marginBottom: '12px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setWorkoutSubPage('photos')}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '10px',
+                      background: 'rgba(8, 16, 30, 0.9)',
+                      border: '1px solid rgba(56, 189, 248, 0.25)',
+                      color: '#7dd3fc',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Upload Foto After-Gym & Buat Video Timelapse"
+                  >
+                    <Camera size={13} color="#38bdf8" />
+                    <span>After-Gym{userGymPhotos.length > 0 ? ` (${userGymPhotos.length})` : ''}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWorkoutSubPage('programs')}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '10px',
+                      background: 'rgba(18, 16, 36, 0.9)',
+                      border: '1px solid rgba(139, 92, 246, 0.28)',
+                      color: '#ddd6fe',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Buka Halaman Referensi Program (2x–6x Seminggu)"
+                  >
+                    <BookOpen size={13} color="#a78bfa" />
+                    <span>Referensi Program</span>
+                  </button>
+                </div>
+
+                {/* SECTION HEADER: PENDING + TOMBOL HAPUS SEMUA & TAMBAH GERAKAN */}
                 <div
                   style={{
                     display: 'flex',
@@ -8563,58 +8625,10 @@ export default function Page() {
                     padding: '0 2px',
                   }}
                 >
-                  <span className="eyebrow" style={{ fontSize: '10px', color: '#9d76f3' }}>
+                  <span className="eyebrow" style={{ fontSize: '10px', color: '#9d76f3', whiteSpace: 'nowrap' }}>
                     PENDING ({pendingWorkoutExercises.length})
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setWorkoutSubPage('photos')}
-                      style={{
-                        height: '28px',
-                        padding: '0 9px',
-                        borderRadius: '8px',
-                        background: 'rgba(56, 189, 248, 0.14)',
-                        border: '1px solid rgba(56, 189, 248, 0.42)',
-                        color: '#67e8f9',
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                      title="Upload Foto After-Gym & Buat Video Timelapse"
-                    >
-                      <Camera size={11} color="#67e8f9" />
-                      <span>After-Gym{userGymPhotos.length > 0 ? ` (${userGymPhotos.length})` : ''}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setWorkoutSubPage('programs')}
-                      style={{
-                        height: '28px',
-                        padding: '0 9px',
-                        borderRadius: '8px',
-                        background: 'rgba(124, 58, 237, 0.16)',
-                        border: '1px solid rgba(168, 85, 247, 0.42)',
-                        color: '#e9d5ff',
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                      title="Buka Halaman Referensi Program (2x–6x Seminggu)"
-                    >
-                      <BookOpen size={11} color="#c084fc" />
-                      <span>Referensi Program</span>
-                    </button>
-
                     {workoutQuestExercises.length > 0 && (
                       <button
                         type="button"
@@ -8627,9 +8641,9 @@ export default function Page() {
                           width: '28px',
                           height: '28px',
                           borderRadius: '8px',
-                          background: '#1d1222',
-                          border: '1px solid #3d1c31',
-                          color: '#ff85a2',
+                          background: '#17101c',
+                          border: '1px solid rgba(239, 68, 68, 0.28)',
+                          color: '#fca5a5',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -8653,9 +8667,9 @@ export default function Page() {
                         width: '28px',
                         height: '28px',
                         borderRadius: '8px',
-                        background: '#20153a',
-                        border: '1px solid #452e75',
-                        color: '#d5beff',
+                        background: 'rgba(18, 16, 36, 0.9)',
+                        border: '1px solid rgba(139, 92, 246, 0.32)',
+                        color: '#ddd6fe',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
