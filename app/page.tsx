@@ -248,9 +248,15 @@ function isQuestForToday(schedule?: string[]): boolean {
   return schedule.includes(todayDayCode)
 }
 
-function isQuestTimeSkipped(_targetTime?: string, _isDone?: boolean, _schedule?: string[]): boolean {
-  // Quest tidak lagi diskip otomatis oleh jam (skip manual via tombol Skip)
-  return false
+function isQuestTimeSkipped(targetTime?: string, isDone?: boolean, schedule?: string[]): boolean {
+  if (!targetTime || isDone) return false
+  if (schedule && !isQuestForToday(schedule)) return false
+  const parts = targetTime.split(':').map(Number)
+  if (parts.length < 2 || parts.some(isNaN)) return false
+  const now = new Date()
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const targetMinutes = parts[0] * 60 + parts[1]
+  return nowMinutes > targetMinutes
 }
 
 // Sistem Rank Hunter Kompetitif (Tier E hingga SSS — butuh konsistensi jangka panjang)
@@ -3829,7 +3835,12 @@ export default function Page() {
     const wasSkippedOnDate =
       dateIso < todayIso
         ? !wasDone && !Boolean(target.skippedDates?.includes(unskipToken))
-        : Boolean(target.skipped || target.skippedDates?.includes(dateIso))
+        : Boolean(
+            target.skipped ||
+              target.skippedDates?.includes(dateIso) ||
+              (!Boolean(target.skippedDates?.includes(unskipToken)) &&
+                isQuestTimeSkipped(target.targetTime, wasDone, target.schedule))
+          )
     const nextSkipped = !wasSkippedOnDate
 
     const nextTasks = personalTasks.map((t) => {
@@ -3843,7 +3854,7 @@ export default function Page() {
         prevDates.delete(dateIso)
       } else {
         prevSkipped.delete(dateIso)
-        if (dateIso < todayIso) {
+        if (dateIso <= todayIso) {
           prevSkipped.add(unskipToken)
         }
       }
@@ -10600,7 +10611,12 @@ export default function Page() {
                       if (isPastDay) {
                         return !t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
                       }
-                      return Boolean(t.skippedDates?.includes(activeScheduleDayObj.isoDate) || t.skipped)
+                      const wasUnskipped = Boolean(t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`))
+                      return Boolean(
+                        t.skippedDates?.includes(activeScheduleDayObj.isoDate) ||
+                          t.skipped ||
+                          (!wasUnskipped && isQuestTimeSkipped(t.targetTime, false, t.schedule))
+                      )
                     }
 
                     const totalDayTasks = activeScheduleDayObj.scheduledTasks.length
@@ -10609,11 +10625,12 @@ export default function Page() {
                     )
                     const completedDayCount = totalDayTasks - remainingDayTasks.length
                     const skippedDayCount = remainingDayTasks.filter((t) => isTaskSkippedOnDay(t)).length
-                    const activeRemainingDayCount = remainingDayTasks.length - skippedDayCount
+                    const activePendingDayTasks = remainingDayTasks.filter((t) => !isTaskSkippedOnDay(t))
+                    const activeRemainingDayCount = activePendingDayTasks.length
                     const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
                     const visibleDayTasks = showCompletedDayQuests
                       ? activeScheduleDayObj.scheduledTasks
-                      : remainingDayTasks
+                      : activePendingDayTasks
 
                     const headerBadgeText = allDoneForDay
                       ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
@@ -10621,7 +10638,7 @@ export default function Page() {
                         ? 'Belum Ada Jadwal'
                         : isFutureDay
                           ? `Hanya Lihat • ${totalDayTasks} Quest`
-                          : isPastDay
+                          : isPastDay || activeRemainingDayCount === 0
                             ? [
                                 completedDayCount > 0 ? `${completedDayCount} Selesai` : null,
                                 activeRemainingDayCount > 0 ? `${activeRemainingDayCount} Aktif` : null,
@@ -10629,9 +10646,9 @@ export default function Page() {
                               ]
                                 .filter(Boolean)
                                 .join(' • ')
-                            : `${remainingDayTasks.length} Quest Tersisa`
+                            : `${activeRemainingDayCount} Quest Tersisa${skippedDayCount > 0 ? ` • ${skippedDayCount} Skip` : ''}`
 
-                    const showPastSkipPill = isPastDay && skippedDayCount > 0 && !allDoneForDay
+                    const showPastSkipPill = (isPastDay || activeRemainingDayCount === 0) && skippedDayCount > 0 && !allDoneForDay
 
                     return (
                       <div
@@ -10646,7 +10663,7 @@ export default function Page() {
                       >
                         <div
                           onClick={() => {
-                            if (completedDayCount > 0) {
+                            if (completedDayCount > 0 || skippedDayCount > 0) {
                               setShowCompletedDayQuests((prev) => !prev)
                             }
                           }}
@@ -10655,7 +10672,7 @@ export default function Page() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             marginBottom: visibleDayTasks.length > 0 ? '8px' : '0',
-                            cursor: completedDayCount > 0 ? 'pointer' : 'default',
+                            cursor: completedDayCount > 0 || skippedDayCount > 0 ? 'pointer' : 'default',
                             userSelect: 'none',
                           }}
                         >
@@ -11704,7 +11721,8 @@ export default function Page() {
                     ) : (
                       (questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).map((task) => {
                         const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
-                        const isSkipped = Boolean(task.skipped || task.skippedDates?.includes(new Date().toISOString().slice(0, 10)))
+                        const todayIso = new Date().toISOString().slice(0, 10)
+                        const wasUnskipped = Boolean(task.skippedDates?.includes(`unskip:${todayIso}`))
                         const hasGymDoneEx =
                           questScheduleTab === 'today' &&
                           task.category.toLowerCase() === 'gym' &&
@@ -11712,8 +11730,16 @@ export default function Page() {
                             task.workoutExercises?.some(
                               (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
                             )
-                          ) &&
-                          !isSkipped
+                          )
+                        const isDoneNow = Boolean(task.done || hasGymDoneEx)
+                        const isSkipped = Boolean(
+                          task.skipped ||
+                            task.skippedDates?.includes(todayIso) ||
+                            (questScheduleTab === 'today' &&
+                              !isDoneNow &&
+                              !wasUnskipped &&
+                              isQuestTimeSkipped(task.targetTime, false, task.schedule))
+                        )
                         return (
                           <QuestCard
                             key={task.id}
