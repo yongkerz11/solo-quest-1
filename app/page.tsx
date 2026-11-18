@@ -562,27 +562,74 @@ function getHabitYearGrid(
   const TOTAL_WEEKS = 42
   const TOTAL_DAYS = TOTAL_WEEKS * 7 // 294 days
 
+  const toLocalIso = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
   const uniqueDates = new Set<string>(completedDates || [])
-  const todayIso = new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const todayIso = toLocalIso(todayLocal)
+  const utcTodayIso = now.toISOString().slice(0, 10)
+
   if (isDoneToday) {
     uniqueDates.add(todayIso)
   } else {
     uniqueDates.delete(todayIso)
+    uniqueDates.delete(utcTodayIso)
   }
 
-  const completed = uniqueDates.size
+  // Tentukan Senin dari minggu awal (berdasarkan tanggal paling awal atau minggu ini)
+  const todayMonIdx = (todayLocal.getDay() + 6) % 7 // Mon=0 .. Sun=6
+  const thisWeekMonday = new Date(todayLocal)
+  thisWeekMonday.setDate(todayLocal.getDate() - todayMonIdx)
+
+  let startMonday = new Date(thisWeekMonday)
+  if (uniqueDates.size > 0) {
+    const sorted = Array.from(uniqueDates).sort()
+    const earliestParts = sorted[0].split('-').map(Number)
+    if (earliestParts.length === 3 && !earliestParts.some(isNaN)) {
+      const earliestDate = new Date(earliestParts[0], earliestParts[1] - 1, earliestParts[2])
+      const earliestMonIdx = (earliestDate.getDay() + 6) % 7
+      const earliestMonday = new Date(earliestDate)
+      earliestMonday.setDate(earliestDate.getDate() - earliestMonIdx)
+      if (earliestMonday < startMonday) {
+        startMonday = earliestMonday
+      }
+    }
+  }
+
+  // Jika rentang melebihi 42 minggu, geser window agar minggu ini tetap terlihat di akhir
+  const diffDays = Math.round((thisWeekMonday.getTime() - startMonday.getTime()) / 86400000)
+  if (diffDays + 7 > TOTAL_DAYS) {
+    startMonday = new Date(thisWeekMonday)
+    startMonday.setDate(thisWeekMonday.getDate() - (TOTAL_WEEKS - 1) * 7)
+  }
+
   const cells: ('active' | 'inactive' | 'future')[] = []
+  const cellDates: string[] = []
 
   for (let day = 0; day < TOTAL_DAYS; day++) {
-    if (day < completed) {
+    const cellDate = new Date(startMonday)
+    cellDate.setDate(startMonday.getDate() + day)
+    const cellIso = toLocalIso(cellDate)
+    cellDates.push(cellIso)
+
+    if (uniqueDates.has(cellIso)) {
       cells.push('active')
+    } else if (cellIso > todayIso) {
+      cells.push('future')
     } else {
       cells.push('inactive')
     }
   }
 
+  const completed = uniqueDates.size
   const pct = completed === 0 ? 0 : Math.min(100, Math.max(1, Math.round((completed / TOTAL_DAYS) * 100)))
-  return { cells, pct }
+  return { cells, cellDates, pct }
 }
 
 // ============================================================================
@@ -14909,7 +14956,7 @@ export default function Page() {
             >
               {userPersonalTasks.map((task, index) => {
                 const colorObj = HABIT_PALETTES[index % HABIT_PALETTES.length]
-                const { cells, pct } = getHabitYearGrid(task.id, 0, task.done, task.completedDates)
+                const { cells, cellDates, pct } = getHabitYearGrid(task.id, 0, task.done, task.completedDates)
                 const scheduleText = task.schedule && task.schedule.length > 0
                   ? (task.schedule.includes('Everyday') ? 'Everyday' : task.schedule.join(', '))
                   : 'Everyday'
@@ -14969,6 +15016,7 @@ export default function Page() {
                       {cells.map((status, cIdx) => (
                         <div
                           key={cIdx}
+                          title={cellDates[cIdx]}
                           style={{
                             aspectRatio: '1 / 1',
                             borderRadius: '1.2px',
