@@ -1549,9 +1549,31 @@ export default function Page() {
   const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('environment')
   const gymPhotoInputRef = useRef<HTMLInputElement | null>(null)
   const gymCameraInputRef = useRef<HTMLInputElement | null>(null)
+  const gymReplaceInputRef = useRef<HTMLInputElement | null>(null)
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
   const liveFlipTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [cropModal, setCropModal] = useState<{
+    isOpen: boolean
+    imageSrc: string
+    aspectRatio: '3/4' | '1/1'
+    isCircular?: boolean
+    target: 'gym-new' | 'gym-replace' | 'gym-edit' | 'profile-avatar'
+    targetPhotoId?: string
+    title: string
+  } | null>(null)
+  const [cropZoom, setCropZoom] = useState<number>(1)
+  const [cropOffset, setCropOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [cropRotation, setCropRotation] = useState<number>(0)
+  const [cropImgNatural, setCropImgNatural] = useState<{ w: number; h: number }>({ w: 1, h: 1 })
+  const [replacingGymPhotoId, setReplacingGymPhotoId] = useState<string | null>(null)
+  const cropDragRef = useRef<{
+    isDragging: boolean
+    startX: number
+    startY: number
+    origX: number
+    origY: number
+  }>({ isDragging: false, startX: 0, startY: 0, origX: 0, origY: 0 })
   const [replacingExerciseId, setReplacingExerciseId] = useState<string | null>(null)
   const [isQuestProgramPageOpen, setIsQuestProgramPageOpen] = useState<boolean>(false)
   const [newExerciseName, setNewExerciseName] = useState('')
@@ -3206,47 +3228,105 @@ export default function Page() {
     )
     .sort((a, b) => a.dateIso.localeCompare(b.dateIso) || a.createdAt - b.createdAt)
 
-  const saveGymPhotoFromCanvas = (
-    source: HTMLImageElement | HTMLVideoElement,
-    srcWidth: number,
-    srcHeight: number,
-    mirrorHorizontal = false
-  ) => {
-    const maxSide = 720
-    const scale = Math.min(1, maxSide / Math.max(srcWidth, srcHeight))
-    const w = Math.max(1, Math.round(srcWidth * scale))
-    const h = Math.max(1, Math.round(srcHeight * scale))
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    if (mirrorHorizontal) {
-      ctx.translate(w, 0)
-      ctx.scale(-1, 1)
+  const openPhotoCropper = (opts: {
+    imageSrc: string
+    aspectRatio: '3/4' | '1/1'
+    isCircular?: boolean
+    target: 'gym-new' | 'gym-replace' | 'gym-edit' | 'profile-avatar'
+    targetPhotoId?: string
+    title: string
+  }) => {
+    const img = new Image()
+    img.onload = () => {
+      setCropImgNatural({ w: img.width || 1, h: img.height || 1 })
+      setCropZoom(1)
+      setCropOffset({ x: 0, y: 0 })
+      setCropRotation(0)
+      setCropModal({
+        isOpen: true,
+        ...opts,
+      })
     }
-    ctx.drawImage(source, 0, 0, w, h)
-    const compressedUrl = canvas.toDataURL('image/jpeg', 0.8)
-    const newPhoto = {
-      id: `gphoto-${Date.now()}`,
-      userId: currentUser.id,
-      dateIso: photoUploadDate || new Date().toISOString().slice(0, 10),
-      questTitle: currentWorkoutQuest?.title || 'Gym Workout',
-      dataUrl: compressedUrl,
-      createdAt: Date.now(),
+    img.src = opts.imageSrc
+  }
+
+  const handleApplyCropModal = () => {
+    if (!cropModal) return
+    const img = new Image()
+    img.onload = () => {
+      const isSquare = cropModal.aspectRatio === '1/1'
+      const boxW = isSquare ? 280 : 270
+      const boxH = isSquare ? 280 : 360
+      const outW = isSquare ? 320 : 540
+      const outH = isSquare ? 320 : 720
+      const ratio = outW / boxW
+
+      const isRotatedOdd = cropRotation % 180 !== 0
+      const rotW = isRotatedOdd ? img.height : img.width
+      const rotH = isRotatedOdd ? img.width : img.height
+      const baseScale = Math.max(boxW / rotW, boxH / rotH)
+
+      const canvas = document.createElement('canvas')
+      canvas.width = outW
+      canvas.height = outH
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+
+      ctx.fillStyle = '#070410'
+      ctx.fillRect(0, 0, outW, outH)
+      ctx.save()
+      ctx.translate(outW / 2 + cropOffset.x * ratio, outH / 2 + cropOffset.y * ratio)
+      ctx.scale(cropZoom * ratio * baseScale, cropZoom * ratio * baseScale)
+      ctx.rotate((cropRotation * Math.PI) / 180)
+      ctx.drawImage(img, -img.width / 2, -img.height / 2)
+      ctx.restore()
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+
+      if (cropModal.target === 'profile-avatar') {
+        const updatedUser = { ...currentUser, avatarUrl: dataUrl }
+        setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? updatedUser : u)))
+        saveCloudProfile(updatedUser)
+        showToast('Foto profil berhasil diperbarui!')
+      } else if (cropModal.target === 'gym-new') {
+        const newPhoto = {
+          id: `gphoto-${Date.now()}`,
+          userId: currentUser.id,
+          dateIso: photoUploadDate || new Date().toISOString().slice(0, 10),
+          questTitle: currentWorkoutQuest?.title || 'Gym Workout',
+          dataUrl,
+          createdAt: Date.now(),
+        }
+        setGymProgressPhotos((prev) => {
+          const next = [...prev, newPhoto]
+          const nextUserPhotos = next.filter(
+            (p) =>
+              p.userId === currentUser.id ||
+              (currentUser.username && p.userId === currentUser.username)
+          )
+          setActiveGymPhotoIdx(Math.max(0, nextUserPhotos.length - 1))
+          return next
+        })
+        setTimelapseVideoUrl(null)
+        showToast('📸 Foto After-Gym berhasil disimpan!')
+      } else if (
+        (cropModal.target === 'gym-replace' || cropModal.target === 'gym-edit') &&
+        cropModal.targetPhotoId
+      ) {
+        setGymProgressPhotos((prev) =>
+          prev.map((p) => (p.id === cropModal.targetPhotoId ? { ...p, dataUrl } : p))
+        )
+        setTimelapseVideoUrl(null)
+        showToast(
+          cropModal.target === 'gym-replace'
+            ? '🔄 Foto berhasil diganti!'
+            : '✂️ Foto berhasil disesuaikan!'
+        )
+      }
+
+      setCropModal(null)
     }
-    setGymProgressPhotos((prev) => {
-      const next = [...prev, newPhoto]
-      const nextUserPhotos = next.filter(
-        (p) =>
-          p.userId === currentUser.id ||
-          (currentUser.username && p.userId === currentUser.username)
-      )
-      setActiveGymPhotoIdx(Math.max(0, nextUserPhotos.length - 1))
-      return next
-    })
-    setTimelapseVideoUrl(null)
-    showToast('📸 Foto After-Gym berhasil disimpan!')
+    img.src = cropModal.imageSrc
   }
 
   const handleUploadGymPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -3256,12 +3336,36 @@ export default function Page() {
 
     const reader = new FileReader()
     reader.onload = () => {
-      const img = new Image()
-      img.onload = () => {
-        saveGymPhotoFromCanvas(img, img.width, img.height)
-      }
       if (typeof reader.result === 'string') {
-        img.src = reader.result
+        openPhotoCropper({
+          imageSrc: reader.result,
+          aspectRatio: '3/4',
+          target: 'gym-new',
+          title: 'Atur & Crop Foto After-Gym',
+        })
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleReplaceGymPhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !replacingGymPhotoId) return
+
+    const targetId = replacingGymPhotoId
+    setReplacingGymPhotoId(null)
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        openPhotoCropper({
+          imageSrc: reader.result,
+          aspectRatio: '3/4',
+          target: 'gym-replace',
+          targetPhotoId: targetId,
+          title: 'Ganti & Crop Foto',
+        })
       }
     }
     reader.readAsDataURL(file)
@@ -3306,13 +3410,24 @@ export default function Page() {
   const captureLivePhoto = () => {
     const video = cameraVideoRef.current
     if (!video || !video.videoWidth || !video.videoHeight) return
-    saveGymPhotoFromCanvas(
-      video,
-      video.videoWidth,
-      video.videoHeight,
-      cameraFacingMode === 'user'
-    )
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    if (cameraFacingMode === 'user') {
+      ctx.translate(canvas.width, 0)
+      ctx.scale(-1, 1)
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const rawDataUrl = canvas.toDataURL('image/jpeg', 0.92)
     stopLiveCamera()
+    openPhotoCropper({
+      imageSrc: rawDataUrl,
+      aspectRatio: '3/4',
+      target: 'gym-new',
+      title: 'Atur & Crop Foto Kamera',
+    })
   }
 
   const handleDeleteGymPhoto = (photoId: string) => {
@@ -7402,7 +7517,7 @@ export default function Page() {
                       <span className="completion">{userGymPhotos.length} Foto</span>
                     </div>
 
-                    {/* Hidden File Inputs (Galeri & Fallback Kamera Native) */}
+                    {/* Hidden File Inputs (Galeri, Fallback Kamera Native, & Replace Foto) */}
                     <input
                       ref={gymPhotoInputRef}
                       type="file"
@@ -7416,6 +7531,13 @@ export default function Page() {
                       accept="image/*"
                       capture="environment"
                       onChange={handleUploadGymPhoto}
+                      style={{ display: 'none' }}
+                    />
+                    <input
+                      ref={gymReplaceInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleReplaceGymPhotoFile}
                       style={{ display: 'none' }}
                     />
 
@@ -7805,22 +7927,22 @@ export default function Page() {
                             )}
                           </button>
 
-                          {/* BOTTOM OVERLAY: BRANDING & TITLE */}
+                          {/* BOTTOM OVERLAY: BRANDING, TITLE, CROP & REPLACE */}
                           <div
                             style={{
                               position: 'absolute',
                               bottom: 0,
                               left: 0,
                               right: 0,
-                              padding: '26px 14px 10px',
+                              padding: '28px 14px 10px',
                               background: 'linear-gradient(transparent, rgba(7, 4, 16, 0.95))',
                               display: 'flex',
                               alignItems: 'flex-end',
                               justifyContent: 'space-between',
-                              pointerEvents: 'none',
+                              gap: '8px',
                             }}
                           >
-                            <div>
+                            <div style={{ pointerEvents: 'none', minWidth: 0 }}>
                               <span style={{ fontSize: '9px', fontWeight: 800, color: '#67e8f9', letterSpacing: '0.05em' }}>
                                 RANKERZ TIMELAPSE
                               </span>
@@ -7828,9 +7950,66 @@ export default function Page() {
                                 {currentGymPhoto.questTitle}
                               </div>
                             </div>
-                            <span style={{ fontSize: '9px', fontWeight: 700, color: '#b8add1' }}>
-                              {currentGymPhotoIdx + 1} / {userGymPhotos.length}
-                            </span>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openPhotoCropper({
+                                    imageSrc: currentGymPhoto.dataUrl,
+                                    aspectRatio: '3/4',
+                                    target: 'gym-edit',
+                                    targetPhotoId: currentGymPhoto.id,
+                                    title: 'Crop & Zoom Foto',
+                                  })
+                                }}
+                                style={{
+                                  padding: '4px 8px',
+                                  borderRadius: '7px',
+                                  background: 'rgba(10, 7, 18, 0.78)',
+                                  backdropFilter: 'blur(8px)',
+                                  border: '1px solid rgba(139, 92, 246, 0.45)',
+                                  color: '#e9d5ff',
+                                  fontSize: '9.5px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                                title="Crop & Zoom Foto"
+                              >
+                                <Sliders size={10} />
+                                <span>Crop</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setReplacingGymPhotoId(currentGymPhoto.id)
+                                  gymReplaceInputRef.current?.click()
+                                }}
+                                style={{
+                                  padding: '4px 8px',
+                                  borderRadius: '7px',
+                                  background: 'rgba(10, 7, 18, 0.78)',
+                                  backdropFilter: 'blur(8px)',
+                                  border: '1px solid rgba(56, 189, 248, 0.45)',
+                                  color: '#67e8f9',
+                                  fontSize: '9.5px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                                title="Ganti Foto Ini"
+                              >
+                                <RotateCcw size={10} />
+                                <span>Ganti</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
 
@@ -8024,6 +8203,69 @@ export default function Page() {
                                       alt={`Photo Day ${idx + 1}`}
                                       style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', display: 'block' }}
                                     />
+                                    <div
+                                      style={{
+                                        position: 'absolute',
+                                        top: '4px',
+                                        left: '4px',
+                                        display: 'flex',
+                                        gap: '3px',
+                                      }}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          openPhotoCropper({
+                                            imageSrc: photo.dataUrl,
+                                            aspectRatio: '3/4',
+                                            target: 'gym-edit',
+                                            targetPhotoId: photo.id,
+                                            title: 'Crop & Zoom Foto',
+                                          })
+                                        }}
+                                        aria-label="Crop foto"
+                                        title="Crop & Zoom"
+                                        style={{
+                                          width: '20px',
+                                          height: '20px',
+                                          borderRadius: '5px',
+                                          background: 'rgba(7, 4, 16, 0.82)',
+                                          border: '1px solid rgba(139, 92, 246, 0.45)',
+                                          color: '#e9d5ff',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          cursor: 'pointer',
+                                        }}
+                                      >
+                                        <Sliders size={10} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setReplacingGymPhotoId(photo.id)
+                                          gymReplaceInputRef.current?.click()
+                                        }}
+                                        aria-label="Ganti foto"
+                                        title="Ganti Foto"
+                                        style={{
+                                          width: '20px',
+                                          height: '20px',
+                                          borderRadius: '5px',
+                                          background: 'rgba(7, 4, 16, 0.82)',
+                                          border: '1px solid rgba(56, 189, 248, 0.45)',
+                                          color: '#67e8f9',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          cursor: 'pointer',
+                                        }}
+                                      >
+                                        <RotateCcw size={10} />
+                                      </button>
+                                    </div>
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -13744,29 +13986,19 @@ export default function Page() {
                       style={{ display: 'none' }}
                       onChange={(e) => {
                         const file = e.target.files?.[0]
+                        e.target.value = ''
                         if (!file) return
                         const reader = new FileReader()
                         reader.onload = () => {
-                          const img = new Image()
-                          img.onload = () => {
-                            const canvas = document.createElement('canvas')
-                            canvas.width = 160
-                            canvas.height = 160
-                            const ctx = canvas.getContext('2d')
-                            if (!ctx) return
-                            const minDim = Math.min(img.width, img.height)
-                            const sx = (img.width - minDim) / 2
-                            const sy = (img.height - minDim) / 2
-                            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 160, 160)
-                            const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
-                            const updatedUser = { ...currentUser, avatarUrl: dataUrl }
-                            setUsers((prev) =>
-                              prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
-                            )
-                            saveCloudProfile(updatedUser)
-                            showToast('Foto profil berhasil diperbarui!')
+                          if (typeof reader.result === 'string') {
+                            openPhotoCropper({
+                              imageSrc: reader.result,
+                              aspectRatio: '1/1',
+                              isCircular: true,
+                              target: 'profile-avatar',
+                              title: 'Atur & Crop Foto Profil',
+                            })
                           }
-                          if (typeof reader.result === 'string') img.src = reader.result
                         }
                         reader.readAsDataURL(file)
                       }}
@@ -14830,6 +15062,287 @@ export default function Page() {
           </div>
         </div>
       )}
+
+      {/* ============================================================
+         CAPCUT-STYLE INTERACTIVE CROP, ZOOM, PAN & ROTATE MODAL
+         ============================================================ */}
+      {cropModal?.isOpen &&
+        (() => {
+          const isSquare = cropModal.aspectRatio === '1/1'
+          const boxW = isSquare ? 280 : 270
+          const boxH = isSquare ? 280 : 360
+          const isRotatedOdd = cropRotation % 180 !== 0
+          const rotW = isRotatedOdd ? cropImgNatural.h : cropImgNatural.w
+          const rotH = isRotatedOdd ? cropImgNatural.w : cropImgNatural.h
+          const baseScale = Math.max(boxW / Math.max(1, rotW), boxH / Math.max(1, rotH))
+          const dispW = cropImgNatural.w * baseScale
+          const dispH = cropImgNatural.h * baseScale
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 1300,
+                background: 'rgba(5, 3, 12, 0.94)',
+                backdropFilter: 'blur(12px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px',
+              }}
+            >
+              <div
+                style={{
+                  width: '100%',
+                  maxWidth: '370px',
+                  borderRadius: '20px',
+                  background: 'linear-gradient(160deg, rgba(22, 16, 38, 0.98), rgba(10, 8, 20, 0.99))',
+                  border: '1px solid rgba(139, 92, 246, 0.38)',
+                  padding: '16px',
+                  display: 'grid',
+                  gap: '14px',
+                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.75)',
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '9px', fontWeight: 800, color: '#67e8f9', letterSpacing: '0.06em' }}>
+                      PHOTO EDITOR
+                    </div>
+                    <h3 style={{ margin: '2px 0 0', fontSize: '15px', fontWeight: 800, color: '#f5f2ff' }}>
+                      {cropModal.title}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCropModal(null)}
+                    aria-label="Tutup editor"
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '9px',
+                      background: '#171226',
+                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      color: '#d5beff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Interactive Viewport */}
+                <div
+                  onPointerDown={(e) => {
+                    e.currentTarget.setPointerCapture(e.pointerId)
+                    cropDragRef.current = {
+                      isDragging: true,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      origX: cropOffset.x,
+                      origY: cropOffset.y,
+                    }
+                  }}
+                  onPointerMove={(e) => {
+                    if (!cropDragRef.current.isDragging) return
+                    const dx = e.clientX - cropDragRef.current.startX
+                    const dy = e.clientY - cropDragRef.current.startY
+                    setCropOffset({
+                      x: cropDragRef.current.origX + dx,
+                      y: cropDragRef.current.origY + dy,
+                    })
+                  }}
+                  onPointerUp={() => {
+                    cropDragRef.current.isDragging = false
+                  }}
+                  onPointerCancel={() => {
+                    cropDragRef.current.isDragging = false
+                  }}
+                  style={{
+                    width: `${boxW}px`,
+                    height: `${boxH}px`,
+                    margin: '0 auto',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: cropModal.isCircular ? '50%' : '14px',
+                    background: '#070410',
+                    border: '2px solid rgba(103, 232, 249, 0.7)',
+                    boxShadow: '0 0 24px rgba(124, 58, 237, 0.25)',
+                    touchAction: 'none',
+                    cursor: 'grab',
+                    userSelect: 'none',
+                  }}
+                >
+                  <img
+                    src={cropModal.imageSrc}
+                    alt="Crop Preview"
+                    draggable={false}
+                    style={{
+                      position: 'absolute',
+                      left: `${boxW / 2 + cropOffset.x}px`,
+                      top: `${boxH / 2 + cropOffset.y}px`,
+                      width: `${dispW}px`,
+                      height: `${dispH}px`,
+                      maxWidth: 'none',
+                      maxHeight: 'none',
+                      transform: `translate(-50%, -50%) scale(${cropZoom}) rotate(${cropRotation}deg)`,
+                      transformOrigin: 'center center',
+                      pointerEvents: 'none',
+                    }}
+                  />
+
+                  {/* Rule-of-Thirds Grid Guide */}
+                  {!cropModal.isCircular && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        pointerEvents: 'none',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gridTemplateRows: 'repeat(3, 1fr)',
+                      }}
+                    >
+                      {Array.from({ length: 9 }).map((_, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            border: '0.5px solid rgba(255, 255, 255, 0.16)',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <p style={{ margin: '-6px 0 0', textAlign: 'center', fontSize: '10.5px', color: '#9a8fb2' }}>
+                  Geser foto untuk mengatur posisi, gunakan slider di bawah untuk zoom
+                </p>
+
+                {/* Zoom & Rotate Controls */}
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    background: 'rgba(13, 10, 22, 0.85)',
+                    border: '1px solid rgba(139, 92, 246, 0.22)',
+                    display: 'grid',
+                    gap: '10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#e9d5ff', minWidth: '38px' }}>
+                      Zoom
+                    </span>
+                    <input
+                      type="range"
+                      min={1}
+                      max={3}
+                      step={0.02}
+                      value={cropZoom}
+                      onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                      style={{ flex: 1, accentColor: '#67e8f9', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#67e8f9', minWidth: '34px', textAlign: 'right' }}>
+                      {cropZoom.toFixed(1)}x
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setCropRotation((r) => (r + 90) % 360)}
+                      style={{
+                        flex: 1,
+                        height: '34px',
+                        borderRadius: '9px',
+                        background: 'rgba(139, 92, 246, 0.14)',
+                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                        color: '#e9d5ff',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <RotateCcw size={13} />
+                      <span>Putar 90°</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCropZoom(1)
+                        setCropOffset({ x: 0, y: 0 })
+                        setCropRotation(0)
+                      }}
+                      style={{
+                        height: '34px',
+                        padding: '0 14px',
+                        borderRadius: '9px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(139, 92, 246, 0.2)',
+                        color: '#b8add1',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCropModal(null)}
+                    style={{
+                      height: '40px',
+                      borderRadius: '11px',
+                      background: '#171226',
+                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      color: '#d5beff',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyCropModal}
+                    className="btn-primary"
+                    style={{
+                      height: '40px',
+                      borderRadius: '11px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <Check size={15} />
+                    <span>Simpan Foto</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
       </main>
   )
 }
