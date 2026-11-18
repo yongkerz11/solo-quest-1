@@ -953,6 +953,20 @@ function QuestCard({
                     ? ` • ${schedule.includes('Everyday') ? 'Everyday' : schedule.join(', ')}`
                     : ''}
                 </span>
+                {targetTime && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      color: '#7dd3fc',
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    • <Clock size={10} /> {targetTime}
+                  </span>
+                )}
                 {xp !== undefined && (
                   <span
                     style={{
@@ -1517,6 +1531,7 @@ export default function Page() {
   const [questType, setQuestType] = useState<'daily' | 'event'>('daily')
   const [questDeadline, setQuestDeadline] = useState('')
   const [questDays, setQuestDays] = useState<string[]>(['Everyday'])
+  const [questTargetTime, setQuestTargetTime] = useState('')
 
   const handleToggleDay = (day: string) => {
     if (day === 'Everyday') {
@@ -3910,6 +3925,7 @@ export default function Page() {
     setQuestCategory(cat.name)
     setQuestXp(cat.xp)
     setQuestDays(['Everyday'])
+    setQuestTargetTime('')
     setSelectedTemplateSessionIdForQuest('')
     setSelectedProgramId(GYM_PROGRAM_TEMPLATES[0].id)
     setIsCategoryDropdownOpen(false)
@@ -3922,6 +3938,7 @@ export default function Page() {
     setQuestCategory(findCategory(task.category).name)
     setQuestXp(task.xp)
     setQuestDays(task.schedule && task.schedule.length > 0 ? task.schedule : ['Everyday'])
+    setQuestTargetTime(task.targetTime || '')
     setSelectedTemplateSessionIdForQuest('')
     setSelectedProgramId(GYM_PROGRAM_TEMPLATES[0].id)
     setIsCategoryDropdownOpen(false)
@@ -3943,6 +3960,7 @@ export default function Page() {
       : undefined
 
     const finalXp = catObj.xp
+    const finalTime = questTargetTime.trim() || undefined
 
     if (editingPersonalTask) {
       const updatedTask: PersonalTask = {
@@ -3952,6 +3970,7 @@ export default function Page() {
         xp: finalXp,
         icon: catObj.icon,
         schedule: questDays,
+        targetTime: finalTime,
         workoutExercises: isGym
           ? templateExercises ?? (editingPersonalTask.workoutExercises ?? [])
           : undefined,
@@ -3971,6 +3990,7 @@ export default function Page() {
         icon: catObj.icon,
         done: false,
         schedule: questDays,
+        targetTime: finalTime,
         workoutExercises: isGym ? (templateExercises ?? []) : undefined,
       }
       setPersonalTasks((curr) => [...curr, newTask])
@@ -9256,6 +9276,71 @@ export default function Page() {
                 </div>
               </div>
 
+              {/* 3B. JAM QUEST (OPSIONAL) */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label className="modal-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Clock size={12} color="#a78bfa" /> JAM QUEST (OPSIONAL)
+                  </label>
+                  {questTargetTime && (
+                    <button
+                      type="button"
+                      onClick={() => setQuestTargetTime('')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#9a8fb2',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Hapus Jam
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="time"
+                    value={questTargetTime}
+                    onChange={(e) => setQuestTargetTime(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '9px 11px',
+                      borderRadius: '10px',
+                      background: '#0a0814',
+                      border: '1px solid rgba(139, 92, 246, 0.28)',
+                      color: '#f3f1ff',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      colorScheme: 'dark',
+                    }}
+                  />
+                  {['06:00', '12:00', '19:00'].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setQuestTargetTime(preset)}
+                      style={{
+                        padding: '9px 9px',
+                        borderRadius: '9px',
+                        background: questTargetTime === preset ? 'rgba(124, 58, 237, 0.28)' : '#0a0814',
+                        border:
+                          questTargetTime === preset
+                            ? '1px solid rgba(168, 85, 247, 0.55)'
+                            : '1px solid rgba(139, 92, 246, 0.2)',
+                        color: questTargetTime === preset ? '#ede9fe' : '#9a8fb2',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* 4. ACTION BUTTONS */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px', paddingTop: '2px' }}>
                 <button
@@ -10748,15 +10833,22 @@ export default function Page() {
                                       </span>
                                     )}
                                   </strong>
-                                  <span style={{ fontSize: '9.5px', color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1' }}>
-                                    {task.category}
-                                    {isSkipped && !isDoneOnDay
-                                      ? isPastDay
-                                        ? ' • (Skip — bisa dibatalkan)'
-                                        : ' • (Dilewati)'
-                                      : isFutureDay
-                                        ? ` • +${task.xp} XP • Terjadwal`
-                                        : ` • +${task.xp} XP`}
+                                  <span style={{ fontSize: '9.5px', color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1', display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                    <span>
+                                      {task.category}
+                                      {isSkipped && !isDoneOnDay
+                                        ? isPastDay
+                                          ? ' • (Skip — bisa dibatalkan)'
+                                          : ' • (Dilewati)'
+                                        : isFutureDay
+                                          ? ` • +${task.xp} XP • Terjadwal`
+                                          : ` • +${task.xp} XP`}
+                                    </span>
+                                    {task.targetTime && (
+                                      <span style={{ color: '#7dd3fc', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                        • <Clock size={9} /> {task.targetTime}
+                                      </span>
+                                    )}
                                   </span>
                                 </div>
                               </div>
@@ -11633,6 +11725,7 @@ export default function Page() {
                             done={Boolean(task.done || hasGymDoneEx)}
                             completedDates={task.completedDates}
                             schedule={task.schedule}
+                            targetTime={task.targetTime}
                             isSkipped={isSkipped}
                             canManage={true}
                             viewOnly={questScheduleTab === 'upcoming'}
