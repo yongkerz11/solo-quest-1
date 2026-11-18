@@ -1538,6 +1538,7 @@ export default function Page() {
   const [questDeadline, setQuestDeadline] = useState('')
   const [questDays, setQuestDays] = useState<string[]>(['Everyday'])
   const [questTargetTime, setQuestTargetTime] = useState('')
+  const [showFinishedMyQuests, setShowFinishedMyQuests] = useState(false)
 
   const handleToggleDay = (day: string) => {
     if (day === 'Everyday') {
@@ -10723,14 +10724,23 @@ export default function Page() {
                           >
                             {isFutureDay && totalDayTasks > 0 && <Lock size={10} />}
                             <span>{headerBadgeText}</span>
-                            {completedDayCount > 0 &&
+                            {(completedDayCount > 0 || skippedDayCount > 0) &&
                               (showCompletedDayQuests ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
                           </span>
                         </div>
 
                         {visibleDayTasks.length > 0 && (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '6px' }}>
-                            {visibleDayTasks.slice(0, 4).map((task) => {
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'minmax(0, 1fr)',
+                              gap: '6px',
+                              maxHeight: '320px',
+                              overflowY: 'auto',
+                              WebkitOverflowScrolling: 'touch',
+                            }}
+                          >
+                            {visibleDayTasks.map((task) => {
                           const isGym = task.category.toLowerCase() === 'gym'
                           const isDoneOnDay = isTaskDoneOnDay(task)
                           const isSkipped = isTaskSkippedOnDay(task)
@@ -11701,79 +11711,170 @@ export default function Page() {
                     )
                   })()}
 
-                  <div className="task-list">
-                    {(questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).length === 0 ? (
-                      <div
-                        style={{
-                          padding: '18px 14px',
-                          borderRadius: '12px',
-                          background: '#0e0c16',
-                          border: '1px dashed #28213a',
-                          textAlign: 'center',
-                          fontSize: '11.5px',
-                          color: '#b8add1',
-                        }}
-                      >
-                        {questScheduleTab === 'today'
-                          ? `Tidak ada quest untuk hari ini (${todayDayCode}). Cek tab Upcoming atau tambah quest baru.`
-                          : `Tidak ada quest di jadwal Upcoming. Quest yang dipilih untuk hari selain hari ini (${todayDayCode}) akan tampil di sini.`}
-                      </div>
-                    ) : (
-                      (questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks).map((task) => {
-                        const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
-                        const todayIso = new Date().toISOString().slice(0, 10)
-                        const wasUnskipped = Boolean(task.skippedDates?.includes(`unskip:${todayIso}`))
-                        const hasGymDoneEx =
-                          questScheduleTab === 'today' &&
-                          task.category.toLowerCase() === 'gym' &&
-                          Boolean(
-                            task.workoutExercises?.some(
-                              (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
-                            )
+                  {(() => {
+                    const rawList = questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks
+                    const todayIso = new Date().toISOString().slice(0, 10)
+                    const enriched = rawList.map((task) => {
+                      const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
+                      const wasUnskipped = Boolean(task.skippedDates?.includes(`unskip:${todayIso}`))
+                      const hasGymDoneEx =
+                        questScheduleTab === 'today' &&
+                        task.category.toLowerCase() === 'gym' &&
+                        Boolean(
+                          task.workoutExercises?.some(
+                            (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
                           )
-                        const isDoneNow = Boolean(task.done || hasGymDoneEx)
-                        const isSkipped = Boolean(
-                          task.skipped ||
-                            task.skippedDates?.includes(todayIso) ||
-                            (questScheduleTab === 'today' &&
-                              !isDoneNow &&
-                              !wasUnskipped &&
-                              isQuestTimeSkipped(task.targetTime, false, task.schedule))
                         )
-                        return (
-                          <QuestCard
-                            key={task.id}
-                            questId={task.id}
-                            colorIndex={globalIdx >= 0 ? globalIdx : 0}
-                            title={task.title}
-                            meta={task.category}
-                            icon={task.icon}
-                            done={Boolean(task.done || hasGymDoneEx)}
-                            completedDates={task.completedDates}
-                            schedule={task.schedule}
-                            targetTime={task.targetTime}
-                            isSkipped={isSkipped}
-                            canManage={true}
-                            viewOnly={questScheduleTab === 'upcoming'}
-                            isGym={task.category.toLowerCase() === 'gym'}
-                            xp={task.xp}
-                            onOpenWorkout={() => {
-                              setWorkoutSubPage('overview')
-                              setActiveWorkoutQuest({
-                                type: 'personal',
-                                id: task.id,
-                                viewOnly: questScheduleTab === 'upcoming',
-                              })
+                      const isDoneNow = Boolean(task.done || hasGymDoneEx)
+                      const isSkipped = Boolean(
+                        task.skipped ||
+                          task.skippedDates?.includes(todayIso) ||
+                          (questScheduleTab === 'today' &&
+                            !isDoneNow &&
+                            !wasUnskipped &&
+                            isQuestTimeSkipped(task.targetTime, false, task.schedule))
+                      )
+                      return { task, globalIdx, isDoneNow, isSkipped }
+                    })
+
+                    const activeItems =
+                      questScheduleTab === 'today'
+                        ? enriched.filter((item) => !item.isDoneNow && !item.isSkipped)
+                        : enriched
+                    const finishedItems =
+                      questScheduleTab === 'today'
+                        ? enriched.filter((item) => item.isDoneNow || item.isSkipped)
+                        : []
+
+                    const renderTaskCard = ({
+                      task,
+                      globalIdx,
+                      isDoneNow,
+                      isSkipped,
+                    }: (typeof enriched)[number]) => (
+                      <QuestCard
+                        key={task.id}
+                        questId={task.id}
+                        colorIndex={globalIdx >= 0 ? globalIdx : 0}
+                        title={task.title}
+                        meta={task.category}
+                        icon={task.icon}
+                        done={isDoneNow}
+                        completedDates={task.completedDates}
+                        schedule={task.schedule}
+                        targetTime={task.targetTime}
+                        isSkipped={isSkipped}
+                        canManage={true}
+                        viewOnly={questScheduleTab === 'upcoming'}
+                        isGym={task.category.toLowerCase() === 'gym'}
+                        xp={task.xp}
+                        onOpenWorkout={() => {
+                          setWorkoutSubPage('overview')
+                          setActiveWorkoutQuest({
+                            type: 'personal',
+                            id: task.id,
+                            viewOnly: questScheduleTab === 'upcoming',
+                          })
+                        }}
+                        onToggle={() => handleTogglePersonal(task.id)}
+                        onSkip={() => handleSkipPersonal(task.id)}
+                        onEdit={() => openEditPersonalModal(task)}
+                        onDelete={() => handleDeletePersonal(task.id)}
+                      />
+                    )
+
+                    return (
+                      <>
+                        <div className="task-list">
+                          {rawList.length === 0 ? (
+                            <div
+                              style={{
+                                padding: '18px 14px',
+                                borderRadius: '12px',
+                                background: '#0e0c16',
+                                border: '1px dashed #28213a',
+                                textAlign: 'center',
+                                fontSize: '11.5px',
+                                color: '#b8add1',
+                              }}
+                            >
+                              {questScheduleTab === 'today'
+                                ? `Tidak ada quest untuk hari ini (${todayDayCode}). Cek tab Upcoming atau tambah quest baru.`
+                                : `Tidak ada quest di jadwal Upcoming. Quest yang dipilih untuk hari selain hari ini (${todayDayCode}) akan tampil di sini.`}
+                            </div>
+                          ) : activeItems.length === 0 ? (
+                            <div
+                              style={{
+                                padding: '16px 14px',
+                                borderRadius: '12px',
+                                background: 'rgba(10, 14, 26, 0.72)',
+                                border: '1px solid rgba(56, 189, 248, 0.2)',
+                                textAlign: 'center',
+                                fontSize: '11.5px',
+                                color: '#7dd3fc',
+                                fontWeight: 600,
+                              }}
+                            >
+                              Semua quest hari ini sudah selesai / dilewati.
+                            </div>
+                          ) : (
+                            activeItems.map(renderTaskCard)
+                          )}
+                        </div>
+
+                        {questScheduleTab === 'today' && finishedItems.length > 0 && (
+                          <div
+                            style={{
+                              marginTop: '12px',
+                              borderRadius: '12px',
+                              background: 'rgba(8, 10, 20, 0.85)',
+                              border: '1px solid rgba(139, 92, 246, 0.2)',
+                              overflow: 'hidden',
                             }}
-                            onToggle={() => handleTogglePersonal(task.id)}
-                            onSkip={() => handleSkipPersonal(task.id)}
-                            onEdit={() => openEditPersonalModal(task)}
-                            onDelete={() => handleDeletePersonal(task.id)}
-                          />
-                        )
-                      })
-                    )}
-                  </div>
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setShowFinishedMyQuests((prev) => !prev)}
+                              style={{
+                                width: '100%',
+                                padding: '10px 14px',
+                                background: 'transparent',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                                color: '#b8add1',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                              }}
+                            >
+                              <span>
+                                Selesai &amp; Dilewati ({finishedItems.length})
+                              </span>
+                              {showFinishedMyQuests ? (
+                                <ChevronUp size={15} color="#a78bfa" />
+                              ) : (
+                                <ChevronDown size={15} color="#a78bfa" />
+                              )}
+                            </button>
+                            {showFinishedMyQuests && (
+                              <div
+                                className="task-list"
+                                style={{
+                                  padding: '0 10px 10px',
+                                  borderTop: '1px solid rgba(139, 92, 246, 0.14)',
+                                  paddingTop: '10px',
+                                }}
+                              >
+                                {finishedItems.map(renderTaskCard)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
                   <button className="add-task" onClick={openAddPersonalModal}>
                     <Plus size={16} /> Tambah quest baru
                   </button>
