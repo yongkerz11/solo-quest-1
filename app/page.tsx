@@ -7548,13 +7548,16 @@ export default function Page() {
                           position: 'fixed',
                           inset: 0,
                           zIndex: 1200,
-                          background: 'rgba(5, 3, 12, 0.96)',
+                          background: 'rgba(5, 3, 12, 0.98)',
                           backdropFilter: 'blur(12px)',
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          padding: '18px 16px 28px',
+                          paddingTop: 'max(64px, calc(env(safe-area-inset-top, 0px) + 20px))',
+                          paddingBottom: 'max(34px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
+                          paddingLeft: '16px',
+                          paddingRight: '16px',
                         }}
                       >
                         <div
@@ -7570,12 +7573,12 @@ export default function Page() {
                             type="button"
                             onClick={stopLiveCamera}
                             style={{
-                              width: '38px',
-                              height: '38px',
-                              borderRadius: '11px',
-                              background: 'rgba(23, 18, 38, 0.85)',
-                              border: '1px solid rgba(139, 92, 246, 0.35)',
-                              color: '#f3f1ff',
+                              width: '42px',
+                              height: '42px',
+                              borderRadius: '12px',
+                              background: 'rgba(15, 23, 42, 0.92)',
+                              border: '1px solid rgba(56, 189, 248, 0.35)',
+                              color: '#f8fafc',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -7583,7 +7586,7 @@ export default function Page() {
                             }}
                             aria-label="Tutup kamera"
                           >
-                            <X size={18} />
+                            <X size={20} />
                           </button>
                           <span style={{ fontSize: '12px', fontWeight: 800, color: '#67e8f9', letterSpacing: '0.06em' }}>
                             KAMERA AFTER-GYM
@@ -7592,12 +7595,12 @@ export default function Page() {
                             type="button"
                             onClick={flipLiveCamera}
                             style={{
-                              width: '38px',
-                              height: '38px',
-                              borderRadius: '11px',
-                              background: 'rgba(23, 18, 38, 0.85)',
-                              border: '1px solid rgba(139, 92, 246, 0.35)',
-                              color: '#d5beff',
+                              width: '42px',
+                              height: '42px',
+                              borderRadius: '12px',
+                              background: 'rgba(15, 23, 42, 0.92)',
+                              border: '1px solid rgba(56, 189, 248, 0.35)',
+                              color: '#7dd3fc',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -7606,7 +7609,7 @@ export default function Page() {
                             title="Ganti Kamera Depan / Belakang"
                             aria-label="Ganti kamera"
                           >
-                            <RotateCcw size={16} />
+                            <RotateCcw size={18} />
                           </button>
                         </div>
 
@@ -7615,7 +7618,7 @@ export default function Page() {
                             width: '100%',
                             maxWidth: '420px',
                             aspectRatio: '3 / 4',
-                            maxHeight: '68vh',
+                            maxHeight: '60vh',
                             borderRadius: '20px',
                             overflow: 'hidden',
                             background: '#070410',
