@@ -7704,16 +7704,18 @@ export default function Page() {
                           <button
                             type="button"
                             onClick={() => startLiveCamera()}
-                            className="btn-primary"
                             style={{
                               height: '42px',
                               borderRadius: '11px',
+                              background: 'linear-gradient(135deg, rgba(109, 40, 217, 0.34), rgba(30, 22, 58, 0.9))',
+                              border: '1px solid rgba(139, 92, 246, 0.35)',
+                              color: '#ede9fe',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               gap: '6px',
                               fontSize: '12px',
-                              fontWeight: 800,
+                              fontWeight: 700,
                               cursor: 'pointer',
                             }}
                           >
@@ -7726,15 +7728,15 @@ export default function Page() {
                             style={{
                               height: '42px',
                               borderRadius: '11px',
-                              background: 'rgba(139, 92, 246, 0.14)',
-                              border: '1px solid rgba(139, 92, 246, 0.35)',
-                              color: '#e9d5ff',
+                              background: 'rgba(10, 14, 26, 0.85)',
+                              border: '1px solid rgba(148, 163, 184, 0.2)',
+                              color: '#cbd5e1',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               gap: '6px',
                               fontSize: '12px',
-                              fontWeight: 700,
+                              fontWeight: 600,
                               cursor: 'pointer',
                             }}
                           >
@@ -8018,16 +8020,18 @@ export default function Page() {
                           <button
                             type="button"
                             onClick={() => startLiveCamera()}
-                            className="btn-primary"
                             style={{
                               height: '42px',
-                              borderRadius: '12px',
+                              borderRadius: '11px',
+                              background: 'linear-gradient(135deg, rgba(109, 40, 217, 0.34), rgba(26, 20, 48, 0.92))',
+                              border: '1px solid rgba(139, 92, 246, 0.34)',
+                              color: '#ede9fe',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               gap: '6px',
                               fontSize: '12px',
-                              fontWeight: 800,
+                              fontWeight: 700,
                               cursor: 'pointer',
                             }}
                           >
@@ -8040,16 +8044,16 @@ export default function Page() {
                             onClick={() => gymPhotoInputRef.current?.click()}
                             style={{
                               height: '42px',
-                              borderRadius: '12px',
-                              background: 'rgba(139, 92, 246, 0.14)',
-                              border: '1px solid rgba(139, 92, 246, 0.35)',
-                              color: '#e9d5ff',
+                              borderRadius: '11px',
+                              background: 'rgba(10, 14, 26, 0.85)',
+                              border: '1px solid rgba(148, 163, 184, 0.18)',
+                              color: '#cbd5e1',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               gap: '6px',
                               fontSize: '12px',
-                              fontWeight: 700,
+                              fontWeight: 600,
                               cursor: 'pointer',
                             }}
                           >
@@ -8065,23 +8069,23 @@ export default function Page() {
                           style={{
                             width: '100%',
                             height: '40px',
-                            borderRadius: '12px',
+                            borderRadius: '11px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '7px',
                             fontSize: '12px',
-                            fontWeight: 800,
+                            fontWeight: 700,
                             cursor: userGymPhotos.length < 2 || isGeneratingTimelapse ? 'not-allowed' : 'pointer',
                             background:
                               userGymPhotos.length < 2
-                                ? 'rgba(26, 21, 41, 0.6)'
-                                : 'linear-gradient(135deg, rgba(2, 132, 199, 0.22), rgba(124, 58, 237, 0.25))',
+                                ? 'rgba(14, 16, 28, 0.6)'
+                                : 'rgba(8, 16, 30, 0.9)',
                             border:
                               userGymPhotos.length < 2
-                                ? '1px solid rgba(43, 35, 64, 0.6)'
-                                : '1px solid rgba(56, 189, 248, 0.45)',
-                            color: userGymPhotos.length < 2 ? '#6b6180' : '#67e8f9',
+                                ? '1px solid rgba(51, 65, 85, 0.35)'
+                                : '1px solid rgba(56, 189, 248, 0.24)',
+                            color: userGymPhotos.length < 2 ? '#475569' : '#7dd3fc',
                           }}
                         >
                           <Download size={14} />
