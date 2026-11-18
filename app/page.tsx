@@ -7944,40 +7944,35 @@ export default function Page() {
                             </div>
                           </div>
 
-                          {/* CENTER PLAY/PAUSE FLOATING TOGGLE */}
-                          <button
-                            type="button"
-                            onClick={toggleTimelapsePlayback}
-                            aria-label={isPlayingTimelapse ? 'Pause timelapse' : 'Play timelapse'}
-                            style={{
-                              position: 'absolute',
-                              top: '50%',
-                              left: '50%',
-                              transform: 'translate(-50%, -50%)',
-                              width: '54px',
-                              height: '54px',
-                              borderRadius: '50%',
-                              background: isPlayingTimelapse ? 'rgba(10, 7, 18, 0.55)' : 'rgba(124, 58, 237, 0.88)',
-                              backdropFilter: 'blur(10px)',
-                              border: isPlayingTimelapse
-                                ? '1px solid rgba(255, 255, 255, 0.3)'
-                                : '2px solid rgba(103, 232, 249, 0.8)',
-                              color: '#ffffff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                              boxShadow: '0 0 20px rgba(124, 58, 237, 0.55)',
-                              opacity: isPlayingTimelapse ? 0.35 : 0.95,
-                              transition: 'opacity 0.2s, background 0.2s, transform 0.2s',
-                            }}
-                          >
-                            {isPlayingTimelapse ? (
-                              <Pause size={22} />
-                            ) : (
+                          {/* CENTER PLAY TOGGLE (HIDDEN WHILE PLAYING SO PREVIEW IS UNOBSTRUCTED) */}
+                          {!isPlayingTimelapse && (
+                            <button
+                              type="button"
+                              onClick={toggleTimelapsePlayback}
+                              aria-label="Play timelapse"
+                              style={{
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                width: '54px',
+                                height: '54px',
+                                borderRadius: '50%',
+                                background: 'rgba(124, 58, 237, 0.85)',
+                                backdropFilter: 'blur(10px)',
+                                border: '2px solid rgba(103, 232, 249, 0.8)',
+                                color: '#ffffff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                boxShadow: '0 0 20px rgba(124, 58, 237, 0.5)',
+                                transition: 'opacity 0.2s, transform 0.2s',
+                              }}
+                            >
                               <Play size={22} style={{ marginLeft: '3px' }} />
-                            )}
-                          </button>
+                            </button>
+                          )}
 
                           {/* BOTTOM OVERLAY: BRANDING, TITLE, CROP & REPLACE */}
                           <div
@@ -8003,65 +7998,67 @@ export default function Page() {
                               </div>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  openPhotoCropper({
-                                    imageSrc: currentGymPhoto.dataUrl,
-                                    aspectRatio: '3/4',
-                                    target: 'gym-edit',
-                                    targetPhotoId: currentGymPhoto.id,
-                                    title: 'Crop & Zoom Foto',
-                                  })
-                                }}
-                                style={{
-                                  padding: '4px 8px',
-                                  borderRadius: '7px',
-                                  background: 'rgba(10, 7, 18, 0.78)',
-                                  backdropFilter: 'blur(8px)',
-                                  border: '1px solid rgba(139, 92, 246, 0.45)',
-                                  color: '#e9d5ff',
-                                  fontSize: '9.5px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                }}
-                                title="Crop & Zoom Foto"
-                              >
-                                <Sliders size={10} />
-                                <span>Crop</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setReplacingGymPhotoId(currentGymPhoto.id)
-                                  gymReplaceInputRef.current?.click()
-                                }}
-                                style={{
-                                  padding: '4px 8px',
-                                  borderRadius: '7px',
-                                  background: 'rgba(10, 7, 18, 0.78)',
-                                  backdropFilter: 'blur(8px)',
-                                  border: '1px solid rgba(56, 189, 248, 0.45)',
-                                  color: '#67e8f9',
-                                  fontSize: '9.5px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                }}
-                                title="Ganti Foto Ini"
-                              >
-                                <RotateCcw size={10} />
-                                <span>Ganti</span>
-                              </button>
-                            </div>
+                            {!isPlayingTimelapse && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openPhotoCropper({
+                                      imageSrc: currentGymPhoto.dataUrl,
+                                      aspectRatio: '3/4',
+                                      target: 'gym-edit',
+                                      targetPhotoId: currentGymPhoto.id,
+                                      title: 'Crop & Zoom Foto',
+                                    })
+                                  }}
+                                  style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '7px',
+                                    background: 'rgba(10, 7, 18, 0.78)',
+                                    backdropFilter: 'blur(8px)',
+                                    border: '1px solid rgba(139, 92, 246, 0.45)',
+                                    color: '#e9d5ff',
+                                    fontSize: '9.5px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                  }}
+                                  title="Crop & Zoom Foto"
+                                >
+                                  <Sliders size={10} />
+                                  <span>Crop</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setReplacingGymPhotoId(currentGymPhoto.id)
+                                    gymReplaceInputRef.current?.click()
+                                  }}
+                                  style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '7px',
+                                    background: 'rgba(10, 7, 18, 0.78)',
+                                    backdropFilter: 'blur(8px)',
+                                    border: '1px solid rgba(56, 189, 248, 0.45)',
+                                    color: '#67e8f9',
+                                    fontSize: '9.5px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                  }}
+                                  title="Ganti Foto Ini"
+                                >
+                                  <RotateCcw size={10} />
+                                  <span>Ganti</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
