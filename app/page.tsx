@@ -241,6 +241,14 @@ function findCategory(catName: string): QuestCategory {
 
 const DAY_CODES_GLOBAL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
+// Selalu gunakan tanggal LOKAL (bukan UTC toISOString) agar jam 00:00–06:59 WIB tidak meleset ke hari kemarin
+function getLocalIsoDate(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function isQuestForToday(schedule?: string[]): boolean {
   if (!schedule || schedule.length === 0) return true
   if (schedule.includes('Everyday')) return true
@@ -568,24 +576,16 @@ function getHabitYearGrid(
   const TOTAL_WEEKS = 42
   const TOTAL_DAYS = TOTAL_WEEKS * 7 // 294 days
 
-  const toLocalIso = (d: Date) => {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }
-
   const uniqueDates = new Set<string>(completedDates || [])
   const now = new Date()
   const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const todayIso = toLocalIso(todayLocal)
-  const utcTodayIso = now.toISOString().slice(0, 10)
+  const todayIso = getLocalIsoDate(todayLocal)
 
-  if (isDoneToday) {
+  // Sumber kebenaran utama adalah completedDates; hanya sinkronkan todayIso jika isDoneToday eksplisit
+  if (isDoneToday === true) {
     uniqueDates.add(todayIso)
-  } else {
+  } else if (isDoneToday === false) {
     uniqueDates.delete(todayIso)
-    uniqueDates.delete(utcTodayIso)
   }
 
   // Tentukan Senin dari minggu awal (berdasarkan tanggal paling awal atau minggu ini)
@@ -621,7 +621,7 @@ function getHabitYearGrid(
   for (let day = 0; day < TOTAL_DAYS; day++) {
     const cellDate = new Date(startMonday)
     cellDate.setDate(startMonday.getDate() + day)
-    const cellIso = toLocalIso(cellDate)
+    const cellIso = getLocalIsoDate(cellDate)
     cellDates.push(cellIso)
 
     if (uniqueDates.has(cellIso)) {
@@ -1605,7 +1605,7 @@ export default function Page() {
     dataUrl: string
     createdAt: number
   }>>([])
-  const [photoUploadDate, setPhotoUploadDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const [photoUploadDate, setPhotoUploadDate] = useState<string>(() => getLocalIsoDate())
   const [timelapseSpeedMs, setTimelapseSpeedMs] = useState<number>(250)
   const [isGeneratingTimelapse, setIsGeneratingTimelapse] = useState<boolean>(false)
   const [timelapseVideoUrl, setTimelapseVideoUrl] = useState<string | null>(null)
@@ -1881,7 +1881,7 @@ export default function Page() {
         }
         if (parsed.currentUserId) setCurrentUserId(parsed.currentUserId)
         if (parsed.personalTasks) {
-          const todayIso = new Date().toISOString().slice(0, 10)
+          const todayIso = getLocalIsoDate()
           const migrated = parsed.personalTasks.map((t: any) => {
             const cat = findCategory(t.category)
             let exs = t.workoutExercises
@@ -1891,12 +1891,25 @@ export default function Page() {
             const compDates = Array.isArray(t.completedDates) ? t.completedDates : []
             const skipDates = Array.isArray(t.skippedDates) ? t.skippedDates : []
 
-            // SINKRONISASI RESET HARIAN:
-            // Quest HANYA bernilai done/selesai HARI INI jika tanggal hari ini (todayIso)
+            // SINKRONISASI RESET HARIAN (LOKAL WIB/LOCAL TIME):
+            // Quest HANYA bernilai done/selesai HARI INI jika tanggal lokal hari ini (todayIso)
             // benar-benar ada di dalam completedDates!
-            // Quest yang selesai kemarin (atau hari sebelumnya) otomatis TIDAK tercentang di hari baru.
             const isDoneToday = compDates.includes(todayIso)
             const isSkippedToday = skipDates.includes(todayIso)
+
+            // Reset centang set gym sisa hari kemarin jika hari ini belum selesai
+            const normalizedExs = Array.isArray(exs)
+              ? isDoneToday
+                ? exs
+                : exs.map((ex: any) => ({
+                    ...ex,
+                    sets: Array.isArray(ex.sets)
+                      ? ex.sets.map((s: any) => (s.completed ? { ...s, completed: false } : s))
+                      : [],
+                  }))
+              : cat.name.toLowerCase() === 'gym'
+                ? []
+                : undefined
 
             return {
               ...t,
@@ -1907,7 +1920,7 @@ export default function Page() {
               skipped: isSkippedToday,
               completedDates: compDates,
               skippedDates: skipDates,
-              workoutExercises: exs ?? (cat.name.toLowerCase() === 'gym' ? [] : undefined),
+              workoutExercises: normalizedExs,
             }
           })
           setPersonalTasks(migrated)
@@ -2026,12 +2039,33 @@ export default function Page() {
 
   // Derived Current User Data & Today / Upcoming Schedule Helpers
   const [timeTick, setTimeTick] = useState<number>(0)
+  const lastLocalDateRef = useRef<string>(getLocalIsoDate())
   useEffect(() => {
-    const timer = setInterval(() => setTimeTick(Date.now()), 15000)
-    return () => clearInterval(timer)
+    const refreshTick = () => {
+      const nowIso = getLocalIsoDate()
+      if (nowIso !== lastLocalDateRef.current) {
+        lastLocalDateRef.current = nowIso
+        setSelectedWeekDay(null)
+        setShowCompletedDayQuests(false)
+        setShowFinishedMyQuests(false)
+      }
+      setTimeTick(Date.now())
+    }
+    const timer = setInterval(refreshTick, 15000)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshTick()
+    }
+    window.addEventListener('focus', refreshTick)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', refreshTick)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   const DAY_CODES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+  const todayIsoStr = getLocalIsoDate()
   const todayDayCode = DAY_CODES[new Date().getDay()]
   const isQuestForToday = (schedule?: string[]) => {
     if (!schedule || schedule.length === 0) return true
@@ -2048,8 +2082,9 @@ export default function Page() {
   )
   const todayPersonalTasks = userPersonalTasks.filter((t) => isQuestForToday(t.schedule))
   const upcomingPersonalTasks = userPersonalTasks.filter((t) => !isQuestForToday(t.schedule))
-  const completedPersonalCount = userPersonalTasks.filter((t) => t.done).length
-  const completedTodayPersonalCount = todayPersonalTasks.filter((t) => t.done).length
+  // Sumber kebenaran penyelesaian HARI INI adalah completedDates.includes(todayIsoStr), BUKAN boolean t.done yang bisa tertinggal dari kemarin
+  const completedPersonalCount = userPersonalTasks.filter((t) => Boolean(t.completedDates?.includes(todayIsoStr))).length
+  const completedTodayPersonalCount = todayPersonalTasks.filter((t) => Boolean(t.completedDates?.includes(todayIsoStr))).length
   const userJoinedMemberships = clanMembers.filter(
     (cm) => cm.userId === currentUser.id || (currentUser.username && cm.userId === currentUser.username)
   )
@@ -2083,10 +2118,10 @@ export default function Page() {
       maxWeight: number
     }> = []
 
-    const todayIso = new Date().toISOString().slice(0, 10)
+    const todayIso = getLocalIsoDate()
     const yesterdayDate = new Date()
     yesterdayDate.setDate(yesterdayDate.getDate() - 1)
-    const yesterdayIso = yesterdayDate.toISOString().slice(0, 10)
+    const yesterdayIso = getLocalIsoDate(yesterdayDate)
     const todayShort = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
     const DAYS_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 
@@ -2105,22 +2140,8 @@ export default function Page() {
     }
 
     userPersonalTasks.forEach((task) => {
-      // HANYA QUEST YANG BENAR-BENAR TELAH SELESAI DIKERJAKAN YANG MASUK KE HISTORY QUEST
-      // Jika quest belum selesai (task.done === false dan completedDates kosong / tidak ada),
-      // maka quest ini BELUM PERNAH SELESAI dan TIDAK BOLEH masuk ke History Quest!
-      const hasCompletedDates = Boolean(task.completedDates && task.completedDates.length > 0)
-      if (!task.done && !hasCompletedDates) {
-        return
-      }
-
-      // Kumpulkan tanggal-tanggal valid di mana quest ini selesai dikerjakan
-      const completionDates: string[] = Array.from(
-        new Set([
-          ...(task.completedDates || []),
-          ...(task.done ? [todayIso] : []),
-        ])
-      )
-
+      // HANYA QUEST YANG BENAR-BENAR MEMILIKI TANGGAL SELESAI DI completedDates YANG MASUK KE HISTORY
+      const completionDates: string[] = Array.from(new Set(task.completedDates || []))
       if (completionDates.length === 0) return
 
       const isGym = task.category.toLowerCase() === 'gym' || Boolean(task.workoutExercises && task.workoutExercises.length > 0)
@@ -2197,7 +2218,6 @@ export default function Page() {
   const maxHistoryWeight = userHistoryItems.reduce((acc, item) => Math.max(acc, item.maxWeight), 0)
 
   // Derive Akumulasi XP Valid dari Riwayat Quest, Daily All-Clear Bonus & Clan Challenge
-  const todayIsoStr = new Date().toISOString().slice(0, 10)
   const historyTotalXp = userHistoryItems.reduce((acc, item) => acc + findCategory(item.category).xp, 0)
   const clanCompletedQuestsList = userJoinedClanQuests.filter(
     (cq) =>
@@ -2206,7 +2226,9 @@ export default function Page() {
   )
   const clanCompletedTotalXp = clanCompletedQuestsList.reduce((acc, cq) => acc + findCategory(cq.category).xp, 0)
   const isDailyAllClearEligible = todayPersonalTasks.length >= MIN_QUESTS_FOR_DAILY_BONUS
-  const isDailyAllClearToday = isDailyAllClearEligible && todayPersonalTasks.every((t) => t.done)
+  const isDailyAllClearToday =
+    isDailyAllClearEligible &&
+    todayPersonalTasks.every((t) => Boolean(t.completedDates?.includes(todayIsoStr)))
   const userDailyBonusDates = Array.isArray(currentUser.dailyBonusDates) ? currentUser.dailyBonusDates : []
   const effectiveDailyBonusDates = isDailyAllClearToday
     ? Array.from(new Set([...userDailyBonusDates, todayIsoStr]))
@@ -2313,9 +2335,8 @@ export default function Page() {
     const now = new Date()
     const currentDayIdx = now.getDay() // 0 = Sun, 1 = Mon, ...
     const diffToMonday = currentDayIdx === 0 ? -6 : 1 - currentDayIdx
-    const monday = new Date(now)
-    monday.setDate(now.getDate() + diffToMonday)
-    const todayIso = now.toISOString().slice(0, 10)
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday)
+    const todayIso = getLocalIsoDate(now)
 
     const order: Array<{ code: string; shortLabel: string; fullName: string }> = [
       { code: 'Mon', shortLabel: 'Sen', fullName: 'Senin' },
@@ -2328,24 +2349,19 @@ export default function Page() {
     ]
 
     return order.map((item, idx) => {
-      const d = new Date(monday)
-      d.setDate(monday.getDate() + idx)
-      const isoDate = d.toISOString().slice(0, 10)
+      const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + idx)
+      const isoDate = getLocalIsoDate(d)
       const dateNum = String(d.getDate()).padStart(2, '0')
-      const dateShortId = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
-      const isToday = item.code === todayDayCode
-      const isPast = !isToday && isoDate < todayIso
-      const isFuture = !isToday && isoDate > todayIso
+      const isToday = isoDate === todayIso
+      const isPast = isoDate < todayIso
+      const isFuture = isoDate > todayIso
 
       const scheduledTasks = userPersonalTasks.filter((t) => {
         if (!t.schedule || t.schedule.length === 0 || t.schedule.includes('Everyday')) return true
         return t.schedule.includes(item.code)
       })
 
-      const isDone = userPersonalTasks.some((t) => {
-        if (t.completedDates?.includes(isoDate)) return true
-        return isToday && t.done
-      })
+      const isDone = userPersonalTasks.some((t) => Boolean(t.completedDates?.includes(isoDate)))
 
       return {
         ...item,
@@ -2396,7 +2412,7 @@ export default function Page() {
       }
 
       if (cloudQuests && cloudQuests.length > 0 && !forcePushLocal) {
-        const todayIso = new Date().toISOString().slice(0, 10)
+        const todayIso = getLocalIsoDate()
         const normalizedCloudQuests = cloudQuests.map((t: any) => {
           const cat = findCategory(t.category)
           const existingLocal = personalTasks.find((lt) => lt.id === t.id)
@@ -2500,7 +2516,7 @@ export default function Page() {
   // pastikan seluruh set gerakan latihan (s.completed) direset kembali ke false agar sesi hari berikutnya mulai dari 0.
   useEffect(() => {
     if (!mounted) return
-    const todayIso = new Date().toISOString().slice(0, 10)
+    const todayIso = getLocalIsoDate()
     setPersonalTasks((prev) => {
       let changed = false
       const updated = prev.map((t) => {
@@ -2619,35 +2635,23 @@ export default function Page() {
     )
 
     if (type === 'personal') {
-      const todayIso = new Date().toISOString().slice(0, 10)
+      const todayIso = getLocalIsoDate()
       const targetDateIso = activeWorkoutQuest?.dateIso || todayIso
-      const isTargetToday = targetDateIso === todayIso
       const target = personalTasks.find((t) => t.id === questId)
       const prevHadCompletedExercise = (target?.workoutExercises ?? []).some(
         (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
       )
-      const wasDoneOnTargetDate = Boolean(
-        (isTargetToday && target?.done) || target?.completedDates?.includes(targetDateIso)
-      )
+      const wasDoneOnTargetDate = Boolean(target?.completedDates?.includes(targetDateIso))
 
       const buildUpdatedTask = (t: PersonalTask): PersonalTask => {
         const prevCompleted = new Set(t.completedDates || [])
         const prevSkipped = new Set(t.skippedDates || [])
-        let nextDone = t.done
-        let nextSkipped = t.skipped
 
         if (hasCompletedExercise) {
-          if (isTargetToday) {
-            nextDone = true
-            nextSkipped = false
-          }
           prevCompleted.add(targetDateIso)
           prevSkipped.delete(targetDateIso)
           prevSkipped.delete(`unskip:${targetDateIso}`)
         } else if (prevHadCompletedExercise && wasDoneOnTargetDate) {
-          if (isTargetToday) {
-            nextDone = false
-          }
           prevCompleted.delete(targetDateIso)
           if (targetDateIso < todayIso) {
             prevSkipped.add(`unskip:${targetDateIso}`)
@@ -2657,8 +2661,8 @@ export default function Page() {
         return {
           ...t,
           workoutExercises: newExercises,
-          done: nextDone,
-          skipped: nextSkipped,
+          done: prevCompleted.has(todayIso),
+          skipped: prevSkipped.has(todayIso),
           completedDates: Array.from(prevCompleted),
           skippedDates: Array.from(prevSkipped),
         }
@@ -3235,16 +3239,21 @@ export default function Page() {
         ? personalTasks.find((t) => t.id === questId)
         : clanQuests.find((cq) => cq.id === questId)
 
+    const targetDateIso = activeWorkoutQuest?.dateIso || getLocalIsoDate()
+    const targetDateObj = new Date(`${targetDateIso}T00:00:00`)
+
     if (targetQuest && targetQuest.workoutExercises) {
-      const todayLabel = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+      const dateLabelForHist = !isNaN(targetDateObj.getTime())
+        ? targetDateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+        : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
       const updatedExercises = targetQuest.workoutExercises.map((ex) => {
         const completedSets = ex.sets.filter((s) => s.completed)
         if (completedSets.length === 0) return ex
         const lastCompleted = completedSets[completedSets.length - 1]
         const prevHist = ex.history ? [...ex.history] : []
-        const exIdx = prevHist.findIndex((h) => h.date === todayLabel)
+        const exIdx = prevHist.findIndex((h) => h.date === dateLabelForHist)
         const histEntry: WorkoutExerciseHistory = {
-          date: todayLabel,
+          date: dateLabelForHist,
           weight: Number(lastCompleted.weight) || 0,
           reps: Number(lastCompleted.reps) || 10,
           setNumber: lastCompleted.setNumber,
@@ -3269,8 +3278,8 @@ export default function Page() {
     if (!hasCompletedExerciseInSession) {
       if (type === 'personal') {
         const target = personalTasks.find((t) => t.id === questId)
-        if (target && !target.done) {
-          handleTogglePersonal(questId)
+        if (target && !target.completedDates?.includes(targetDateIso)) {
+          handleTogglePersonal(questId, targetDateIso)
         }
       } else {
         const target = clanQuests.find((cq) => cq.id === questId)
@@ -3361,7 +3370,7 @@ export default function Page() {
         const newPhoto = {
           id: `gphoto-${Date.now()}`,
           userId: currentUser.id,
-          dateIso: photoUploadDate || new Date().toISOString().slice(0, 10),
+          dateIso: photoUploadDate || getLocalIsoDate(),
           questTitle: currentWorkoutQuest?.title || 'Gym Workout',
           dataUrl,
           createdAt: Date.now(),
@@ -3686,7 +3695,7 @@ export default function Page() {
       // Auto trigger download langsung tanpa perlu card player kaku
       const downloadLink = document.createElement('a')
       downloadLink.href = url
-      downloadLink.download = `rankerz-timelapse-${new Date().toISOString().slice(0, 10)}.${ext}`
+      downloadLink.download = `rankerz-timelapse-${getLocalIsoDate()}.${ext}`
       document.body.appendChild(downloadLink)
       downloadLink.click()
       document.body.removeChild(downloadLink)
@@ -3705,7 +3714,7 @@ export default function Page() {
   // ============================================================================
 
   const handleTogglePersonal = (taskId: string, targetDateIso?: string) => {
-    const todayIso = new Date().toISOString().slice(0, 10)
+    const todayIso = getLocalIsoDate()
     const dateIso = targetDateIso || todayIso
     if (dateIso > todayIso) {
       showToast('Quest mendatang belum saatnya dikerjakan (Hanya Lihat).')
@@ -3724,7 +3733,7 @@ export default function Page() {
     if (!target) return
 
     const isTargetToday = dateIso === todayIso
-    const wasDoneOnDate = Boolean(target.completedDates?.includes(dateIso) || (isTargetToday && target.done))
+    const wasDoneOnDate = Boolean(target.completedDates?.includes(dateIso))
     const nextDone = !wasDoneOnDate
     const unskipToken = `unskip:${dateIso}`
 
@@ -3742,12 +3751,20 @@ export default function Page() {
           prevSkipped.add(unskipToken)
         }
       }
+      const nextExercises =
+        isTargetToday && !nextDone && Array.isArray(t.workoutExercises)
+          ? t.workoutExercises.map((ex) => ({
+              ...ex,
+              sets: ex.sets.map((s) => (s.completed ? { ...s, completed: false } : s)),
+            }))
+          : t.workoutExercises
       return {
         ...t,
-        done: isTargetToday ? nextDone : t.done,
-        skipped: isTargetToday && nextDone ? false : t.skipped,
+        done: prevDates.has(todayIso),
+        skipped: prevSkipped.has(todayIso),
         completedDates: Array.from(prevDates),
         skippedDates: Array.from(prevSkipped),
+        workoutExercises: nextExercises,
       }
     })
 
@@ -3768,7 +3785,8 @@ export default function Page() {
     )
     const wasAllClear = isDailyAllClearToday
     const isNowAllClear =
-      nextUserTodayTasks.length >= MIN_QUESTS_FOR_DAILY_BONUS && nextUserTodayTasks.every((t) => t.done)
+      nextUserTodayTasks.length >= MIN_QUESTS_FOR_DAILY_BONUS &&
+      nextUserTodayTasks.every((t) => Boolean(t.completedDates?.includes(todayIso)))
     const bonusDelta = isTargetToday
       ? !wasAllClear && isNowAllClear
         ? DAILY_FULL_CLEAR_BONUS_XP
@@ -3812,7 +3830,7 @@ export default function Page() {
   }
 
   const handleSkipPersonal = (taskId: string, targetDateIso?: string) => {
-    const todayIso = new Date().toISOString().slice(0, 10)
+    const todayIso = getLocalIsoDate()
     const dateIso = targetDateIso || todayIso
     if (dateIso > todayIso) {
       showToast('Quest mendatang belum saatnya dikerjakan (Hanya Lihat).')
@@ -3832,13 +3850,12 @@ export default function Page() {
 
     const isTargetToday = dateIso === todayIso
     const unskipToken = `unskip:${dateIso}`
-    const wasDone = Boolean(target.completedDates?.includes(dateIso) || (isTargetToday && target.done))
+    const wasDone = Boolean(target.completedDates?.includes(dateIso))
     const wasSkippedOnDate =
       dateIso < todayIso
         ? !wasDone && !Boolean(target.skippedDates?.includes(unskipToken))
         : Boolean(
-            target.skipped ||
-              target.skippedDates?.includes(dateIso) ||
+            target.skippedDates?.includes(dateIso) ||
               (!Boolean(target.skippedDates?.includes(unskipToken)) &&
                 isQuestTimeSkipped(target.targetTime, wasDone, target.schedule))
           )
@@ -3861,8 +3878,8 @@ export default function Page() {
       }
       return {
         ...t,
-        skipped: isTargetToday ? nextSkipped : t.skipped,
-        done: isTargetToday && nextSkipped ? false : t.done,
+        skipped: prevSkipped.has(todayIso),
+        done: prevDates.has(todayIso),
         completedDates: Array.from(prevDates),
         skippedDates: Array.from(prevSkipped),
       }
@@ -3901,15 +3918,12 @@ export default function Page() {
   }
 
   const handleDeleteHistoryItem = (questId: string, dateLabel: string, isoDate?: string) => {
-    const todayIso = new Date().toISOString().slice(0, 10)
+    const todayIso = getLocalIsoDate()
     setPersonalTasks((prev) =>
       prev.map((t) => {
         if (t.id !== questId) return t
         const updatedDates = (t.completedDates || []).filter((d) => d !== isoDate && d !== dateLabel)
-        const isTodayDate =
-          isoDate === todayIso ||
-          dateLabel === new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
-        const nextDone = isTodayDate ? false : t.done
+        const nextDone = updatedDates.includes(todayIso)
 
         let updatedExs = t.workoutExercises
         if (updatedExs) {
@@ -8291,7 +8305,7 @@ export default function Page() {
                                   .map((photo, idx) => ({ photo, idx }))
                                   .reverse()
                                   .map(({ photo, idx }, rowPos, arr) => {
-                                    const todayIso = new Date().toISOString().slice(0, 10)
+                                    const todayIso = getLocalIsoDate()
                                     const isToday = photo.dateIso === todayIso
                                     const parsedDate = new Date(`${photo.dateIso}T00:00:00`)
                                     const dateLabel = isToday
@@ -9629,10 +9643,10 @@ export default function Page() {
                   {(() => {
                     const yesterdayObj = new Date()
                     yesterdayObj.setDate(yesterdayObj.getDate() - 1)
-                    const yesterdayIsoStr = yesterdayObj.toISOString().slice(0, 10)
+                    const yesterdayIsoStr = getLocalIsoDate(yesterdayObj)
                     const sevenDaysAgoObj = new Date()
                     sevenDaysAgoObj.setDate(sevenDaysAgoObj.getDate() - 6)
-                    const sevenDaysAgoIsoStr = sevenDaysAgoObj.toISOString().slice(0, 10)
+                    const sevenDaysAgoIsoStr = getLocalIsoDate(sevenDaysAgoObj)
 
                     const filteredHistory = userHistoryItems.filter((item) => {
                       if (historyFilter === 'gym' && !item.isGym) return false
@@ -10603,10 +10617,7 @@ export default function Page() {
                     const isPastDay = Boolean(activeScheduleDayObj.isPast)
                     const isFutureDay = Boolean(activeScheduleDayObj.isFuture)
                     const isTaskDoneOnDay = (t: PersonalTask) =>
-                      Boolean(
-                        t.completedDates?.includes(activeScheduleDayObj.isoDate) ||
-                          (activeScheduleDayObj.isToday && t.done)
-                      )
+                      Boolean(t.completedDates?.includes(activeScheduleDayObj.isoDate))
                     const isTaskSkippedOnDay = (t: PersonalTask) => {
                       if (isFutureDay || isTaskDoneOnDay(t)) return false
                       if (isPastDay) {
@@ -10615,7 +10626,6 @@ export default function Page() {
                       const wasUnskipped = Boolean(t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`))
                       return Boolean(
                         t.skippedDates?.includes(activeScheduleDayObj.isoDate) ||
-                          t.skipped ||
                           (!wasUnskipped && isQuestTimeSkipped(t.targetTime, false, t.schedule))
                       )
                     }
@@ -11713,27 +11723,24 @@ export default function Page() {
 
                   {(() => {
                     const rawList = questScheduleTab === 'today' ? todayPersonalTasks : upcomingPersonalTasks
-                    const todayIso = new Date().toISOString().slice(0, 10)
+                    const todayIso = getLocalIsoDate()
                     const enriched = rawList.map((task) => {
                       const globalIdx = userPersonalTasks.findIndex((t) => t.id === task.id)
                       const wasUnskipped = Boolean(task.skippedDates?.includes(`unskip:${todayIso}`))
-                      const hasGymDoneEx =
-                        questScheduleTab === 'today' &&
-                        task.category.toLowerCase() === 'gym' &&
-                        Boolean(
-                          task.workoutExercises?.some(
-                            (ex) => ex.sets.length > 0 && ex.sets.every((s) => s.completed)
-                          )
-                        )
-                      const isDoneNow = Boolean(task.done || hasGymDoneEx)
-                      const isSkipped = Boolean(
-                        task.skipped ||
-                          task.skippedDates?.includes(todayIso) ||
-                          (questScheduleTab === 'today' &&
-                            !isDoneNow &&
-                            !wasUnskipped &&
-                            isQuestTimeSkipped(task.targetTime, false, task.schedule))
-                      )
+                      // Status HARI INI murni berdasarkan tanggal lokal todayIso di completedDates / skippedDates
+                      const isDoneNow =
+                        questScheduleTab === 'today'
+                          ? Boolean(task.completedDates?.includes(todayIso))
+                          : false
+                      const isSkipped =
+                        questScheduleTab === 'today'
+                          ? Boolean(
+                              task.skippedDates?.includes(todayIso) ||
+                                (!isDoneNow &&
+                                  !wasUnskipped &&
+                                  isQuestTimeSkipped(task.targetTime, false, task.schedule))
+                            )
+                          : false
                       return { task, globalIdx, isDoneNow, isSkipped }
                     })
 
