@@ -256,15 +256,55 @@ function isQuestForToday(schedule?: string[]): boolean {
   return schedule.includes(todayDayCode)
 }
 
+const QUEST_ACTIVE_WINDOW_MINUTES = 20
+
+function parseTargetTimeMinutes(targetTime?: string): number | null {
+  if (!targetTime) return null
+  const parts = targetTime.split(':').map(Number)
+  if (parts.length < 2 || parts.some(isNaN)) return null
+  return parts[0] * 60 + parts[1]
+}
+
+function formatMinutesToHHMM(totalMinutes: number): string {
+  const wrapped = ((totalMinutes % 1440) + 1440) % 1440
+  const hh = String(Math.floor(wrapped / 60)).padStart(2, '0')
+  const mm = String(wrapped % 60).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
+// Belum masuk jam quest hari ini (mis. jam 10:00, sekarang masih 09:40 -> disembunyikan di dashboard)
+function isQuestTimeUpcoming(targetTime?: string, isDone?: boolean, schedule?: string[]): boolean {
+  if (!targetTime || isDone) return false
+  if (schedule && !isQuestForToday(schedule)) return false
+  const targetMinutes = parseTargetTimeMinutes(targetTime)
+  if (targetMinutes === null) return false
+  const now = new Date()
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  return nowMinutes < targetMinutes
+}
+
+// Sisa menit dalam jendela aktif 20 menit (mis. 10:00 s/d 10:20 -> muncul di dashboard)
+function getQuestActiveWindowRemainingMinutes(targetTime?: string): number | null {
+  const targetMinutes = parseTargetTimeMinutes(targetTime)
+  if (targetMinutes === null) return null
+  const now = new Date()
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const endMinutes = targetMinutes + QUEST_ACTIVE_WINDOW_MINUTES
+  if (nowMinutes >= targetMinutes && nowMinutes <= endMinutes) {
+    return Math.max(1, endMinutes - nowMinutes)
+  }
+  return null
+}
+
+// Sudah lewat jendela aktif 20 menit (mis. > 10:20) -> otomatis skip & hilang dari dashboard
 function isQuestTimeSkipped(targetTime?: string, isDone?: boolean, schedule?: string[]): boolean {
   if (!targetTime || isDone) return false
   if (schedule && !isQuestForToday(schedule)) return false
-  const parts = targetTime.split(':').map(Number)
-  if (parts.length < 2 || parts.some(isNaN)) return false
+  const targetMinutes = parseTargetTimeMinutes(targetTime)
+  if (targetMinutes === null) return false
   const now = new Date()
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  const targetMinutes = parts[0] * 60 + parts[1]
-  return nowMinutes > targetMinutes
+  return nowMinutes > targetMinutes + QUEST_ACTIVE_WINDOW_MINUTES
 }
 
 // Sistem Rank Hunter Kompetitif (Tier E hingga SSS — butuh konsistensi jangka panjang)
@@ -1691,6 +1731,99 @@ export default function Page() {
     }
   }
 
+  const [arrivedQuestAlert, setArrivedQuestAlert] = useState<PersonalTask | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+
+  // Unlock AudioContext pada sentuhan pertama agar efek suara quest kebuka bisa diputar tanpa terblokir browser
+  useEffect(() => {
+    const unlock = () => {
+      try {
+        if (typeof window === 'undefined') return
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+        if (!AudioCtx) return
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new AudioCtx()
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume().catch(() => {})
+        }
+      } catch {}
+    }
+    window.addEventListener('pointerdown', unlock, { passive: true })
+    window.addEventListener('keydown', unlock, { passive: true })
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+  }, [])
+
+  // Efek suara RPG / Solo Leveling System saat Quest Terbuka
+  const playQuestArrivalSound = () => {
+    try {
+      if (!prefSound || typeof window === 'undefined') return
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = audioCtxRef.current || new AudioCtx()
+      audioCtxRef.current = ctx
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {})
+      }
+
+      const now = ctx.currentTime
+
+      // 1. Low ethereal system portal swell
+      const subOsc = ctx.createOscillator()
+      const subGain = ctx.createGain()
+      subOsc.type = 'sine'
+      subOsc.frequency.setValueAtTime(146.83, now)
+      subOsc.frequency.exponentialRampToValueAtTime(220, now + 0.45)
+      subGain.gain.setValueAtTime(0.001, now)
+      subGain.gain.linearRampToValueAtTime(0.14, now + 0.08)
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.95)
+      subOsc.connect(subGain)
+      subGain.connect(ctx.destination)
+      subOsc.start(now)
+      subOsc.stop(now + 1.0)
+
+      // 2. Crystalline ascending RPG quest-open arpeggio (D5 -> A5 -> C#6 -> D6)
+      const notes = [
+        { freq: 587.33, offset: 0.0, dur: 0.45, vol: 0.16 },
+        { freq: 880.0, offset: 0.09, dur: 0.5, vol: 0.17 },
+        { freq: 1108.73, offset: 0.18, dur: 0.55, vol: 0.15 },
+        { freq: 1174.66, offset: 0.27, dur: 0.85, vol: 0.2 },
+      ]
+
+      notes.forEach((n) => {
+        const osc = ctx.createOscillator()
+        const overtone = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'triangle'
+        overtone.type = 'sine'
+        osc.frequency.setValueAtTime(n.freq, now + n.offset)
+        overtone.frequency.setValueAtTime(n.freq * 2, now + n.offset)
+
+        gain.gain.setValueAtTime(0.001, now + n.offset)
+        gain.gain.linearRampToValueAtTime(n.vol, now + n.offset + 0.025)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + n.offset + n.dur)
+
+        osc.connect(gain)
+        overtone.connect(gain)
+        gain.connect(ctx.destination)
+
+        osc.start(now + n.offset)
+        overtone.start(now + n.offset)
+        osc.stop(now + n.offset + n.dur + 0.02)
+        overtone.stop(now + n.offset + n.dur + 0.02)
+      })
+
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([60, 40, 120])
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   const playTimerBeep = () => {
     try {
       if (typeof window === 'undefined') return
@@ -2051,7 +2184,7 @@ export default function Page() {
       }
       setTimeTick(Date.now())
     }
-    const timer = setInterval(refreshTick, 15000)
+    const timer = setInterval(refreshTick, 5000)
     const onVisibility = () => {
       if (document.visibilityState === 'visible') refreshTick()
     }
@@ -2556,6 +2689,54 @@ export default function Page() {
       return changed ? updated : prev
     })
   }, [timeTick, mounted, activeWorkoutQuest?.id, activeWorkoutQuest?.viewOnly])
+
+  // Deteksi otomatis saat Quest ber-jam memasuki jendela aktif 20 menit -> Munculkan Pop-Up Game + Suara Quest Terbuka!
+  useEffect(() => {
+    if (!mounted || arrivedQuestAlert) return
+    const todayIso = getLocalIsoDate()
+    let alertedKeys: string[] = []
+    try {
+      const raw = localStorage.getItem('solo_quest_alerted_v1')
+      const parsed = raw ? JSON.parse(raw) : []
+      if (Array.isArray(parsed)) {
+        // Hanya simpan kunci hari ini agar storage tetap ringan
+        alertedKeys = parsed.filter((k) => typeof k === 'string' && k.startsWith(`${todayIso}:`))
+      }
+    } catch {}
+    const alertedSet = new Set(alertedKeys)
+
+    const newlyArrived = todayPersonalTasks.find((t) => {
+      if (!t.targetTime) return false
+      if (t.completedDates?.includes(todayIso)) return false
+      if (t.skippedDates?.includes(todayIso)) return false
+      const remainingMin = getQuestActiveWindowRemainingMinutes(t.targetTime)
+      if (remainingMin === null) return false
+      const key = `${todayIso}:${t.id}:${t.targetTime}`
+      return !alertedSet.has(key)
+    })
+
+    if (newlyArrived) {
+      const key = `${todayIso}:${newlyArrived.id}:${newlyArrived.targetTime}`
+      alertedSet.add(key)
+      try {
+        localStorage.setItem('solo_quest_alerted_v1', JSON.stringify(Array.from(alertedSet)))
+      } catch {}
+      setArrivedQuestAlert(newlyArrived)
+      playQuestArrivalSound()
+      if (
+        prefNotification &&
+        typeof window !== 'undefined' &&
+        'Notification' in window &&
+        Notification.permission === 'granted'
+      ) {
+        try {
+          new Notification(`[ ! ] QUEST TERBUKA: ${newlyArrived.title}`, {
+            body: `Jendela aktif 20 menit dimulai (${newlyArrived.targetTime}). Selesaikan untuk +${newlyArrived.xp} XP!`,
+          })
+        } catch {}
+      }
+    }
+  }, [timeTick, mounted, todayPersonalTasks, arrivedQuestAlert, prefNotification, prefSound])
 
   // Sinkronisasi otomatis XP hunter & Daily All-Clear Bonus ke state serta profil cloud
   useEffect(() => {
@@ -10630,15 +10811,25 @@ export default function Page() {
                       )
                     }
 
+                    const isTaskUpcomingTimeOnDay = (t: PersonalTask) => {
+                      if (isPastDay || isFutureDay || isTaskDoneOnDay(t) || isTaskSkippedOnDay(t)) return false
+                      return isQuestTimeUpcoming(t.targetTime, false, t.schedule)
+                    }
+
                     const totalDayTasks = activeScheduleDayObj.scheduledTasks.length
                     const remainingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
                       (t) => !isTaskDoneOnDay(t)
                     )
                     const completedDayCount = totalDayTasks - remainingDayTasks.length
                     const skippedDayCount = remainingDayTasks.filter((t) => isTaskSkippedOnDay(t)).length
-                    const activePendingDayTasks = remainingDayTasks.filter((t) => !isTaskSkippedOnDay(t))
+                    const upcomingTimedDayCount = remainingDayTasks.filter((t) => isTaskUpcomingTimeOnDay(t)).length
+                    const activePendingDayTasks = remainingDayTasks.filter(
+                      (t) => !isTaskSkippedOnDay(t) && !isTaskUpcomingTimeOnDay(t)
+                    )
                     const activeRemainingDayCount = activePendingDayTasks.length
                     const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
+                    const hasExpandableDayQuests =
+                      completedDayCount > 0 || skippedDayCount > 0 || upcomingTimedDayCount > 0
                     const visibleDayTasks = showCompletedDayQuests
                       ? activeScheduleDayObj.scheduledTasks
                       : activePendingDayTasks
@@ -10649,17 +10840,21 @@ export default function Page() {
                         ? 'Belum Ada Jadwal'
                         : isFutureDay
                           ? `Hanya Lihat • ${totalDayTasks} Quest`
-                          : isPastDay || activeRemainingDayCount === 0
-                            ? [
-                                completedDayCount > 0 ? `${completedDayCount} Selesai` : null,
-                                activeRemainingDayCount > 0 ? `${activeRemainingDayCount} Aktif` : null,
-                                skippedDayCount > 0 ? `${skippedDayCount} Skip` : null,
-                              ]
-                                .filter(Boolean)
-                                .join(' • ')
-                            : `${activeRemainingDayCount} Quest Tersisa${skippedDayCount > 0 ? ` • ${skippedDayCount} Skip` : ''}`
+                          : [
+                              activeRemainingDayCount > 0 ? `${activeRemainingDayCount} Aktif` : null,
+                              upcomingTimedDayCount > 0 ? `${upcomingTimedDayCount} Menunggu` : null,
+                              completedDayCount > 0 && activeRemainingDayCount === 0
+                                ? `${completedDayCount} Selesai`
+                                : null,
+                              skippedDayCount > 0 ? `${skippedDayCount} Skip` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' • ')
 
-                    const showPastSkipPill = (isPastDay || activeRemainingDayCount === 0) && skippedDayCount > 0 && !allDoneForDay
+                    const showPastSkipPill =
+                      (isPastDay || (activeRemainingDayCount === 0 && upcomingTimedDayCount === 0)) &&
+                      skippedDayCount > 0 &&
+                      !allDoneForDay
 
                     return (
                       <div
@@ -10674,7 +10869,7 @@ export default function Page() {
                       >
                         <div
                           onClick={() => {
-                            if (completedDayCount > 0 || skippedDayCount > 0) {
+                            if (hasExpandableDayQuests) {
                               setShowCompletedDayQuests((prev) => !prev)
                             }
                           }}
@@ -10683,7 +10878,7 @@ export default function Page() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             marginBottom: visibleDayTasks.length > 0 ? '8px' : '0',
-                            cursor: completedDayCount > 0 || skippedDayCount > 0 ? 'pointer' : 'default',
+                            cursor: hasExpandableDayQuests ? 'pointer' : 'default',
                             userSelect: 'none',
                           }}
                         >
@@ -10734,7 +10929,7 @@ export default function Page() {
                           >
                             {isFutureDay && totalDayTasks > 0 && <Lock size={10} />}
                             <span>{headerBadgeText}</span>
-                            {(completedDayCount > 0 || skippedDayCount > 0) &&
+                            {hasExpandableDayQuests &&
                               (showCompletedDayQuests ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
                           </span>
                         </div>
@@ -10754,6 +10949,11 @@ export default function Page() {
                           const isGym = task.category.toLowerCase() === 'gym'
                           const isDoneOnDay = isTaskDoneOnDay(task)
                           const isSkipped = isTaskSkippedOnDay(task)
+                          const isUpcomingTime = isTaskUpcomingTimeOnDay(task)
+                          const activeWindowMins =
+                            activeScheduleDayObj.isToday && !isDoneOnDay && !isSkipped
+                              ? getQuestActiveWindowRemainingMinutes(task.targetTime)
+                              : null
                           return (
                             <div
                               key={task.id}
@@ -10854,6 +11054,38 @@ export default function Page() {
                                     }}
                                   >
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
+                                    {activeWindowMins !== null && (
+                                      <span
+                                        style={{
+                                          fontSize: '8.5px',
+                                          color: '#67e8f9',
+                                          background: 'rgba(6, 182, 212, 0.18)',
+                                          border: '1px solid rgba(56, 189, 248, 0.45)',
+                                          padding: '1px 5px',
+                                          borderRadius: '4px',
+                                          fontWeight: 800,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {activeWindowMins}m tersisa
+                                      </span>
+                                    )}
+                                    {isUpcomingTime && (
+                                      <span
+                                        style={{
+                                          fontSize: '8.5px',
+                                          color: '#cbd5e1',
+                                          background: 'rgba(148, 163, 184, 0.14)',
+                                          border: '1px solid rgba(148, 163, 184, 0.3)',
+                                          padding: '1px 5px',
+                                          borderRadius: '4px',
+                                          fontWeight: 700,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        JAM {task.targetTime}
+                                      </span>
+                                    )}
                                     {isSkipped && !isDoneOnDay && (
                                       <span
                                         style={{
@@ -15709,6 +15941,249 @@ export default function Page() {
                   >
                     <Check size={15} />
                     <span>Simpan Foto</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
+      {/* ============================================================
+         SOLO LEVELING SYSTEM POP-UP: QUEST TERBUKA! (20-MIN WINDOW)
+         ============================================================ */}
+      {arrivedQuestAlert &&
+        (() => {
+          const targetMins = parseTargetTimeMinutes(arrivedQuestAlert.targetTime)
+          const endTimeLabel =
+            targetMins !== null ? formatMinutesToHHMM(targetMins + QUEST_ACTIVE_WINDOW_MINUTES) : ''
+          const remainingMins =
+            getQuestActiveWindowRemainingMinutes(arrivedQuestAlert.targetTime) ?? QUEST_ACTIVE_WINDOW_MINUTES
+          const isGymQuest = arrivedQuestAlert.category.toLowerCase() === 'gym'
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 1400,
+                background: 'rgba(2, 5, 14, 0.86)',
+                backdropFilter: 'blur(10px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px',
+                animation: 'heroCardAppear 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+            >
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  maxWidth: '350px',
+                  borderRadius: '16px',
+                  background:
+                    'linear-gradient(165deg, rgba(8, 17, 34, 0.98) 0%, rgba(4, 7, 16, 0.99) 100%)',
+                  border: '1px solid rgba(56, 189, 248, 0.55)',
+                  boxShadow:
+                    '0 0 40px rgba(56, 189, 248, 0.25), 0 0 80px rgba(124, 58, 237, 0.18), inset 0 1px 0 rgba(125, 211, 252, 0.4)',
+                  padding: '22px 18px 18px',
+                  overflow: 'hidden',
+                  display: 'grid',
+                  gap: '14px',
+                  textAlign: 'center',
+                }}
+              >
+                {/* Top Cyan Holographic Energy Bar */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '15%',
+                    right: '15%',
+                    height: '2px',
+                    background: 'linear-gradient(90deg, transparent, #38bdf8, #a78bfa, #38bdf8, transparent)',
+                    boxShadow: '0 0 12px #38bdf8',
+                  }}
+                />
+
+                {/* [ ! ] System Emblem */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <div
+                    style={{
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '14px',
+                      background: 'radial-gradient(circle, rgba(56, 189, 248, 0.24), rgba(15, 23, 42, 0.9))',
+                      border: '1.5px solid rgba(56, 189, 248, 0.7)',
+                      boxShadow: '0 0 22px rgba(56, 189, 248, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#7dd3fc',
+                      fontSize: '22px',
+                      fontWeight: 900,
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    !
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: '9.5px',
+                        fontWeight: 800,
+                        color: '#38bdf8',
+                        letterSpacing: '0.2em',
+                      }}
+                    >
+                      SYSTEM NOTIFICATION
+                    </div>
+                    <h2
+                      style={{
+                        margin: '4px 0 0',
+                        fontSize: '20px',
+                        fontWeight: 900,
+                        color: '#f8fafc',
+                        letterSpacing: '0.06em',
+                        textShadow: '0 0 18px rgba(56, 189, 248, 0.55)',
+                      }}
+                    >
+                      QUEST TERBUKA!
+                    </h2>
+                  </div>
+                </div>
+
+                {/* Quest Detail Box */}
+                <div
+                  style={{
+                    padding: '13px 14px',
+                    borderRadius: '12px',
+                    background: 'rgba(10, 18, 36, 0.85)',
+                    border: '1px solid rgba(56, 189, 248, 0.25)',
+                    textAlign: 'left',
+                    display: 'grid',
+                    gap: '8px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '9px',
+                        background: 'rgba(56, 189, 248, 0.14)',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        color: '#7dd3fc',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {renderCategoryIcon(arrivedQuestAlert.category, 17)}
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          fontSize: '14px',
+                          fontWeight: 800,
+                          color: '#ffffff',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {arrivedQuestAlert.title}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                        {arrivedQuestAlert.category} •{' '}
+                        <strong style={{ color: '#c4b5fd' }}>+{arrivedQuestAlert.xp} XP</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingTop: '8px',
+                      borderTop: '1px solid rgba(56, 189, 248, 0.14)',
+                      fontSize: '11px',
+                    }}
+                  >
+                    <span style={{ color: '#7dd3fc', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
+                      <Clock size={12} /> {arrivedQuestAlert.targetTime} – {endTimeLabel}
+                    </span>
+                    <span
+                      style={{
+                        padding: '2px 7px',
+                        borderRadius: '6px',
+                        background: 'rgba(56, 189, 248, 0.16)',
+                        border: '1px solid rgba(56, 189, 248, 0.38)',
+                        color: '#67e8f9',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                      }}
+                    >
+                      {remainingMins} mnt tersisa
+                    </span>
+                  </div>
+                </div>
+
+                <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8', lineHeight: 1.45 }}>
+                  Selesaikan sebelum pukul <strong style={{ color: '#e2e8f0' }}>{endTimeLabel}</strong> atau quest akan otomatis ter-skip.
+                </p>
+
+                {/* CTA Buttons */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setArrivedQuestAlert(null)}
+                    style={{
+                      height: '40px',
+                      borderRadius: '10px',
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      border: '1px solid rgba(148, 163, 184, 0.22)',
+                      color: '#cbd5e1',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Nanti
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const q = arrivedQuestAlert
+                      setArrivedQuestAlert(null)
+                      if (isGymQuest) {
+                        setWorkoutSubPage('overview')
+                        setActiveWorkoutQuest({
+                          type: 'personal',
+                          id: q.id,
+                          dateIso: getLocalIsoDate(),
+                        })
+                      } else {
+                        setSelectedWeekDay(null)
+                        setActiveTab('home')
+                      }
+                    }}
+                    style={{
+                      height: '40px',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.35), rgba(124, 58, 237, 0.45))',
+                      border: '1px solid rgba(56, 189, 248, 0.65)',
+                      color: '#f0f9ff',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      letterSpacing: '0.04em',
+                      cursor: 'pointer',
+                      boxShadow: '0 0 18px rgba(56, 189, 248, 0.28)',
+                    }}
+                  >
+                    TERIMA QUEST
                   </button>
                 </div>
               </div>
