@@ -936,5 +936,15 @@ button { font: inherit; color: inherit; }
 .quest-stagger-3 { opacity: 0; animation: questStaggerReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.42s forwards; }
 .quest-stagger-4 { opacity: 0; animation: questStaggerReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.49s forwards; }
 .quest-emblem-pulse { animation: questVioletPulse 2.8s ease-in-out infinite; }
+.quest-hero-card:hover {
+  border-color: rgba(168, 85, 247, 0.56) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 18px rgba(139, 92, 246, 0.25) !important;
+}
+.quest-hero-card:hover img {
+  transform: scale(1.04);
+}
+.quest-hero-card:active {
+  transform: scale(0.985);
+}
 
 

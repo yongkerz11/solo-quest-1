@@ -239,6 +239,82 @@ function findCategory(catName: string): QuestCategory {
   )
 }
 
+const CATEGORY_HERO_MAP: Record<
+  string,
+  {
+    image: string
+    domainTag: string
+    accent: string
+    glow: string
+  }
+> = {
+  Gym: {
+    image: '/quest-heroes/gym.jpg',
+    domainTag: 'IRON DUNGEON',
+    accent: '#c084fc',
+    glow: 'rgba(168, 85, 247, 0.38)',
+  },
+  Olahraga: {
+    image: '/quest-heroes/olahraga.jpg',
+    domainTag: 'SHADOW VELOCITY',
+    accent: '#7dd3fc',
+    glow: 'rgba(56, 189, 248, 0.35)',
+  },
+  'Kerja / Karir': {
+    image: '/quest-heroes/kerja.jpg',
+    domainTag: 'GUILD COMMAND',
+    accent: '#a78bfa',
+    glow: 'rgba(139, 92, 246, 0.36)',
+  },
+  Belajar: {
+    image: '/quest-heroes/belajar.jpg',
+    domainTag: 'ARCANE ARCHIVE',
+    accent: '#67e8f9',
+    glow: 'rgba(6, 182, 212, 0.34)',
+  },
+  Kreativitas: {
+    image: '/quest-heroes/kreativitas.jpg',
+    domainTag: 'MANA FORGE',
+    accent: '#e879f9',
+    glow: 'rgba(217, 70, 239, 0.34)',
+  },
+  'Ibadah / Sholat': {
+    image: '/quest-heroes/ibadah.jpg',
+    domainTag: 'ASTRAL SANCTUARY',
+    accent: '#93c5fd',
+    glow: 'rgba(99, 102, 241, 0.36)',
+  },
+  Mindfulness: {
+    image: '/quest-heroes/mindfulness.jpg',
+    domainTag: 'VOID SERENITY',
+    accent: '#67e8f9',
+    glow: 'rgba(139, 92, 246, 0.34)',
+  },
+  Keuangan: {
+    image: '/quest-heroes/keuangan.jpg',
+    domainTag: 'GUILD VAULT',
+    accent: '#d8b4fe',
+    glow: 'rgba(168, 85, 247, 0.36)',
+  },
+  Sosial: {
+    image: '/quest-heroes/sosial.jpg',
+    domainTag: 'RAID ALLIANCE',
+    accent: '#a78bfa',
+    glow: 'rgba(124, 58, 237, 0.36)',
+  },
+  'Rutinitas & Sehat': {
+    image: '/quest-heroes/rutinitas.jpg',
+    domainTag: 'AWAKENING DAWN',
+    accent: '#7dd3fc',
+    glow: 'rgba(99, 102, 241, 0.35)',
+  },
+}
+
+function getCategoryHeroMeta(catName: string) {
+  const canonical = findCategory(catName)
+  return CATEGORY_HERO_MAP[canonical.name] || CATEGORY_HERO_MAP.Gym
+}
+
 const DAY_CODES_GLOBAL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 // Selalu gunakan tanggal LOKAL (bukan UTC toISOString) agar jam 00:00–06:59 WIB tidak meleset ke hari kemarin
@@ -702,6 +778,7 @@ function QuestCard({
   totalMembers,
   isGym,
   xp,
+  heroCard = false,
   onOpenWorkout,
   onToggle,
   onSkip,
@@ -728,6 +805,7 @@ function QuestCard({
   totalMembers?: number
   isGym?: boolean
   xp?: number
+  heroCard?: boolean
   onOpenWorkout?: () => void
   onToggle: () => void
   onSkip?: () => void
@@ -839,6 +917,14 @@ function QuestCard({
     setIsConsistencyOpen((prev) => !prev)
   }
 
+  const heroMeta = heroCard ? getCategoryHeroMeta(meta || title) : null
+  const scheduleDisplay =
+    schedule && schedule.length > 0
+      ? schedule.includes('Everyday')
+        ? 'Everyday'
+        : schedule.join(', ')
+      : ''
+
   return (
     <div
       style={{
@@ -850,41 +936,548 @@ function QuestCard({
         boxSizing: 'border-box',
       }}
     >
-      <div
-        className={`task-row ${done ? 'completed' : ''}`}
-        style={{
-          minWidth: 0,
-          width: '100%',
-          maxWidth: '100%',
-          boxSizing: 'border-box',
-          gap: '8px',
-          padding: '10px 10px',
-          opacity: disabled ? 0.55 : isSkipped ? 0.78 : 1,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          userSelect: 'none',
-          WebkitUserSelect: 'none',
-          background: isSkipped && !done ? 'rgba(239, 68, 68, 0.05)' : undefined,
-          borderColor: isSkipped && !done
-            ? 'rgba(239, 68, 68, 0.45)'
-            : isConsistencyOpen
-            ? 'rgba(139, 92, 246, 0.55)'
-            : undefined,
-        }}
-        onClick={handleCardClick}
-        onPointerDown={handleStartHold}
-        onPointerUp={handleClearHold}
-        onPointerLeave={handleClearHold}
-        onPointerCancel={handleClearHold}
-        onTouchMove={handleTouchMove}
-        onContextMenu={(e) => {
-          if (hasMenuOptions) {
-            e.preventDefault()
-            handleClearHold()
-            openedTimestampRef.current = Date.now()
-            setIsMenuOpen(true)
-          }
-        }}
-      >
+      {heroCard && heroMeta ? (
+        <div
+          className={`quest-hero-card ${done ? 'completed' : ''}`}
+          style={{
+            position: 'relative',
+            width: '100%',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            background: '#0d0a18',
+            border:
+              isSkipped && !done
+                ? '1px solid rgba(239, 68, 68, 0.48)'
+                : isConsistencyOpen
+                ? '1px solid rgba(168, 85, 247, 0.65)'
+                : done
+                ? '1px solid rgba(139, 92, 246, 0.42)'
+                : '1px solid rgba(139, 92, 246, 0.28)',
+            boxShadow: isConsistencyOpen
+              ? `0 10px 28px rgba(0, 0, 0, 0.72), 0 0 18px ${heroMeta.glow}`
+              : '0 8px 24px rgba(0, 0, 0, 0.52)',
+            opacity: disabled ? 0.55 : isSkipped ? 0.8 : 1,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.16s ease',
+          }}
+          onClick={handleCardClick}
+          onPointerDown={handleStartHold}
+          onPointerUp={handleClearHold}
+          onPointerLeave={handleClearHold}
+          onPointerCancel={handleClearHold}
+          onTouchMove={handleTouchMove}
+          onContextMenu={(e) => {
+            if (hasMenuOptions) {
+              e.preventDefault()
+              handleClearHold()
+              openedTimestampRef.current = Date.now()
+              setIsMenuOpen(true)
+            }
+          }}
+        >
+          {/* HERO SECTION BANNER */}
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '118px',
+              overflow: 'hidden',
+              background: '#090712',
+            }}
+          >
+            <img
+              src={heroMeta.image}
+              alt={meta || title}
+              loading="lazy"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center 35%',
+                display: 'block',
+                filter: done
+                  ? 'saturate(0.65) brightness(0.72)'
+                  : isSkipped
+                  ? 'grayscale(0.55) brightness(0.62)'
+                  : 'saturate(1.08) contrast(1.04)',
+                transition: 'transform 0.35s ease, filter 0.25s ease',
+              }}
+            />
+
+            {/* Top subtle hologram line */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '1.5px',
+                background: `linear-gradient(90deg, transparent 5%, ${heroMeta.accent}99 50%, transparent 95%)`,
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* Cinematic dark gradient overlay */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background:
+                  'linear-gradient(180deg, rgba(7, 5, 14, 0.48) 0%, rgba(10, 8, 20, 0.28) 38%, rgba(13, 10, 24, 0.84) 76%, #0d0a18 100%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* TOP OVERLAY BAR: Category Pill (Left) & XP + Menu (Right) */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '9px',
+                left: '10px',
+                right: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px',
+                zIndex: 2,
+              }}
+            >
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '4px 9px',
+                  borderRadius: '999px',
+                  background: 'rgba(10, 8, 20, 0.72)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(168, 85, 247, 0.36)',
+                  color: '#ede9fe',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  letterSpacing: '0.02em',
+                  maxWidth: '58%',
+                  overflow: 'hidden',
+                }}
+              >
+                <span style={{ color: heroMeta.accent, display: 'inline-flex', flexShrink: 0 }}>
+                  {renderCategoryIcon(meta || title, 12)}
+                </span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {meta}
+                </span>
+              </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                {xp !== undefined ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '4px 9px',
+                      borderRadius: '999px',
+                      background: 'rgba(124, 58, 237, 0.34)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(192, 132, 252, 0.5)',
+                      color: '#f5f3ff',
+                      fontSize: '10.5px',
+                      fontWeight: 800,
+                      letterSpacing: '0.03em',
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.45)',
+                    }}
+                  >
+                    +{xp} XP
+                  </span>
+                ) : badgeText ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '4px 9px',
+                      borderRadius: '999px',
+                      background: 'rgba(124, 58, 237, 0.34)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(192, 132, 252, 0.5)',
+                      color: '#f5f3ff',
+                      fontSize: '10px',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {badgeText}
+                  </span>
+                ) : null}
+
+                {hasMenuOptions && (
+                  <button
+                    type="button"
+                    className="task-btn-action"
+                    title="Tahan quest atau klik untuk menu opsi (Edit, Hapus, Info)"
+                    aria-label={`Menu opsi ${title}`}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleClearHold()
+                      if (!isMenuOpen) {
+                        openedTimestampRef.current = Date.now()
+                        setIsMenuOpen(true)
+                      } else {
+                        closeMenu()
+                      }
+                    }}
+                    style={{
+                      width: '26px',
+                      height: '26px',
+                      borderRadius: '50%',
+                      background: 'rgba(10, 8, 20, 0.72)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.14)',
+                      color: '#d8b4fe',
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <MoreVertical size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* BOTTOM HERO TITLE OVERLAY */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '12px',
+                right: '12px',
+                bottom: '8px',
+                zIndex: 2,
+                minWidth: 0,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '8.5px',
+                  fontWeight: 800,
+                  letterSpacing: '0.16em',
+                  color: heroMeta.accent,
+                  textTransform: 'uppercase',
+                  marginBottom: '2px',
+                  textShadow: '0 1px 6px rgba(0, 0, 0, 0.9)',
+                }}
+              >
+                {heroMeta.domainTag}
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  minWidth: 0,
+                }}
+              >
+                <strong
+                  style={{
+                    fontSize: '15.5px',
+                    fontWeight: 800,
+                    color: done ? '#b8add1' : '#ffffff',
+                    textDecoration: done ? 'line-through' : 'none',
+                    letterSpacing: '-0.015em',
+                    lineHeight: 1.2,
+                    textShadow: '0 2px 10px rgba(0, 0, 0, 0.92)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {title}
+                </strong>
+                {isEvent && <span className="clan-badge event">EVENT</span>}
+                {isSkipped && !done && (
+                  <span
+                    style={{
+                      fontSize: '8.5px',
+                      color: '#ffffff',
+                      background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+                      padding: '2px 6px',
+                      borderRadius: '5px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      fontWeight: 800,
+                      letterSpacing: '0.04em',
+                      flexShrink: 0,
+                    }}
+                  >
+                    DILEWATI
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* BOTTOM CONTROL FOOTER */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              padding: '9px 12px 10px',
+              background: '#0d0a18',
+              borderTop: '1px solid rgba(139, 92, 246, 0.14)',
+            }}
+          >
+            {/* Left: Checkbox + Schedule & Target Time */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0, flex: 1 }}>
+              <span
+                className={`check-box ${done ? 'completed' : isSkipped ? 'skipped' : ''}`}
+                style={
+                  viewOnly
+                    ? {
+                        borderColor: 'rgba(148, 163, 184, 0.28)',
+                        background: 'rgba(15, 11, 26, 0.8)',
+                        cursor: 'not-allowed',
+                      }
+                    : isSkipped && !done
+                    ? {
+                        borderColor: 'rgba(239, 68, 68, 0.65)',
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        cursor: 'pointer',
+                      }
+                    : undefined
+                }
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!disabled && !viewOnly) onToggle()
+                }}
+                role={viewOnly ? undefined : 'button'}
+                aria-label={viewOnly ? 'Belum saatnya dikerjakan (Hanya Lihat)' : 'Toggle status'}
+                title={
+                  viewOnly
+                    ? 'Belum saatnya (Hanya Lihat)'
+                    : done
+                    ? 'Batalkan centang selesai'
+                    : 'Centang selesai (+XP)'
+                }
+              >
+                {viewOnly ? (
+                  <Lock size={12} color="#9a8fb2" />
+                ) : done ? (
+                  <Check size={15} strokeWidth={3} />
+                ) : isSkipped ? (
+                  <FastForward size={13} color="#f87171" strokeWidth={2.5} />
+                ) : null}
+              </span>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  columnGap: '6px',
+                  rowGap: '2px',
+                  fontSize: '11px',
+                  lineHeight: 1.3,
+                  color: isSkipped && !done ? '#fca5a5' : '#b8add1',
+                  minWidth: 0,
+                }}
+              >
+                {isSkipped && !done ? (
+                  <span>Dilewati hari ini • 0 XP</span>
+                ) : (
+                  <>
+                    {scheduleDisplay && (
+                      <span style={{ fontWeight: 600, color: '#c4b5de' }}>{scheduleDisplay}</span>
+                    )}
+                    {targetTime && (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          color: '#7dd3fc',
+                          fontWeight: 700,
+                          background: 'rgba(56, 189, 248, 0.1)',
+                          border: '1px solid rgba(56, 189, 248, 0.24)',
+                          padding: '1.5px 6px',
+                          borderRadius: '6px',
+                          fontSize: '10.5px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Clock size={10} /> {targetTime}
+                      </span>
+                    )}
+                    {!scheduleDisplay && !targetTime && (
+                      <span style={{ color: '#9a8fb2' }}>Daily Quest</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Action Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              {viewOnly ? (
+                isGym && onOpenWorkout ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onOpenWorkout()
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '5px 10px',
+                      borderRadius: '8px',
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      background: 'rgba(124, 58, 237, 0.18)',
+                      border: '1px solid rgba(168, 85, 247, 0.45)',
+                      color: '#e9d5ff',
+                      cursor: 'pointer',
+                    }}
+                    title="Lihat daftar gerakan Gym (Mode Hanya Lihat)"
+                    aria-label="Lihat Gerakan"
+                  >
+                    <Eye size={11} color="#c084fc" />
+                    <span>Lihat Gerakan</span>
+                  </button>
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 9px',
+                      borderRadius: '8px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      background: 'rgba(148, 163, 184, 0.1)',
+                      border: '1px solid rgba(148, 163, 184, 0.24)',
+                      color: '#9a8fb2',
+                      cursor: 'not-allowed',
+                    }}
+                    title="Quest mendatang hanya bisa dilihat"
+                  >
+                    <Lock size={10} />
+                    <span>Hanya Lihat</span>
+                  </span>
+                )
+              ) : (
+                <>
+                  {!isSkipped && !done && isGym && onOpenWorkout && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onOpenWorkout()
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '6px 11px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+                        border: '1px solid rgba(168, 85, 247, 0.65)',
+                        color: '#ffffff',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 12px rgba(124, 58, 237, 0.42)',
+                      }}
+                      title="Mulai Workout"
+                      aria-label="Mulai Workout"
+                    >
+                      <Play size={10} fill="#ffffff" />
+                      <span>Start</span>
+                    </button>
+                  )}
+
+                  {!done && onSkip && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (!disabled) onSkip()
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        padding: '6px 9px',
+                        borderRadius: '8px',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        background: isSkipped
+                          ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(153, 27, 27, 0.45))'
+                          : 'rgba(168, 85, 247, 0.14)',
+                        border: isSkipped
+                          ? '1px solid rgba(248, 113, 113, 0.7)'
+                          : '1px solid rgba(168, 85, 247, 0.34)',
+                        color: isSkipped ? '#fecaca' : '#d8b4fe',
+                      }}
+                      title={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
+                      aria-label={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
+                    >
+                      <FastForward size={10} />
+                      <span>{isSkipped ? 'Dilewati' : 'Skip'}</span>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={`task-row ${done ? 'completed' : ''}`}
+          style={{
+            minWidth: 0,
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            gap: '8px',
+            padding: '10px 10px',
+            opacity: disabled ? 0.55 : isSkipped ? 0.78 : 1,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            background: isSkipped && !done ? 'rgba(239, 68, 68, 0.05)' : undefined,
+            borderColor: isSkipped && !done
+              ? 'rgba(239, 68, 68, 0.45)'
+              : isConsistencyOpen
+              ? 'rgba(139, 92, 246, 0.55)'
+              : undefined,
+          }}
+          onClick={handleCardClick}
+          onPointerDown={handleStartHold}
+          onPointerUp={handleClearHold}
+          onPointerLeave={handleClearHold}
+          onPointerCancel={handleClearHold}
+          onTouchMove={handleTouchMove}
+          onContextMenu={(e) => {
+            if (hasMenuOptions) {
+              e.preventDefault()
+              handleClearHold()
+              openedTimestampRef.current = Date.now()
+              setIsMenuOpen(true)
+            }
+          }}
+        >
         <span
           className={`check-box ${done ? 'completed' : isSkipped ? 'skipped' : ''}`}
           style={
@@ -1187,6 +1780,7 @@ function QuestCard({
           )}
         </div>
       </div>
+      )}
 
       {/* DROPDOWN KONSISTENSI QUEST (MUNCUL SAAT QUEST DITEKAN) */}
       {isConsistencyOpen && (() => {
@@ -12276,12 +12870,15 @@ export default function Page() {
                         ? enriched.filter((item) => item.isDoneNow || item.isSkipped)
                         : []
 
-                    const renderTaskCard = ({
-                      task,
-                      globalIdx,
-                      isDoneNow,
-                      isSkipped,
-                    }: (typeof enriched)[number]) => (
+                    const renderTaskCard = (
+                      {
+                        task,
+                        globalIdx,
+                        isDoneNow,
+                        isSkipped,
+                      }: (typeof enriched)[number],
+                      useHeroCard = false
+                    ) => (
                       <QuestCard
                         key={task.id}
                         questId={task.id}
@@ -12298,6 +12895,7 @@ export default function Page() {
                         viewOnly={questScheduleTab === 'upcoming'}
                         isGym={task.category.toLowerCase() === 'gym'}
                         xp={task.xp}
+                        heroCard={useHeroCard}
                         onOpenWorkout={() => {
                           setWorkoutSubPage('overview')
                           setActiveWorkoutQuest({
@@ -12315,7 +12913,7 @@ export default function Page() {
 
                     return (
                       <>
-                        <div className="task-list">
+                        <div className="task-list" style={{ gap: '12px' }}>
                           {rawList.length === 0 ? (
                             <div
                               style={{
@@ -12348,7 +12946,7 @@ export default function Page() {
                               Semua quest hari ini sudah selesai / dilewati.
                             </div>
                           ) : (
-                            activeItems.map(renderTaskCard)
+                            activeItems.map((item) => renderTaskCard(item, true))
                           )}
                         </div>
 
@@ -12397,7 +12995,7 @@ export default function Page() {
                                   paddingTop: '10px',
                                 }}
                               >
-                                {finishedItems.map(renderTaskCard)}
+                                {finishedItems.map((item) => renderTaskCard(item, false))}
                               </div>
                             )}
                           </div>
