@@ -1737,29 +1737,64 @@ export default function Page() {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const pendingArrivalSoundRef = useRef<boolean>(false)
 
-  // Helper internal: sintesis suara Solo Leveling System Window Open (hologram slide + ping kristal + echo)
+  // Helper internal: sintesis suara Solo Leveling System Window Open (telemetry HUD + sub drop + cold FM ping)
   const renderQuestOpenSfx = (ctx: AudioContext) => {
     const now = ctx.currentTime + 0.01
 
-    // Master bus dengan sedikit delay echo agar terasa ruang hologram anime
     const master = ctx.createGain()
-    master.gain.setValueAtTime(0.85, now)
+    master.gain.setValueAtTime(0.88, now)
     master.connect(ctx.destination)
 
+    // Dark holographic delay tail (95ms)
     const delay = ctx.createDelay(0.5)
-    delay.delayTime.setValueAtTime(0.115, now)
+    delay.delayTime.setValueAtTime(0.095, now)
     const fb = ctx.createGain()
-    fb.gain.setValueAtTime(0.28, now)
+    fb.gain.setValueAtTime(0.26, now)
     const echoFilter = ctx.createBiquadFilter()
-    echoFilter.type = 'highpass'
-    echoFilter.frequency.setValueAtTime(750, now)
+    echoFilter.type = 'lowpass'
+    echoFilter.frequency.setValueAtTime(2200, now)
     delay.connect(echoFilter)
     echoFilter.connect(fb)
     fb.connect(delay)
     echoFilter.connect(master)
 
-    // 1. Hologram Shutter Unfold Whoosh (0.00s - 0.30s)
-    const bufLen = Math.floor(ctx.sampleRate * 0.32)
+    // 1. Digital HUD Telemetry Ignition (0.00s - 0.06s): 3 micro-data pulses (1840, 1420, 1960 Hz)
+    const hudBand = ctx.createBiquadFilter()
+    hudBand.type = 'bandpass'
+    hudBand.frequency.setValueAtTime(1800, now)
+    hudBand.Q.setValueAtTime(2.8, now)
+    hudBand.connect(master)
+
+    ;[1840, 1420, 1960].forEach((freq, idx) => {
+      const t0 = now + idx * 0.02
+      const sq = ctx.createOscillator()
+      const g = ctx.createGain()
+      sq.type = 'square'
+      sq.frequency.setValueAtTime(freq, t0)
+      g.gain.setValueAtTime(0.001, t0)
+      g.gain.linearRampToValueAtTime(0.14, t0 + 0.003)
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.015)
+      sq.connect(g)
+      g.connect(hudBand)
+      sq.start(t0)
+      sq.stop(t0 + 0.018)
+    })
+
+    // 2. Dark Hologram Shutter Sweep & Sub-Gravity Drop (0.03s - 0.36s)
+    const sub = ctx.createOscillator()
+    const subGain = ctx.createGain()
+    sub.type = 'sine'
+    sub.frequency.setValueAtTime(115, now + 0.03)
+    sub.frequency.exponentialRampToValueAtTime(44, now + 0.36)
+    subGain.gain.setValueAtTime(0.001, now + 0.03)
+    subGain.gain.linearRampToValueAtTime(0.36, now + 0.07)
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.42)
+    sub.connect(subGain)
+    subGain.connect(master)
+    sub.start(now + 0.03)
+    sub.stop(now + 0.44)
+
+    const bufLen = Math.floor(ctx.sampleRate * 0.34)
     const noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate)
     const ch = noiseBuf.getChannelData(0)
     for (let i = 0; i < bufLen; i++) {
@@ -1769,77 +1804,67 @@ export default function Page() {
     noise.buffer = noiseBuf
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
-    bp.frequency.setValueAtTime(280, now)
-    bp.frequency.exponentialRampToValueAtTime(3200, now + 0.25)
-    bp.Q.setValueAtTime(2.2, now)
+    bp.frequency.setValueAtTime(240, now + 0.03)
+    bp.frequency.exponentialRampToValueAtTime(1450, now + 0.17)
+    bp.frequency.exponentialRampToValueAtTime(360, now + 0.36)
+    bp.Q.setValueAtTime(4.2, now + 0.03)
     const nGain = ctx.createGain()
-    nGain.gain.setValueAtTime(0.001, now)
-    nGain.gain.linearRampToValueAtTime(0.26, now + 0.08)
-    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.31)
+    nGain.gain.setValueAtTime(0.001, now + 0.03)
+    nGain.gain.linearRampToValueAtTime(0.24, now + 0.12)
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.36)
     noise.connect(bp)
     bp.connect(nGain)
     nGain.connect(master)
-    noise.start(now)
+    noise.start(now + 0.03)
 
-    // 2. Crisp Laser Slit Ignition Click (0.00s)
-    const clickOsc = ctx.createOscillator()
-    const clickGain = ctx.createGain()
-    clickOsc.type = 'sine'
-    clickOsc.frequency.setValueAtTime(2600, now)
-    clickOsc.frequency.exponentialRampToValueAtTime(980, now + 0.045)
-    clickGain.gain.setValueAtTime(0.22, now)
-    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
-    clickOsc.connect(clickGain)
-    clickGain.connect(master)
-    clickOsc.start(now)
-    clickOsc.stop(now + 0.055)
+    // 3. Cold Metallic FM System Ping (0.13s - 0.82s, Dark Phrygian/Minor Tension)
+    const triggerFmMetallicPing = (
+      freq: number,
+      startOffset: number,
+      dur: number,
+      vol: number,
+      sendDelay = true
+    ) => {
+      const t0 = now + startOffset
+      const carrier = ctx.createOscillator()
+      const mod = ctx.createOscillator()
+      const modGain = ctx.createGain()
+      const env = ctx.createGain()
 
-    // 3. Deep Shadow Monarch Portal Sub-Swell (0.02s - 0.90s)
-    ;[73.42, 110.0].forEach((baseFreq, i) => {
-      const sub = ctx.createOscillator()
-      const sGain = ctx.createGain()
-      sub.type = 'sine'
-      sub.frequency.setValueAtTime(baseFreq, now + 0.02)
-      sub.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.42)
-      sGain.gain.setValueAtTime(0.001, now + 0.02)
-      sGain.gain.linearRampToValueAtTime(i === 0 ? 0.24 : 0.14, now + 0.12)
-      sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9)
-      sub.connect(sGain)
-      sGain.connect(master)
-      sub.start(now + 0.02)
-      sub.stop(now + 0.95)
-    })
+      carrier.type = 'sine'
+      mod.type = 'sine'
+      carrier.frequency.setValueAtTime(freq, t0)
+      mod.frequency.setValueAtTime(freq * 1.414, t0)
 
-    // 4. Iconic Solo Leveling [ ! ] Crystalline Glass Ping + Shimmer (0.14s, tepat saat window kebuka!)
-    const chimes = [
-      { freq: 880.0, offset: 0.14, dur: 0.55, vol: 0.22 },   // A5
-      { freq: 1174.66, offset: 0.21, dur: 0.72, vol: 0.26 }, // D6
-      { freq: 1760.0, offset: 0.28, dur: 0.85, vol: 0.22 },  // A6
-      { freq: 2349.32, offset: 0.34, dur: 0.95, vol: 0.15 }, // D7 shimmer
-    ]
-    chimes.forEach((n) => {
-      const osc = ctx.createOscillator()
-      const bell = ctx.createOscillator()
-      const g = ctx.createGain()
-      osc.type = 'triangle'
-      bell.type = 'sine'
-      osc.frequency.setValueAtTime(n.freq, now + n.offset)
-      bell.frequency.setValueAtTime(n.freq * 2.003, now + n.offset) // slight shimmer detune
-      g.gain.setValueAtTime(0.001, now + n.offset)
-      g.gain.linearRampToValueAtTime(n.vol, now + n.offset + 0.015)
-      g.gain.exponentialRampToValueAtTime(0.001, now + n.offset + n.dur)
-      osc.connect(g)
-      bell.connect(g)
-      g.connect(master)
-      g.connect(delay)
-      osc.start(now + n.offset)
-      bell.start(now + n.offset)
-      osc.stop(now + n.offset + n.dur + 0.02)
-      bell.stop(now + n.offset + n.dur + 0.02)
-    })
+      // Fast modulator envelope for crisp metallic glass transient
+      modGain.gain.setValueAtTime(freq * 0.85, t0)
+      modGain.gain.exponentialRampToValueAtTime(4, t0 + Math.min(0.16, dur * 0.6))
+
+      env.gain.setValueAtTime(0.001, t0)
+      env.gain.linearRampToValueAtTime(vol, t0 + 0.008)
+      env.gain.exponentialRampToValueAtTime(0.001, t0 + dur)
+
+      mod.connect(modGain)
+      modGain.connect(carrier.frequency)
+      carrier.connect(env)
+      env.connect(master)
+      if (sendDelay) env.connect(delay)
+
+      carrier.start(t0)
+      mod.start(t0)
+      carrier.stop(t0 + dur + 0.02)
+      mod.stop(t0 + dur + 0.02)
+    }
+
+    // Note 1 (0.13s): crisp C5 tactical alert pulse (0.08s)
+    triggerFmMetallicPing(523.25, 0.13, 0.09, 0.22, false)
+    // Note 2 (0.21s): authoritative semitone drop B4 + cold octave B5 + deep grounding fifth E4
+    triggerFmMetallicPing(493.88, 0.21, 0.61, 0.24, true)
+    triggerFmMetallicPing(987.77, 0.21, 0.56, 0.14, true)
+    triggerFmMetallicPing(329.63, 0.21, 0.61, 0.16, true)
 
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([50, 35, 110])
+      navigator.vibrate([45, 30, 95])
     }
   }
 
@@ -1913,7 +1938,7 @@ export default function Page() {
     }
   }
 
-  // Efek suara Keren Solo Leveling "QUEST ACCEPTED / AWAKENING LOCK-IN" saat tombol TERIMA QUEST ditekan!
+  // Efek suara Dark Tactical Solo Leveling "QUEST ACCEPTED" saat tombol TERIMA QUEST ditekan
   const playQuestAcceptSound = () => {
     try {
       if (!prefSound || typeof window === 'undefined') return
@@ -1927,105 +1952,154 @@ export default function Page() {
 
       const now = ctx.currentTime + 0.005
       const master = ctx.createGain()
-      master.gain.setValueAtTime(0.88, now)
+      master.gain.setValueAtTime(0.9, now)
       master.connect(ctx.destination)
 
-      // Subtle holographic reverb/delay tail
+      // Dark abyssal delay tail
       const delay = ctx.createDelay(0.5)
-      delay.delayTime.setValueAtTime(0.13, now)
+      delay.delayTime.setValueAtTime(0.115, now)
       const fb = ctx.createGain()
-      fb.gain.setValueAtTime(0.32, now)
+      fb.gain.setValueAtTime(0.28, now)
       const dFilter = ctx.createBiquadFilter()
       dFilter.type = 'lowpass'
-      dFilter.frequency.setValueAtTime(3400, now)
+      dFilter.frequency.setValueAtTime(1900, now)
       delay.connect(dFilter)
       dFilter.connect(fb)
       fb.connect(delay)
       dFilter.connect(master)
 
-      // 1. Punchy Bass Impact / Cyber-Lock Thump (0.00s)
+      // 1. Heavy Seismic Sub-Drop & Mechanical Lock (0.00s - 0.26s)
       const impact = ctx.createOscillator()
       const impactGain = ctx.createGain()
       impact.type = 'sine'
-      impact.frequency.setValueAtTime(160, now)
-      impact.frequency.exponentialRampToValueAtTime(42, now + 0.22)
-      impactGain.gain.setValueAtTime(0.42, now)
-      impactGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28)
+      impact.frequency.setValueAtTime(150, now)
+      impact.frequency.exponentialRampToValueAtTime(36, now + 0.24)
+      impactGain.gain.setValueAtTime(0.48, now)
+      impactGain.gain.exponentialRampToValueAtTime(0.001, now + 0.27)
       impact.connect(impactGain)
       impactGain.connect(master)
       impact.start(now)
-      impact.stop(now + 0.3)
+      impact.stop(now + 0.29)
 
-      // 2. Sharp Metallic System Lock Transient (0.00s)
-      const lock = ctx.createOscillator()
-      const lockGain = ctx.createGain()
-      lock.type = 'triangle'
-      lock.frequency.setValueAtTime(1975.53, now) // B6
-      lock.frequency.exponentialRampToValueAtTime(1479.98, now + 0.05)
-      lockGain.gain.setValueAtTime(0.24, now)
-      lockGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06)
-      lock.connect(lockGain)
-      lockGain.connect(master)
-      lock.start(now)
-      lock.stop(now + 0.07)
+      // Short 45ms bandpass-filtered metallic lock transient (1550 Hz)
+      const lockBufLen = Math.floor(ctx.sampleRate * 0.05)
+      const lockBuf = ctx.createBuffer(1, lockBufLen, ctx.sampleRate)
+      const lockCh = lockBuf.getChannelData(0)
+      for (let i = 0; i < lockBufLen; i++) {
+        lockCh[i] = (Math.random() * 2 - 1) * (1 - i / lockBufLen)
+      }
+      const lockNoise = ctx.createBufferSource()
+      lockNoise.buffer = lockBuf
+      const lockBp = ctx.createBiquadFilter()
+      lockBp.type = 'bandpass'
+      lockBp.frequency.setValueAtTime(1550, now)
+      lockBp.Q.setValueAtTime(4.5, now)
+      const lockNoiseGain = ctx.createGain()
+      lockNoiseGain.gain.setValueAtTime(0.32, now)
+      lockNoiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045)
+      lockNoise.connect(lockBp)
+      lockBp.connect(lockNoiseGain)
+      lockNoiseGain.connect(master)
+      lockNoise.start(now)
 
-      // 3. Sweeping Filtered Sawtooth Power-Up Synth Pad (Shadow Monarch Awakening Surge)
-      const padFreqs = [293.66, 440.0, 587.33] // D4 + A4 + D5 power chord
-      const padFilter = ctx.createBiquadFilter()
-      padFilter.type = 'lowpass'
-      padFilter.frequency.setValueAtTime(420, now + 0.04)
-      padFilter.frequency.exponentialRampToValueAtTime(3800, now + 0.36)
-      padFilter.frequency.exponentialRampToValueAtTime(900, now + 1.05)
-      padFilter.Q.setValueAtTime(3.2, now + 0.04)
-      const padGain = ctx.createGain()
-      padGain.gain.setValueAtTime(0.001, now + 0.03)
-      padGain.gain.linearRampToValueAtTime(0.14, now + 0.14)
-      padGain.gain.exponentialRampToValueAtTime(0.001, now + 1.1)
-      padFilter.connect(padGain)
-      padGain.connect(master)
-      padGain.connect(delay)
+      // FM metallic clank (780 Hz -> 290 Hz)
+      const clankCarrier = ctx.createOscillator()
+      const clankMod = ctx.createOscillator()
+      const clankModGain = ctx.createGain()
+      const clankGain = ctx.createGain()
+      clankCarrier.type = 'triangle'
+      clankMod.type = 'sine'
+      clankCarrier.frequency.setValueAtTime(780, now)
+      clankCarrier.frequency.exponentialRampToValueAtTime(290, now + 0.09)
+      clankMod.frequency.setValueAtTime(780 * 1.414, now)
+      clankModGain.gain.setValueAtTime(420, now)
+      clankModGain.gain.exponentialRampToValueAtTime(5, now + 0.08)
+      clankGain.gain.setValueAtTime(0.24, now)
+      clankGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11)
+      clankMod.connect(clankModGain)
+      clankModGain.connect(clankCarrier.frequency)
+      clankCarrier.connect(clankGain)
+      clankGain.connect(master)
+      clankCarrier.start(now)
+      clankMod.start(now)
+      clankCarrier.stop(now + 0.12)
+      clankMod.stop(now + 0.12)
 
-      padFreqs.forEach((f, idx) => {
-        const s = ctx.createOscillator()
-        s.type = 'sawtooth'
-        s.frequency.setValueAtTime(f, now + 0.03)
-        s.detune.setValueAtTime(idx === 1 ? 7 : idx === 2 ? -7 : 0, now + 0.03)
-        s.connect(padFilter)
-        s.start(now + 0.03)
-        s.stop(now + 1.12)
-      })
+      // 2. Tactical Data-Lock Confirm Pulses (0.03s - 0.12s): B5 -> F#5 -> E5 (22ms each)
+      const pulseBand = ctx.createBiquadFilter()
+      pulseBand.type = 'bandpass'
+      pulseBand.frequency.setValueAtTime(1250, now)
+      pulseBand.Q.setValueAtTime(2.0, now)
+      pulseBand.connect(master)
 
-      // 4. Heroic RPG Level-Up / Quest-Accepted Crystalline Fanfare Arpeggio
-      const fanfare = [
-        { freq: 587.33, offset: 0.05, dur: 0.35, vol: 0.2 },  // D5
-        { freq: 880.0, offset: 0.12, dur: 0.42, vol: 0.22 },  // A5
-        { freq: 1174.66, offset: 0.19, dur: 0.58, vol: 0.24 }, // D6
-        { freq: 1479.98, offset: 0.26, dur: 0.95, vol: 0.22 }, // F#6 heroic peak
-        { freq: 1760.0, offset: 0.33, dur: 1.05, vol: 0.18 },  // A6 shimmer
-      ]
-      fanfare.forEach((n) => {
-        const o = ctx.createOscillator()
-        const h = ctx.createOscillator()
+      ;[987.77, 739.99, 659.25].forEach((freq, idx) => {
+        const t0 = now + 0.03 + idx * 0.03
+        const osc = ctx.createOscillator()
         const g = ctx.createGain()
-        o.type = 'triangle'
-        h.type = 'sine'
-        o.frequency.setValueAtTime(n.freq, now + n.offset)
-        h.frequency.setValueAtTime(n.freq * 2, now + n.offset)
-        g.gain.setValueAtTime(0.001, now + n.offset)
-        g.gain.linearRampToValueAtTime(n.vol, now + n.offset + 0.015)
-        g.gain.exponentialRampToValueAtTime(0.001, now + n.offset + n.dur)
-        o.connect(g)
-        h.connect(g)
-        g.connect(master)
-        g.connect(delay)
-        o.start(now + n.offset)
-        h.start(now + n.offset)
-        o.stop(now + n.offset + n.dur + 0.03)
-        h.stop(now + n.offset + n.dur + 0.03)
+        osc.type = 'square'
+        osc.frequency.setValueAtTime(freq, t0)
+        g.gain.setValueAtTime(0.001, t0)
+        g.gain.linearRampToValueAtTime(0.14, t0 + 0.004)
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.022)
+        osc.connect(g)
+        g.connect(pulseBand)
+        osc.start(t0)
+        osc.stop(t0 + 0.026)
       })
+
+      // 3. Shadow Monarch Dark Reese Power Surge (0.08s - 0.95s): open dark fifths E2 + B2 + E3
+      const reeseFilter = ctx.createBiquadFilter()
+      reeseFilter.type = 'lowpass'
+      reeseFilter.frequency.setValueAtTime(1100, now + 0.08)
+      reeseFilter.frequency.exponentialRampToValueAtTime(210, now + 0.95)
+      reeseFilter.Q.setValueAtTime(3.5, now + 0.08)
+
+      const reeseGain = ctx.createGain()
+      reeseGain.gain.setValueAtTime(0.001, now + 0.08)
+      reeseGain.gain.linearRampToValueAtTime(0.16, now + 0.15)
+      reeseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.95)
+      reeseFilter.connect(reeseGain)
+      reeseGain.connect(master)
+      reeseGain.connect(delay)
+
+      ;[82.41, 123.47, 164.81].forEach((f) => {
+        ;[-9, 9].forEach((detuneCents) => {
+          const s = ctx.createOscillator()
+          s.type = 'sawtooth'
+          s.frequency.setValueAtTime(f, now + 0.08)
+          s.detune.setValueAtTime(detuneCents, now + 0.08)
+          s.connect(reeseFilter)
+          s.start(now + 0.08)
+          s.stop(now + 0.98)
+        })
+      })
+
+      // Single cold metallic FM E5 lock-in tone (0.14s - 0.85s)
+      const lockCarrier = ctx.createOscillator()
+      const lockMod = ctx.createOscillator()
+      const lockModGain = ctx.createGain()
+      const lockToneGain = ctx.createGain()
+      lockCarrier.type = 'sine'
+      lockMod.type = 'sine'
+      lockCarrier.frequency.setValueAtTime(659.25, now + 0.14) // E5
+      lockMod.frequency.setValueAtTime(659.25 * 1.414, now + 0.14)
+      lockModGain.gain.setValueAtTime(480, now + 0.14)
+      lockModGain.gain.exponentialRampToValueAtTime(3, now + 0.28)
+      lockToneGain.gain.setValueAtTime(0.001, now + 0.14)
+      lockToneGain.gain.linearRampToValueAtTime(0.2, now + 0.15)
+      lockToneGain.gain.exponentialRampToValueAtTime(0.001, now + 0.88)
+      lockMod.connect(lockModGain)
+      lockModGain.connect(lockCarrier.frequency)
+      lockCarrier.connect(lockToneGain)
+      lockToneGain.connect(master)
+      lockToneGain.connect(delay)
+      lockCarrier.start(now + 0.14)
+      lockMod.start(now + 0.14)
+      lockCarrier.stop(now + 0.9)
+      lockMod.stop(now + 0.9)
 
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([40, 30, 90])
+        navigator.vibrate([35, 25, 85])
       }
     } catch {}
   }
