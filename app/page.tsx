@@ -1732,6 +1732,7 @@ export default function Page() {
   }
 
   const [arrivedQuestAlert, setArrivedQuestAlert] = useState<PersonalTask | null>(null)
+  const [isClosingQuestAlert, setIsClosingQuestAlert] = useState<boolean>(false)
   const audioCtxRef = useRef<AudioContext | null>(null)
 
   // Unlock AudioContext pada sentuhan pertama agar efek suara quest kebuka bisa diputar tanpa terblokir browser
@@ -1757,7 +1758,7 @@ export default function Page() {
     }
   }, [])
 
-  // Efek suara RPG / Solo Leveling System saat Quest Terbuka
+  // Efek suara RPG / Shadow Monarch System saat Pop-Up Quest Terbuka (sinkron dengan animasi unfold)
   const playQuestArrivalSound = () => {
     try {
       if (!prefSound || typeof window === 'undefined') return
@@ -1771,26 +1772,49 @@ export default function Page() {
 
       const now = ctx.currentTime
 
-      // 1. Low ethereal system portal swell
+      // 1. Holographic shutter slide / whoosh (0.00s - 0.28s, pas garis cahaya terbuka)
+      const bufferLen = Math.floor(ctx.sampleRate * 0.3)
+      const noiseBuffer = ctx.createBuffer(1, bufferLen, ctx.sampleRate)
+      const data = noiseBuffer.getChannelData(0)
+      for (let i = 0; i < bufferLen; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferLen) * Math.PI)
+      }
+      const noiseSrc = ctx.createBufferSource()
+      noiseSrc.buffer = noiseBuffer
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'bandpass'
+      filter.frequency.setValueAtTime(380, now)
+      filter.frequency.exponentialRampToValueAtTime(2200, now + 0.26)
+      filter.Q.setValueAtTime(2.5, now)
+      const noiseGain = ctx.createGain()
+      noiseGain.gain.setValueAtTime(0.001, now)
+      noiseGain.gain.linearRampToValueAtTime(0.11, now + 0.08)
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.29)
+      noiseSrc.connect(filter)
+      filter.connect(noiseGain)
+      noiseGain.connect(ctx.destination)
+      noiseSrc.start(now)
+
+      // 2. Deep Shadow Monarch portal sub-pulse (0.00s - 0.95s)
       const subOsc = ctx.createOscillator()
       const subGain = ctx.createGain()
       subOsc.type = 'sine'
-      subOsc.frequency.setValueAtTime(146.83, now)
-      subOsc.frequency.exponentialRampToValueAtTime(220, now + 0.45)
+      subOsc.frequency.setValueAtTime(110, now)
+      subOsc.frequency.exponentialRampToValueAtTime(164.81, now + 0.42)
       subGain.gain.setValueAtTime(0.001, now)
-      subGain.gain.linearRampToValueAtTime(0.14, now + 0.08)
+      subGain.gain.linearRampToValueAtTime(0.16, now + 0.1)
       subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.95)
       subOsc.connect(subGain)
       subGain.connect(ctx.destination)
       subOsc.start(now)
       subOsc.stop(now + 1.0)
 
-      // 2. Crystalline ascending RPG quest-open arpeggio (D5 -> A5 -> C#6 -> D6)
+      // 3. Crystalline ascending RPG quest-open chime (0.16s, tepat saat jendela terbuka penuh)
       const notes = [
-        { freq: 587.33, offset: 0.0, dur: 0.45, vol: 0.16 },
-        { freq: 880.0, offset: 0.09, dur: 0.5, vol: 0.17 },
-        { freq: 1108.73, offset: 0.18, dur: 0.55, vol: 0.15 },
-        { freq: 1174.66, offset: 0.27, dur: 0.85, vol: 0.2 },
+        { freq: 587.33, offset: 0.16, dur: 0.48, vol: 0.15 }, // D5
+        { freq: 739.99, offset: 0.24, dur: 0.5, vol: 0.14 },  // F#5
+        { freq: 880.0, offset: 0.32, dur: 0.58, vol: 0.16 },  // A5
+        { freq: 1174.66, offset: 0.41, dur: 0.88, vol: 0.19 }, // D6
       ]
 
       notes.forEach((n) => {
@@ -1817,11 +1841,48 @@ export default function Page() {
       })
 
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([60, 40, 120])
+        navigator.vibrate([50, 35, 110])
       }
     } catch (e) {
       console.error(e)
     }
+  }
+
+  const playQuestAcceptSound = () => {
+    try {
+      if (!prefSound || typeof window === 'undefined') return
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = audioCtxRef.current || new AudioCtx()
+      audioCtxRef.current = ctx
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {})
+      }
+      const now = ctx.currentTime
+      ;[659.25, 987.77].forEach((freq, idx) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(freq, now + idx * 0.06)
+        gain.gain.setValueAtTime(0.001, now + idx * 0.06)
+        gain.gain.linearRampToValueAtTime(0.14, now + idx * 0.06 + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.35)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now + idx * 0.06)
+        osc.stop(now + idx * 0.06 + 0.38)
+      })
+    } catch {}
+  }
+
+  const closeQuestAlertWithAnim = (afterClose?: () => void) => {
+    if (isClosingQuestAlert) return
+    setIsClosingQuestAlert(true)
+    setTimeout(() => {
+      setArrivedQuestAlert(null)
+      setIsClosingQuestAlert(false)
+      if (afterClose) afterClose()
+    }, 260)
   }
 
   const playTimerBeep = () => {
@@ -11058,9 +11119,9 @@ export default function Page() {
                                       <span
                                         style={{
                                           fontSize: '8.5px',
-                                          color: '#67e8f9',
-                                          background: 'rgba(6, 182, 212, 0.18)',
-                                          border: '1px solid rgba(56, 189, 248, 0.45)',
+                                          color: '#e9d5ff',
+                                          background: 'rgba(124, 58, 237, 0.22)',
+                                          border: '1px solid rgba(167, 139, 250, 0.42)',
                                           padding: '1px 5px',
                                           borderRadius: '4px',
                                           fontWeight: 800,
@@ -15949,7 +16010,7 @@ export default function Page() {
         })()}
 
       {/* ============================================================
-         SOLO LEVELING SYSTEM POP-UP: QUEST TERBUKA! (20-MIN WINDOW)
+         SHADOW MONARCH SMART-ANIMATE POP-UP: QUEST TERBUKA! (DARK VIOLET)
          ============================================================ */}
       {arrivedQuestAlert &&
         (() => {
@@ -15962,67 +16023,111 @@ export default function Page() {
 
           return (
             <div
+              className={isClosingQuestAlert ? 'quest-overlay-out' : 'quest-overlay-in'}
               style={{
                 position: 'fixed',
                 inset: 0,
                 zIndex: 1400,
-                background: 'rgba(2, 5, 14, 0.86)',
-                backdropFilter: 'blur(10px)',
+                background: 'rgba(3, 2, 8, 0.86)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: '20px',
-                animation: 'heroCardAppear 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
               <div
+                className={isClosingQuestAlert ? 'quest-fold-close' : 'quest-unfold-panel'}
                 style={{
                   position: 'relative',
                   width: '100%',
-                  maxWidth: '350px',
-                  borderRadius: '16px',
+                  maxWidth: '348px',
+                  borderRadius: '18px',
                   background:
-                    'linear-gradient(165deg, rgba(8, 17, 34, 0.98) 0%, rgba(4, 7, 16, 0.99) 100%)',
-                  border: '1px solid rgba(56, 189, 248, 0.55)',
+                    'linear-gradient(168deg, rgba(20, 13, 38, 0.98) 0%, rgba(7, 5, 14, 0.99) 56%, rgba(13, 9, 25, 0.98) 100%)',
+                  border: '1px solid rgba(139, 92, 246, 0.45)',
                   boxShadow:
-                    '0 0 40px rgba(56, 189, 248, 0.25), 0 0 80px rgba(124, 58, 237, 0.18), inset 0 1px 0 rgba(125, 211, 252, 0.4)',
-                  padding: '22px 18px 18px',
+                    '0 22px 60px rgba(0, 0, 0, 0.78), 0 0 42px rgba(124, 58, 237, 0.26), inset 0 1px 0 rgba(196, 181, 253, 0.32)',
+                  padding: '24px 18px 18px',
                   overflow: 'hidden',
                   display: 'grid',
                   gap: '14px',
                   textAlign: 'center',
                 }}
               >
-                {/* Top Cyan Holographic Energy Bar */}
+                {/* Top & Bottom Luminous Shadow Violet Shutter Rails */}
                 <div
                   style={{
                     position: 'absolute',
                     top: 0,
-                    left: '15%',
-                    right: '15%',
+                    left: '10%',
+                    right: '10%',
                     height: '2px',
-                    background: 'linear-gradient(90deg, transparent, #38bdf8, #a78bfa, #38bdf8, transparent)',
-                    boxShadow: '0 0 12px #38bdf8',
+                    background: 'linear-gradient(90deg, transparent, #7c3aed, #d8b4fe, #7c3aed, transparent)',
+                    boxShadow: '0 0 14px rgba(168, 85, 247, 0.85)',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: '18%',
+                    right: '18%',
+                    height: '1.5px',
+                    background: 'linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.65), transparent)',
                   }}
                 />
 
-                {/* [ ! ] System Emblem */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                {/* Corner Tactical HUD Brackets */}
+                <span style={{ position: 'absolute', top: '9px', left: '9px', width: '10px', height: '10px', borderTop: '1.5px solid rgba(167, 139, 250, 0.65)', borderLeft: '1.5px solid rgba(167, 139, 250, 0.65)', borderTopLeftRadius: '3px', pointerEvents: 'none' }} />
+                <span style={{ position: 'absolute', top: '9px', right: '9px', width: '10px', height: '10px', borderTop: '1.5px solid rgba(167, 139, 250, 0.65)', borderRight: '1.5px solid rgba(167, 139, 250, 0.65)', borderTopRightRadius: '3px', pointerEvents: 'none' }} />
+                <span style={{ position: 'absolute', bottom: '9px', left: '9px', width: '10px', height: '10px', borderBottom: '1.5px solid rgba(167, 139, 250, 0.45)', borderLeft: '1.5px solid rgba(167, 139, 250, 0.45)', borderBottomLeftRadius: '3px', pointerEvents: 'none' }} />
+                <span style={{ position: 'absolute', bottom: '9px', right: '9px', width: '10px', height: '10px', borderBottom: '1.5px solid rgba(167, 139, 250, 0.45)', borderRight: '1.5px solid rgba(167, 139, 250, 0.45)', borderBottomRightRadius: '3px', pointerEvents: 'none' }} />
+
+                {/* Holographic Scanline Sweep */}
+                <div className="quest-scan-beam" />
+
+                {/* Discreet Sound Replay Button */}
+                <button
+                  type="button"
+                  onClick={() => playQuestArrivalSound()}
+                  title="Putar Suara Quest"
+                  aria-label="Putar Suara Quest"
+                  style={{
+                    position: 'absolute',
+                    top: '14px',
+                    right: '14px',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '8px',
+                    background: 'rgba(139, 92, 246, 0.12)',
+                    border: '1px solid rgba(139, 92, 246, 0.28)',
+                    color: '#c4b5fd',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Bell size={13} />
+                </button>
+
+                {/* [ ! ] Shadow Monarch Emblem + Title */}
+                <div className="quest-stagger-1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '9px' }}>
                   <div
+                    className="quest-emblem-pulse"
                     style={{
                       width: '50px',
                       height: '50px',
                       borderRadius: '14px',
-                      background: 'radial-gradient(circle, rgba(56, 189, 248, 0.24), rgba(15, 23, 42, 0.9))',
-                      border: '1.5px solid rgba(56, 189, 248, 0.7)',
-                      boxShadow: '0 0 22px rgba(56, 189, 248, 0.4)',
+                      background: 'radial-gradient(circle, rgba(139, 92, 246, 0.28), rgba(15, 10, 28, 0.94))',
+                      border: '1.5px solid rgba(168, 85, 247, 0.68)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#7dd3fc',
+                      color: '#e9d5ff',
                       fontSize: '22px',
                       fontWeight: 900,
-                      letterSpacing: '0.02em',
+                      textShadow: '0 0 12px rgba(192, 132, 252, 0.85)',
                     }}
                   >
                     !
@@ -16030,10 +16135,10 @@ export default function Page() {
                   <div>
                     <div
                       style={{
-                        fontSize: '9.5px',
+                        fontSize: '9px',
                         fontWeight: 800,
-                        color: '#38bdf8',
-                        letterSpacing: '0.2em',
+                        color: '#a78bfa',
+                        letterSpacing: '0.22em',
                       }}
                     >
                       SYSTEM NOTIFICATION
@@ -16043,9 +16148,9 @@ export default function Page() {
                         margin: '4px 0 0',
                         fontSize: '20px',
                         fontWeight: 900,
-                        color: '#f8fafc',
+                        color: '#faf5ff',
                         letterSpacing: '0.06em',
-                        textShadow: '0 0 18px rgba(56, 189, 248, 0.55)',
+                        textShadow: '0 0 20px rgba(168, 85, 247, 0.55)',
                       }}
                     >
                       QUEST TERBUKA!
@@ -16053,16 +16158,17 @@ export default function Page() {
                   </div>
                 </div>
 
-                {/* Quest Detail Box */}
+                {/* Quest Detail Card (Obsidian Dark Violet) */}
                 <div
+                  className="quest-stagger-2"
                   style={{
                     padding: '13px 14px',
-                    borderRadius: '12px',
-                    background: 'rgba(10, 18, 36, 0.85)',
-                    border: '1px solid rgba(56, 189, 248, 0.25)',
+                    borderRadius: '13px',
+                    background: 'rgba(11, 8, 22, 0.92)',
+                    border: '1px solid rgba(139, 92, 246, 0.26)',
                     textAlign: 'left',
                     display: 'grid',
-                    gap: '8px',
+                    gap: '9px',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -16070,10 +16176,10 @@ export default function Page() {
                       style={{
                         width: '36px',
                         height: '36px',
-                        borderRadius: '9px',
-                        background: 'rgba(56, 189, 248, 0.14)',
-                        border: '1px solid rgba(56, 189, 248, 0.35)',
-                        color: '#7dd3fc',
+                        borderRadius: '10px',
+                        background: 'rgba(124, 58, 237, 0.16)',
+                        border: '1px solid rgba(168, 85, 247, 0.34)',
+                        color: '#c4b5fd',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -16087,7 +16193,7 @@ export default function Page() {
                         style={{
                           fontSize: '14px',
                           fontWeight: 800,
-                          color: '#ffffff',
+                          color: '#f5f3ff',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
@@ -16095,9 +16201,9 @@ export default function Page() {
                       >
                         {arrivedQuestAlert.title}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', color: '#9a8fb2', marginTop: '2px' }}>
                         {arrivedQuestAlert.category} •{' '}
-                        <strong style={{ color: '#c4b5fd' }}>+{arrivedQuestAlert.xp} XP</strong>
+                        <strong style={{ color: '#d8b4fe' }}>+{arrivedQuestAlert.xp} XP</strong>
                       </div>
                     </div>
                   </div>
@@ -16108,20 +16214,20 @@ export default function Page() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       paddingTop: '8px',
-                      borderTop: '1px solid rgba(56, 189, 248, 0.14)',
+                      borderTop: '1px solid rgba(139, 92, 246, 0.14)',
                       fontSize: '11px',
                     }}
                   >
-                    <span style={{ color: '#7dd3fc', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
-                      <Clock size={12} /> {arrivedQuestAlert.targetTime} – {endTimeLabel}
+                    <span style={{ color: '#c4b5fd', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
+                      <Clock size={12} color="#a78bfa" /> {arrivedQuestAlert.targetTime} – {endTimeLabel}
                     </span>
                     <span
                       style={{
-                        padding: '2px 7px',
+                        padding: '2px 8px',
                         borderRadius: '6px',
-                        background: 'rgba(56, 189, 248, 0.16)',
-                        border: '1px solid rgba(56, 189, 248, 0.38)',
-                        color: '#67e8f9',
+                        background: 'rgba(124, 58, 237, 0.2)',
+                        border: '1px solid rgba(167, 139, 250, 0.38)',
+                        color: '#e9d5ff',
                         fontSize: '10px',
                         fontWeight: 800,
                       }}
@@ -16131,21 +16237,21 @@ export default function Page() {
                   </div>
                 </div>
 
-                <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8', lineHeight: 1.45 }}>
-                  Selesaikan sebelum pukul <strong style={{ color: '#e2e8f0' }}>{endTimeLabel}</strong> atau quest akan otomatis ter-skip.
+                <p className="quest-stagger-3" style={{ margin: 0, fontSize: '11px', color: '#9a8fb2', lineHeight: 1.45 }}>
+                  Selesaikan sebelum pukul <strong style={{ color: '#ede9fe' }}>{endTimeLabel}</strong> atau quest akan otomatis ter-skip.
                 </p>
 
-                {/* CTA Buttons */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '8px' }}>
+                {/* CTA Buttons (Gentle Shadow Violet) */}
+                <div className="quest-stagger-4" style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '8px' }}>
                   <button
                     type="button"
-                    onClick={() => setArrivedQuestAlert(null)}
+                    onClick={() => closeQuestAlertWithAnim()}
                     style={{
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: 'rgba(15, 23, 42, 0.85)',
-                      border: '1px solid rgba(148, 163, 184, 0.22)',
-                      color: '#cbd5e1',
+                      height: '41px',
+                      borderRadius: '11px',
+                      background: 'rgba(14, 11, 24, 0.88)',
+                      border: '1px solid rgba(139, 92, 246, 0.22)',
+                      color: '#b8add1',
                       fontSize: '12px',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -16157,30 +16263,32 @@ export default function Page() {
                     type="button"
                     onClick={() => {
                       const q = arrivedQuestAlert
-                      setArrivedQuestAlert(null)
-                      if (isGymQuest) {
-                        setWorkoutSubPage('overview')
-                        setActiveWorkoutQuest({
-                          type: 'personal',
-                          id: q.id,
-                          dateIso: getLocalIsoDate(),
-                        })
-                      } else {
-                        setSelectedWeekDay(null)
-                        setActiveTab('home')
-                      }
+                      playQuestAcceptSound()
+                      closeQuestAlertWithAnim(() => {
+                        if (isGymQuest) {
+                          setWorkoutSubPage('overview')
+                          setActiveWorkoutQuest({
+                            type: 'personal',
+                            id: q.id,
+                            dateIso: getLocalIsoDate(),
+                          })
+                        } else {
+                          setSelectedWeekDay(null)
+                          setActiveTab('home')
+                        }
+                      })
                     }}
                     style={{
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.35), rgba(124, 58, 237, 0.45))',
-                      border: '1px solid rgba(56, 189, 248, 0.65)',
-                      color: '#f0f9ff',
+                      height: '41px',
+                      borderRadius: '11px',
+                      background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.48), rgba(76, 29, 149, 0.78))',
+                      border: '1px solid rgba(167, 139, 250, 0.55)',
+                      color: '#f5f3ff',
                       fontSize: '12px',
                       fontWeight: 800,
-                      letterSpacing: '0.04em',
+                      letterSpacing: '0.05em',
                       cursor: 'pointer',
-                      boxShadow: '0 0 18px rgba(56, 189, 248, 0.28)',
+                      boxShadow: '0 0 18px rgba(124, 58, 237, 0.3)',
                     }}
                   >
                     TERIMA QUEST

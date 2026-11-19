@@ -830,3 +830,111 @@ button { font: inherit; color: inherit; }
   background: rgba(24, 17, 44, 0.85) !important;
 }
 
+/* ============================================================================
+   SHADOW MONARCH SMART-ANIMATE QUEST POP-UP (CLOSED BEAM -> VERTICAL UNFOLD)
+   ============================================================================ */
+@keyframes questOverlayFadeIn {
+  0% { opacity: 0; backdrop-filter: blur(0px); }
+  100% { opacity: 1; backdrop-filter: blur(12px); }
+}
+@keyframes questOverlayFadeOut {
+  0% { opacity: 1; backdrop-filter: blur(12px); }
+  100% { opacity: 0; backdrop-filter: blur(0px); }
+}
+@keyframes questSmartUnfold {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.08) scaleY(0.012);
+    clip-path: inset(49% 0 49% 0 round 18px);
+    filter: brightness(2.2);
+  }
+  24% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(0.018);
+    clip-path: inset(48.5% 0 48.5% 0 round 18px);
+    filter: brightness(1.85);
+  }
+  70% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(1.022);
+    clip-path: inset(0% 0 0% 0 round 18px);
+    filter: brightness(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(1);
+    clip-path: inset(0% 0 0% 0 round 18px);
+    filter: brightness(1);
+  }
+}
+@keyframes questSmartFoldClose {
+  0% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(1);
+    clip-path: inset(0% 0 0% 0 round 18px);
+    filter: brightness(1);
+  }
+  65% {
+    opacity: 1;
+    transform: scaleX(1) scaleY(0.018);
+    clip-path: inset(48.5% 0 48.5% 0 round 18px);
+    filter: brightness(1.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0.08) scaleY(0.01);
+    clip-path: inset(49% 0 49% 0 round 18px);
+    filter: brightness(2.2);
+  }
+}
+@keyframes questScanSweep {
+  0% { transform: translateY(-100%); opacity: 0; }
+  25% { opacity: 0.75; }
+  100% { transform: translateY(420%); opacity: 0; }
+}
+@keyframes questStaggerReveal {
+  0% { opacity: 0; transform: translateY(10px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes questVioletPulse {
+  0%, 100% {
+    box-shadow: 0 0 18px rgba(139, 92, 246, 0.38), inset 0 0 14px rgba(168, 85, 247, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(168, 85, 247, 0.65), inset 0 0 20px rgba(192, 132, 252, 0.35);
+  }
+}
+.quest-overlay-in {
+  animation: questOverlayFadeIn 0.28s ease-out forwards;
+}
+.quest-overlay-out {
+  animation: questOverlayFadeOut 0.24s ease-in forwards;
+}
+.quest-unfold-panel {
+  transform-origin: center center;
+  will-change: transform, clip-path, opacity;
+  animation: questSmartUnfold 0.68s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+.quest-fold-close {
+  transform-origin: center center;
+  will-change: transform, clip-path, opacity;
+  animation: questSmartFoldClose 0.26s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.quest-scan-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 76px;
+  background: linear-gradient(180deg, transparent 0%, rgba(168, 85, 247, 0.16) 50%, rgba(216, 180, 254, 0.28) 55%, transparent 100%);
+  pointer-events: none;
+  animation: questScanSweep 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.28s forwards;
+  opacity: 0;
+}
+.quest-stagger-1 { opacity: 0; animation: questStaggerReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.26s forwards; }
+.quest-stagger-2 { opacity: 0; animation: questStaggerReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.34s forwards; }
+.quest-stagger-3 { opacity: 0; animation: questStaggerReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.42s forwards; }
+.quest-stagger-4 { opacity: 0; animation: questStaggerReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1) 0.49s forwards; }
+.quest-emblem-pulse { animation: questVioletPulse 2.8s ease-in-out infinite; }
+
+
