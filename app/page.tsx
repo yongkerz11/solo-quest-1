@@ -1733,9 +1733,117 @@ export default function Page() {
 
   const [arrivedQuestAlert, setArrivedQuestAlert] = useState<PersonalTask | null>(null)
   const [isClosingQuestAlert, setIsClosingQuestAlert] = useState<boolean>(false)
+  const [questAlertAnimKey, setQuestAlertAnimKey] = useState<number>(0)
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const pendingArrivalSoundRef = useRef<boolean>(false)
 
-  // Unlock AudioContext pada sentuhan pertama agar efek suara quest kebuka bisa diputar tanpa terblokir browser
+  // Helper internal: sintesis suara Solo Leveling System Window Open (hologram slide + ping kristal + echo)
+  const renderQuestOpenSfx = (ctx: AudioContext) => {
+    const now = ctx.currentTime + 0.01
+
+    // Master bus dengan sedikit delay echo agar terasa ruang hologram anime
+    const master = ctx.createGain()
+    master.gain.setValueAtTime(0.85, now)
+    master.connect(ctx.destination)
+
+    const delay = ctx.createDelay(0.5)
+    delay.delayTime.setValueAtTime(0.115, now)
+    const fb = ctx.createGain()
+    fb.gain.setValueAtTime(0.28, now)
+    const echoFilter = ctx.createBiquadFilter()
+    echoFilter.type = 'highpass'
+    echoFilter.frequency.setValueAtTime(750, now)
+    delay.connect(echoFilter)
+    echoFilter.connect(fb)
+    fb.connect(delay)
+    echoFilter.connect(master)
+
+    // 1. Hologram Shutter Unfold Whoosh (0.00s - 0.30s)
+    const bufLen = Math.floor(ctx.sampleRate * 0.32)
+    const noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate)
+    const ch = noiseBuf.getChannelData(0)
+    for (let i = 0; i < bufLen; i++) {
+      ch[i] = (Math.random() * 2 - 1) * Math.sin((i / bufLen) * Math.PI)
+    }
+    const noise = ctx.createBufferSource()
+    noise.buffer = noiseBuf
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.setValueAtTime(280, now)
+    bp.frequency.exponentialRampToValueAtTime(3200, now + 0.25)
+    bp.Q.setValueAtTime(2.2, now)
+    const nGain = ctx.createGain()
+    nGain.gain.setValueAtTime(0.001, now)
+    nGain.gain.linearRampToValueAtTime(0.26, now + 0.08)
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.31)
+    noise.connect(bp)
+    bp.connect(nGain)
+    nGain.connect(master)
+    noise.start(now)
+
+    // 2. Crisp Laser Slit Ignition Click (0.00s)
+    const clickOsc = ctx.createOscillator()
+    const clickGain = ctx.createGain()
+    clickOsc.type = 'sine'
+    clickOsc.frequency.setValueAtTime(2600, now)
+    clickOsc.frequency.exponentialRampToValueAtTime(980, now + 0.045)
+    clickGain.gain.setValueAtTime(0.22, now)
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+    clickOsc.connect(clickGain)
+    clickGain.connect(master)
+    clickOsc.start(now)
+    clickOsc.stop(now + 0.055)
+
+    // 3. Deep Shadow Monarch Portal Sub-Swell (0.02s - 0.90s)
+    ;[73.42, 110.0].forEach((baseFreq, i) => {
+      const sub = ctx.createOscillator()
+      const sGain = ctx.createGain()
+      sub.type = 'sine'
+      sub.frequency.setValueAtTime(baseFreq, now + 0.02)
+      sub.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.42)
+      sGain.gain.setValueAtTime(0.001, now + 0.02)
+      sGain.gain.linearRampToValueAtTime(i === 0 ? 0.24 : 0.14, now + 0.12)
+      sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9)
+      sub.connect(sGain)
+      sGain.connect(master)
+      sub.start(now + 0.02)
+      sub.stop(now + 0.95)
+    })
+
+    // 4. Iconic Solo Leveling [ ! ] Crystalline Glass Ping + Shimmer (0.14s, tepat saat window kebuka!)
+    const chimes = [
+      { freq: 880.0, offset: 0.14, dur: 0.55, vol: 0.22 },   // A5
+      { freq: 1174.66, offset: 0.21, dur: 0.72, vol: 0.26 }, // D6
+      { freq: 1760.0, offset: 0.28, dur: 0.85, vol: 0.22 },  // A6
+      { freq: 2349.32, offset: 0.34, dur: 0.95, vol: 0.15 }, // D7 shimmer
+    ]
+    chimes.forEach((n) => {
+      const osc = ctx.createOscillator()
+      const bell = ctx.createOscillator()
+      const g = ctx.createGain()
+      osc.type = 'triangle'
+      bell.type = 'sine'
+      osc.frequency.setValueAtTime(n.freq, now + n.offset)
+      bell.frequency.setValueAtTime(n.freq * 2.003, now + n.offset) // slight shimmer detune
+      g.gain.setValueAtTime(0.001, now + n.offset)
+      g.gain.linearRampToValueAtTime(n.vol, now + n.offset + 0.015)
+      g.gain.exponentialRampToValueAtTime(0.001, now + n.offset + n.dur)
+      osc.connect(g)
+      bell.connect(g)
+      g.connect(master)
+      g.connect(delay)
+      osc.start(now + n.offset)
+      bell.start(now + n.offset)
+      osc.stop(now + n.offset + n.dur + 0.02)
+      bell.stop(now + n.offset + n.dur + 0.02)
+    })
+
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([50, 35, 110])
+    }
+  }
+
+  // Unlock permanen AudioContext (khususnya iOS Safari) pada sentuhan pertama + putar suara tertunda jika pop-up sudah muncul
   useEffect(() => {
     const unlock = () => {
       try {
@@ -1745,20 +1853,38 @@ export default function Page() {
         if (!audioCtxRef.current) {
           audioCtxRef.current = new AudioCtx()
         }
-        if (audioCtxRef.current.state === 'suspended') {
-          audioCtxRef.current.resume().catch(() => {})
+        const ctx = audioCtxRef.current
+        // Silent 1-sample buffer untuk unlock audio engine iOS Safari secara permanen
+        const silentBuf = ctx.createBuffer(1, 1, 22050)
+        const src = ctx.createBufferSource()
+        src.buffer = silentBuf
+        src.connect(ctx.destination)
+        src.start(0)
+
+        const afterResume = () => {
+          if (pendingArrivalSoundRef.current && prefSound) {
+            pendingArrivalSoundRef.current = false
+            renderQuestOpenSfx(ctx)
+          }
+        }
+        if (ctx.state === 'suspended') {
+          ctx.resume().then(afterResume).catch(() => {})
+        } else {
+          afterResume()
         }
       } catch {}
     }
+    window.addEventListener('touchstart', unlock, { passive: true })
     window.addEventListener('pointerdown', unlock, { passive: true })
     window.addEventListener('keydown', unlock, { passive: true })
     return () => {
+      window.removeEventListener('touchstart', unlock)
       window.removeEventListener('pointerdown', unlock)
       window.removeEventListener('keydown', unlock)
     }
-  }, [])
+  }, [prefSound])
 
-  // Efek suara RPG / Shadow Monarch System saat Pop-Up Quest Terbuka (sinkron dengan animasi unfold)
+  // Efek suara RPG / Shadow Monarch System saat Pop-Up Quest Muncul & Kebuka
   const playQuestArrivalSound = () => {
     try {
       if (!prefSound || typeof window === 'undefined') return
@@ -1766,88 +1892,28 @@ export default function Page() {
       if (!AudioCtx) return
       const ctx = audioCtxRef.current || new AudioCtx()
       audioCtxRef.current = ctx
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {})
-      }
 
-      const now = ctx.currentTime
-
-      // 1. Holographic shutter slide / whoosh (0.00s - 0.28s, pas garis cahaya terbuka)
-      const bufferLen = Math.floor(ctx.sampleRate * 0.3)
-      const noiseBuffer = ctx.createBuffer(1, bufferLen, ctx.sampleRate)
-      const data = noiseBuffer.getChannelData(0)
-      for (let i = 0; i < bufferLen; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferLen) * Math.PI)
-      }
-      const noiseSrc = ctx.createBufferSource()
-      noiseSrc.buffer = noiseBuffer
-      const filter = ctx.createBiquadFilter()
-      filter.type = 'bandpass'
-      filter.frequency.setValueAtTime(380, now)
-      filter.frequency.exponentialRampToValueAtTime(2200, now + 0.26)
-      filter.Q.setValueAtTime(2.5, now)
-      const noiseGain = ctx.createGain()
-      noiseGain.gain.setValueAtTime(0.001, now)
-      noiseGain.gain.linearRampToValueAtTime(0.11, now + 0.08)
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.29)
-      noiseSrc.connect(filter)
-      filter.connect(noiseGain)
-      noiseGain.connect(ctx.destination)
-      noiseSrc.start(now)
-
-      // 2. Deep Shadow Monarch portal sub-pulse (0.00s - 0.95s)
-      const subOsc = ctx.createOscillator()
-      const subGain = ctx.createGain()
-      subOsc.type = 'sine'
-      subOsc.frequency.setValueAtTime(110, now)
-      subOsc.frequency.exponentialRampToValueAtTime(164.81, now + 0.42)
-      subGain.gain.setValueAtTime(0.001, now)
-      subGain.gain.linearRampToValueAtTime(0.16, now + 0.1)
-      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.95)
-      subOsc.connect(subGain)
-      subGain.connect(ctx.destination)
-      subOsc.start(now)
-      subOsc.stop(now + 1.0)
-
-      // 3. Crystalline ascending RPG quest-open chime (0.16s, tepat saat jendela terbuka penuh)
-      const notes = [
-        { freq: 587.33, offset: 0.16, dur: 0.48, vol: 0.15 }, // D5
-        { freq: 739.99, offset: 0.24, dur: 0.5, vol: 0.14 },  // F#5
-        { freq: 880.0, offset: 0.32, dur: 0.58, vol: 0.16 },  // A5
-        { freq: 1174.66, offset: 0.41, dur: 0.88, vol: 0.19 }, // D6
-      ]
-
-      notes.forEach((n) => {
-        const osc = ctx.createOscillator()
-        const overtone = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = 'triangle'
-        overtone.type = 'sine'
-        osc.frequency.setValueAtTime(n.freq, now + n.offset)
-        overtone.frequency.setValueAtTime(n.freq * 2, now + n.offset)
-
-        gain.gain.setValueAtTime(0.001, now + n.offset)
-        gain.gain.linearRampToValueAtTime(n.vol, now + n.offset + 0.025)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + n.offset + n.dur)
-
-        osc.connect(gain)
-        overtone.connect(gain)
-        gain.connect(ctx.destination)
-
-        osc.start(now + n.offset)
-        overtone.start(now + n.offset)
-        osc.stop(now + n.offset + n.dur + 0.02)
-        overtone.stop(now + n.offset + n.dur + 0.02)
-      })
-
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([50, 35, 110])
+      if (ctx.state === 'running') {
+        pendingArrivalSoundRef.current = false
+        renderQuestOpenSfx(ctx)
+      } else {
+        pendingArrivalSoundRef.current = true
+        ctx
+          .resume()
+          .then(() => {
+            if (ctx.state === 'running' && pendingArrivalSoundRef.current) {
+              pendingArrivalSoundRef.current = false
+              renderQuestOpenSfx(ctx)
+            }
+          })
+          .catch(() => {})
       }
     } catch (e) {
       console.error(e)
     }
   }
 
+  // Efek suara Keren Solo Leveling "QUEST ACCEPTED / AWAKENING LOCK-IN" saat tombol TERIMA QUEST ditekan!
   const playQuestAcceptSound = () => {
     try {
       if (!prefSound || typeof window === 'undefined') return
@@ -1858,25 +1924,115 @@ export default function Page() {
       if (ctx.state === 'suspended') {
         ctx.resume().catch(() => {})
       }
-      const now = ctx.currentTime
-      ;[659.25, 987.77].forEach((freq, idx) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(freq, now + idx * 0.06)
-        gain.gain.setValueAtTime(0.001, now + idx * 0.06)
-        gain.gain.linearRampToValueAtTime(0.14, now + idx * 0.06 + 0.02)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.35)
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.start(now + idx * 0.06)
-        osc.stop(now + idx * 0.06 + 0.38)
+
+      const now = ctx.currentTime + 0.005
+      const master = ctx.createGain()
+      master.gain.setValueAtTime(0.88, now)
+      master.connect(ctx.destination)
+
+      // Subtle holographic reverb/delay tail
+      const delay = ctx.createDelay(0.5)
+      delay.delayTime.setValueAtTime(0.13, now)
+      const fb = ctx.createGain()
+      fb.gain.setValueAtTime(0.32, now)
+      const dFilter = ctx.createBiquadFilter()
+      dFilter.type = 'lowpass'
+      dFilter.frequency.setValueAtTime(3400, now)
+      delay.connect(dFilter)
+      dFilter.connect(fb)
+      fb.connect(delay)
+      dFilter.connect(master)
+
+      // 1. Punchy Bass Impact / Cyber-Lock Thump (0.00s)
+      const impact = ctx.createOscillator()
+      const impactGain = ctx.createGain()
+      impact.type = 'sine'
+      impact.frequency.setValueAtTime(160, now)
+      impact.frequency.exponentialRampToValueAtTime(42, now + 0.22)
+      impactGain.gain.setValueAtTime(0.42, now)
+      impactGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28)
+      impact.connect(impactGain)
+      impactGain.connect(master)
+      impact.start(now)
+      impact.stop(now + 0.3)
+
+      // 2. Sharp Metallic System Lock Transient (0.00s)
+      const lock = ctx.createOscillator()
+      const lockGain = ctx.createGain()
+      lock.type = 'triangle'
+      lock.frequency.setValueAtTime(1975.53, now) // B6
+      lock.frequency.exponentialRampToValueAtTime(1479.98, now + 0.05)
+      lockGain.gain.setValueAtTime(0.24, now)
+      lockGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06)
+      lock.connect(lockGain)
+      lockGain.connect(master)
+      lock.start(now)
+      lock.stop(now + 0.07)
+
+      // 3. Sweeping Filtered Sawtooth Power-Up Synth Pad (Shadow Monarch Awakening Surge)
+      const padFreqs = [293.66, 440.0, 587.33] // D4 + A4 + D5 power chord
+      const padFilter = ctx.createBiquadFilter()
+      padFilter.type = 'lowpass'
+      padFilter.frequency.setValueAtTime(420, now + 0.04)
+      padFilter.frequency.exponentialRampToValueAtTime(3800, now + 0.36)
+      padFilter.frequency.exponentialRampToValueAtTime(900, now + 1.05)
+      padFilter.Q.setValueAtTime(3.2, now + 0.04)
+      const padGain = ctx.createGain()
+      padGain.gain.setValueAtTime(0.001, now + 0.03)
+      padGain.gain.linearRampToValueAtTime(0.14, now + 0.14)
+      padGain.gain.exponentialRampToValueAtTime(0.001, now + 1.1)
+      padFilter.connect(padGain)
+      padGain.connect(master)
+      padGain.connect(delay)
+
+      padFreqs.forEach((f, idx) => {
+        const s = ctx.createOscillator()
+        s.type = 'sawtooth'
+        s.frequency.setValueAtTime(f, now + 0.03)
+        s.detune.setValueAtTime(idx === 1 ? 7 : idx === 2 ? -7 : 0, now + 0.03)
+        s.connect(padFilter)
+        s.start(now + 0.03)
+        s.stop(now + 1.12)
       })
+
+      // 4. Heroic RPG Level-Up / Quest-Accepted Crystalline Fanfare Arpeggio
+      const fanfare = [
+        { freq: 587.33, offset: 0.05, dur: 0.35, vol: 0.2 },  // D5
+        { freq: 880.0, offset: 0.12, dur: 0.42, vol: 0.22 },  // A5
+        { freq: 1174.66, offset: 0.19, dur: 0.58, vol: 0.24 }, // D6
+        { freq: 1479.98, offset: 0.26, dur: 0.95, vol: 0.22 }, // F#6 heroic peak
+        { freq: 1760.0, offset: 0.33, dur: 1.05, vol: 0.18 },  // A6 shimmer
+      ]
+      fanfare.forEach((n) => {
+        const o = ctx.createOscillator()
+        const h = ctx.createOscillator()
+        const g = ctx.createGain()
+        o.type = 'triangle'
+        h.type = 'sine'
+        o.frequency.setValueAtTime(n.freq, now + n.offset)
+        h.frequency.setValueAtTime(n.freq * 2, now + n.offset)
+        g.gain.setValueAtTime(0.001, now + n.offset)
+        g.gain.linearRampToValueAtTime(n.vol, now + n.offset + 0.015)
+        g.gain.exponentialRampToValueAtTime(0.001, now + n.offset + n.dur)
+        o.connect(g)
+        h.connect(g)
+        g.connect(master)
+        g.connect(delay)
+        o.start(now + n.offset)
+        h.start(now + n.offset)
+        o.stop(now + n.offset + n.dur + 0.03)
+        h.stop(now + n.offset + n.dur + 0.03)
+      })
+
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([40, 30, 90])
+      }
     } catch {}
   }
 
   const closeQuestAlertWithAnim = (afterClose?: () => void) => {
     if (isClosingQuestAlert) return
+    pendingArrivalSoundRef.current = false
     setIsClosingQuestAlert(true)
     setTimeout(() => {
       setArrivedQuestAlert(null)
@@ -15701,7 +15857,7 @@ export default function Page() {
                     color: '#d1c4e9',
                   }}
                 >
-                  <span>Efek Suara Awakening & Quest</span>
+                  <span>Efek Suara Awakening &amp; Quest</span>
                   <input
                     type="checkbox"
                     checked={prefSound}
@@ -15709,6 +15865,49 @@ export default function Page() {
                     style={{ accentColor: '#9333ea', cursor: 'pointer' }}
                   />
                 </label>
+                <div style={{ height: '1px', background: '#24193d' }} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date()
+                    const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+                    const sampleQuest: PersonalTask = todayPersonalTasks[0]
+                      ? { ...todayPersonalTasks[0], targetTime: hhmm }
+                      : {
+                          id: 'preview-quest',
+                          userId: currentUser.id,
+                          title: 'Daily Shadow Training',
+                          category: 'Gym',
+                          xp: 35,
+                          icon: '🏋️',
+                          done: false,
+                          schedule: ['Everyday'],
+                          targetTime: hhmm,
+                        }
+                    setIsPreferencesModalOpen(false)
+                    setQuestAlertAnimKey((k) => k + 1)
+                    setArrivedQuestAlert(sampleQuest)
+                    playQuestArrivalSound()
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    background: 'rgba(124, 58, 237, 0.16)',
+                    border: '1px solid rgba(139, 92, 246, 0.34)',
+                    color: '#ddd6fe',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Bell size={13} color="#a78bfa" />
+                  <span>Test Animasi &amp; Suara Pop-Up Quest</span>
+                </button>
               </div>
 
               <div className="modal-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
@@ -16036,6 +16235,7 @@ export default function Page() {
               }}
             >
               <div
+                key={questAlertAnimKey}
                 className={isClosingQuestAlert ? 'quest-fold-close' : 'quest-unfold-panel'}
                 style={{
                   position: 'relative',
@@ -16089,9 +16289,12 @@ export default function Page() {
                 {/* Discreet Sound Replay Button */}
                 <button
                   type="button"
-                  onClick={() => playQuestArrivalSound()}
-                  title="Putar Suara Quest"
-                  aria-label="Putar Suara Quest"
+                  onClick={() => {
+                    setQuestAlertAnimKey((k) => k + 1)
+                    playQuestArrivalSound()
+                  }}
+                  title="Putar Ulang Animasi & Suara Quest"
+                  aria-label="Putar Ulang Animasi & Suara Quest"
                   style={{
                     position: 'absolute',
                     top: '14px',
