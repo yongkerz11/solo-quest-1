@@ -942,9 +942,10 @@ function QuestCard({
           style={{
             position: 'relative',
             width: '100%',
+            minHeight: '162px',
             borderRadius: '16px',
             overflow: 'hidden',
-            background: '#0d0a18',
+            background: '#090712',
             border:
               isSkipped && !done
                 ? '1px solid rgba(239, 68, 68, 0.48)'
@@ -960,6 +961,9 @@ function QuestCard({
             cursor: disabled ? 'not-allowed' : 'pointer',
             userSelect: 'none',
             WebkitUserSelect: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
             transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.16s ease',
           }}
           onClick={handleCardClick}
@@ -977,192 +981,173 @@ function QuestCard({
             }
           }}
         >
-          {/* HERO SECTION BANNER */}
+          {/* FULL-BLEED BACKGROUND ARTWORK */}
+          <img
+            src={heroMeta.image}
+            alt={meta || title}
+            loading="lazy"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center 35%',
+              display: 'block',
+              filter: done
+                ? 'saturate(0.65) brightness(0.68)'
+                : isSkipped
+                ? 'grayscale(0.55) brightness(0.58)'
+                : 'saturate(1.08) contrast(1.04)',
+              transition: 'transform 0.35s ease, filter 0.25s ease',
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* SEAMLESS CINEMATIC GRADIENT SCRIM (NO DIVIDER LINE) */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'linear-gradient(180deg, rgba(7, 5, 14, 0.42) 0%, rgba(10, 8, 20, 0.22) 34%, rgba(9, 7, 18, 0.72) 68%, rgba(8, 6, 16, 0.92) 100%)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* TOP OVERLAY BAR: Category Pill (Left) & XP + Menu (Right) */}
           <div
             style={{
               position: 'relative',
-              width: '100%',
-              height: '118px',
-              overflow: 'hidden',
-              background: '#090712',
+              zIndex: 2,
+              padding: '10px 10px 0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
             }}
           >
-            <img
-              src={heroMeta.image}
-              alt={meta || title}
-              loading="lazy"
+            <span
               style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center 35%',
-                display: 'block',
-                filter: done
-                  ? 'saturate(0.65) brightness(0.72)'
-                  : isSkipped
-                  ? 'grayscale(0.55) brightness(0.62)'
-                  : 'saturate(1.08) contrast(1.04)',
-                transition: 'transform 0.35s ease, filter 0.25s ease',
-              }}
-            />
-
-            {/* Top subtle hologram line */}
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '1.5px',
-                background: `linear-gradient(90deg, transparent 5%, ${heroMeta.accent}99 50%, transparent 95%)`,
-                pointerEvents: 'none',
-              }}
-            />
-
-            {/* Cinematic dark gradient overlay */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background:
-                  'linear-gradient(180deg, rgba(7, 5, 14, 0.48) 0%, rgba(10, 8, 20, 0.28) 38%, rgba(13, 10, 24, 0.84) 76%, #0d0a18 100%)',
-                pointerEvents: 'none',
-              }}
-            />
-
-            {/* TOP OVERLAY BAR: Category Pill (Left) & XP + Menu (Right) */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '9px',
-                left: '10px',
-                right: '10px',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '8px',
-                zIndex: 2,
+                gap: '5px',
+                padding: '4px 9px',
+                borderRadius: '999px',
+                background: 'rgba(10, 8, 20, 0.68)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: '1px solid rgba(168, 85, 247, 0.36)',
+                color: '#ede9fe',
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '0.02em',
+                maxWidth: '58%',
+                overflow: 'hidden',
               }}
             >
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '4px 9px',
-                  borderRadius: '999px',
-                  background: 'rgba(10, 8, 20, 0.72)',
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(168, 85, 247, 0.36)',
-                  color: '#ede9fe',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  letterSpacing: '0.02em',
-                  maxWidth: '58%',
-                  overflow: 'hidden',
-                }}
-              >
-                <span style={{ color: heroMeta.accent, display: 'inline-flex', flexShrink: 0 }}>
-                  {renderCategoryIcon(meta || title, 12)}
-                </span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {meta}
-                </span>
+              <span style={{ color: heroMeta.accent, display: 'inline-flex', flexShrink: 0 }}>
+                {renderCategoryIcon(meta || title, 12)}
               </span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {meta}
+              </span>
+            </span>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
-                {xp !== undefined ? (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '4px 9px',
-                      borderRadius: '999px',
-                      background: 'rgba(124, 58, 237, 0.34)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(192, 132, 252, 0.5)',
-                      color: '#f5f3ff',
-                      fontSize: '10.5px',
-                      fontWeight: 800,
-                      letterSpacing: '0.03em',
-                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.45)',
-                    }}
-                  >
-                    +{xp} XP
-                  </span>
-                ) : badgeText ? (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '4px 9px',
-                      borderRadius: '999px',
-                      background: 'rgba(124, 58, 237, 0.34)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(192, 132, 252, 0.5)',
-                      color: '#f5f3ff',
-                      fontSize: '10px',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {badgeText}
-                  </span>
-                ) : null}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+              {xp !== undefined ? (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '4px 9px',
+                    borderRadius: '999px',
+                    background: 'rgba(124, 58, 237, 0.38)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(192, 132, 252, 0.5)',
+                    color: '#f5f3ff',
+                    fontSize: '10.5px',
+                    fontWeight: 800,
+                    letterSpacing: '0.03em',
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.45)',
+                  }}
+                >
+                  +{xp} XP
+                </span>
+              ) : badgeText ? (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '4px 9px',
+                    borderRadius: '999px',
+                    background: 'rgba(124, 58, 237, 0.38)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(192, 132, 252, 0.5)',
+                    color: '#f5f3ff',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                  }}
+                >
+                  {badgeText}
+                </span>
+              ) : null}
 
-                {hasMenuOptions && (
-                  <button
-                    type="button"
-                    className="task-btn-action"
-                    title="Tahan quest atau klik untuk menu opsi (Edit, Hapus, Info)"
-                    aria-label={`Menu opsi ${title}`}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleClearHold()
-                      if (!isMenuOpen) {
-                        openedTimestampRef.current = Date.now()
-                        setIsMenuOpen(true)
-                      } else {
-                        closeMenu()
-                      }
-                    }}
-                    style={{
-                      width: '26px',
-                      height: '26px',
-                      borderRadius: '50%',
-                      background: 'rgba(10, 8, 20, 0.72)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255, 255, 255, 0.14)',
-                      color: '#d8b4fe',
-                      cursor: 'pointer',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <MoreVertical size={14} />
-                  </button>
-                )}
-              </div>
+              {hasMenuOptions && (
+                <button
+                  type="button"
+                  className="task-btn-action"
+                  title="Tahan quest atau klik untuk menu opsi (Edit, Hapus, Info)"
+                  aria-label={`Menu opsi ${title}`}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleClearHold()
+                    if (!isMenuOpen) {
+                      openedTimestampRef.current = Date.now()
+                      setIsMenuOpen(true)
+                    } else {
+                      closeMenu()
+                    }
+                  }}
+                  style={{
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '50%',
+                    background: 'rgba(10, 8, 20, 0.68)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.14)',
+                    color: '#d8b4fe',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <MoreVertical size={14} />
+                </button>
+              )}
             </div>
+          </div>
 
-            {/* BOTTOM HERO TITLE OVERLAY */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '12px',
-                right: '12px',
-                bottom: '8px',
-                zIndex: 2,
-                minWidth: 0,
-              }}
-            >
+          {/* BOTTOM CONTENT STACK (Title + Controls seamlessly over full-bleed artwork) */}
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 2,
+              padding: '34px 12px 11px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '9px',
+            }}
+          >
+            {/* Domain Eyebrow + Quest Title */}
+            <div style={{ minWidth: 0 }}>
               <div
                 style={{
                   fontSize: '8.5px',
@@ -1221,20 +1206,16 @@ function QuestCard({
                 )}
               </div>
             </div>
-          </div>
 
-          {/* BOTTOM CONTROL FOOTER */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '8px',
-              padding: '9px 12px 10px',
-              background: '#0d0a18',
-              borderTop: '1px solid rgba(139, 92, 246, 0.14)',
-            }}
-          >
+            {/* Bottom Controls Row (Transparent, no border line) */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px',
+              }}
+            >
             {/* Left: Checkbox + Schedule & Target Time */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0, flex: 1 }}>
               <span
@@ -1422,13 +1403,15 @@ function QuestCard({
                         fontSize: '10.5px',
                         fontWeight: 700,
                         cursor: 'pointer',
+                        backdropFilter: 'blur(6px)',
+                        WebkitBackdropFilter: 'blur(6px)',
                         background: isSkipped
-                          ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(153, 27, 27, 0.45))'
-                          : 'rgba(168, 85, 247, 0.14)',
+                          ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.34), rgba(153, 27, 27, 0.55))'
+                          : 'rgba(15, 11, 28, 0.62)',
                         border: isSkipped
                           ? '1px solid rgba(248, 113, 113, 0.7)'
-                          : '1px solid rgba(168, 85, 247, 0.34)',
-                        color: isSkipped ? '#fecaca' : '#d8b4fe',
+                          : '1px solid rgba(168, 85, 247, 0.42)',
+                        color: isSkipped ? '#fecaca' : '#e9d5ff',
                       }}
                       title={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
                       aria-label={isSkipped ? 'Batalkan lewati quest' : 'Lewati quest hari ini (0 XP)'}
@@ -1439,6 +1422,7 @@ function QuestCard({
                   )}
                 </>
               )}
+            </div>
             </div>
           </div>
         </div>
