@@ -2283,7 +2283,9 @@ export default function Page() {
   const [pendingQuestAlertCount, setPendingQuestAlertCount] = useState<number>(0)
   const [isClosingQuestAlert, setIsClosingQuestAlert] = useState<boolean>(false)
   const [questAlertAnimKey, setQuestAlertAnimKey] = useState<number>(0)
+  const [isQuestAlertSealed, setIsQuestAlertSealed] = useState<boolean>(false)
   const [isAudioAutoplayBlocked, setIsAudioAutoplayBlocked] = useState<boolean>(false)
+  const hasUserInteractedRef = useRef<boolean>(false)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const pendingArrivalSoundRef = useRef<boolean>(false)
   const sfxWavUrlsRef = useRef<{ open?: string; accept?: string; skip?: string }>({})
@@ -2514,6 +2516,7 @@ export default function Page() {
     const unlock = () => {
       try {
         if (typeof window === 'undefined') return
+        hasUserInteractedRef.current = true
         if (pendingArrivalSoundRef.current && prefSound) {
           pendingArrivalSoundRef.current = false
           setIsAudioAutoplayBlocked(false)
@@ -3767,9 +3770,17 @@ export default function Page() {
     if (pendingArrived.length > 0) {
       const newlyArrived = pendingArrived[0]
       setPendingQuestAlertCount(pendingArrived.length)
-      setQuestAlertAnimKey((k) => k + 1)
-      setArrivedQuestAlert(newlyArrived)
-      playQuestArrivalSound()
+      if (hasUserInteractedRef.current) {
+        setIsQuestAlertSealed(false)
+        setQuestAlertAnimKey((k) => k + 1)
+        setArrivedQuestAlert(newlyArrived)
+        playQuestArrivalSound()
+      } else {
+        // Cold launch PWA sebelum ada sentuhan pertama: tampilkan segel hologram tertutup
+        // agar saat user mengetuk, shutter terbuka (Smart Animate) & suara System HUD berbunyi sinkron!
+        setIsQuestAlertSealed(true)
+        setArrivedQuestAlert(newlyArrived)
+      }
       if (
         prefNotification &&
         typeof window !== 'undefined' &&
@@ -16721,7 +16732,9 @@ export default function Page() {
                           schedule: ['Everyday'],
                           targetTime: hhmm,
                         }
+                    hasUserInteractedRef.current = true
                     setIsPreferencesModalOpen(false)
+                    setIsQuestAlertSealed(false)
                     setPendingQuestAlertCount(1)
                     setQuestAlertAnimKey((k) => k + 1)
                     setArrivedQuestAlert(sampleQuest)
@@ -17063,6 +17076,154 @@ export default function Page() {
               : `Terlewat ${Math.floor(elapsedMins / 60)}j ${elapsedMins % 60}m`
           const isGymQuest = arrivedQuestAlert.category.toLowerCase() === 'gym'
           const remainingInQueue = Math.max(0, pendingQuestAlertCount - 1)
+
+          if (isQuestAlertSealed) {
+            const handleUnseal = () => {
+              hasUserInteractedRef.current = true
+              setIsQuestAlertSealed(false)
+              setQuestAlertAnimKey((k) => k + 1)
+              playQuestArrivalSound()
+            }
+            return (
+              <div
+                className="quest-overlay-in"
+                onClick={handleUnseal}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') handleUnseal()
+                }}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 1400,
+                  background: 'rgba(3, 2, 8, 0.86)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '20px',
+                  cursor: 'pointer',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    maxWidth: '332px',
+                    borderRadius: '16px',
+                    background:
+                      'linear-gradient(168deg, rgba(22, 14, 42, 0.98) 0%, rgba(8, 5, 16, 0.99) 100%)',
+                    border: '1px solid rgba(168, 85, 247, 0.58)',
+                    boxShadow:
+                      '0 20px 55px rgba(0, 0, 0, 0.82), 0 0 36px rgba(139, 92, 246, 0.34), inset 0 1px 0 rgba(216, 180, 254, 0.35)',
+                    padding: '20px 18px',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px',
+                    textAlign: 'center',
+                  }}
+                >
+                  {/* Top & Bottom Luminous Shutter Rails */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: '8%',
+                      right: '8%',
+                      height: '2px',
+                      background: 'linear-gradient(90deg, transparent, #7c3aed, #e9d5ff, #7c3aed, transparent)',
+                      boxShadow: '0 0 14px rgba(168, 85, 247, 0.9)',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: '8%',
+                      right: '8%',
+                      height: '2px',
+                      background: 'linear-gradient(90deg, transparent, #7c3aed, #e9d5ff, #7c3aed, transparent)',
+                      boxShadow: '0 0 14px rgba(168, 85, 247, 0.7)',
+                    }}
+                  />
+                  {/* Corner Tactical HUD Brackets */}
+                  <span style={{ position: 'absolute', top: '9px', left: '9px', width: '10px', height: '10px', borderTop: '1.5px solid rgba(192, 132, 252, 0.75)', borderLeft: '1.5px solid rgba(192, 132, 252, 0.75)', borderTopLeftRadius: '3px', pointerEvents: 'none' }} />
+                  <span style={{ position: 'absolute', top: '9px', right: '9px', width: '10px', height: '10px', borderTop: '1.5px solid rgba(192, 132, 252, 0.75)', borderRight: '1.5px solid rgba(192, 132, 252, 0.75)', borderTopRightRadius: '3px', pointerEvents: 'none' }} />
+                  <span style={{ position: 'absolute', bottom: '9px', left: '9px', width: '10px', height: '10px', borderBottom: '1.5px solid rgba(192, 132, 252, 0.55)', borderLeft: '1.5px solid rgba(192, 132, 252, 0.55)', borderBottomLeftRadius: '3px', pointerEvents: 'none' }} />
+                  <span style={{ position: 'absolute', bottom: '9px', right: '9px', width: '10px', height: '10px', borderBottom: '1.5px solid rgba(192, 132, 252, 0.55)', borderRight: '1.5px solid rgba(192, 132, 252, 0.55)', borderBottomRightRadius: '3px', pointerEvents: 'none' }} />
+
+                  <div
+                    className="quest-emblem-pulse"
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '14px',
+                      background: 'radial-gradient(circle, rgba(139, 92, 246, 0.34), rgba(15, 10, 28, 0.94))',
+                      border: '1.5px solid rgba(192, 132, 252, 0.75)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#f3e8ff',
+                      fontSize: '22px',
+                      fontWeight: 900,
+                      textShadow: '0 0 14px rgba(192, 132, 252, 0.9)',
+                    }}
+                  >
+                    !
+                  </div>
+
+                  <div>
+                    <div
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: 800,
+                        color: '#a78bfa',
+                        letterSpacing: '0.24em',
+                      }}
+                    >
+                      SYSTEM NOTIFICATION
+                    </div>
+                    <div
+                      style={{
+                        marginTop: '4px',
+                        fontSize: '18px',
+                        fontWeight: 900,
+                        color: '#faf5ff',
+                        letterSpacing: '0.06em',
+                        textShadow: '0 0 18px rgba(168, 85, 247, 0.6)',
+                      }}
+                    >
+                      {pendingQuestAlertCount > 1
+                        ? `${pendingQuestAlertCount} QUEST TERBUKA`
+                        : 'QUEST TERBUKA'}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 16px',
+                      borderRadius: '999px',
+                      background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.36), rgba(76, 29, 149, 0.62))',
+                      border: '1px solid rgba(192, 132, 252, 0.6)',
+                      color: '#f5f3ff',
+                      fontSize: '11.5px',
+                      fontWeight: 800,
+                      letterSpacing: '0.06em',
+                      boxShadow: '0 0 16px rgba(139, 92, 246, 0.35)',
+                    }}
+                  >
+                    <Bell size={13} color="#e9d5ff" />
+                    <span>KETUK UNTUK MEMBUKA</span>
+                  </div>
+                </div>
+              </div>
+            )
+          }
 
           return (
             <div
