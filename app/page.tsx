@@ -2283,11 +2283,48 @@ export default function Page() {
   const [pendingQuestAlertCount, setPendingQuestAlertCount] = useState<number>(0)
   const [isClosingQuestAlert, setIsClosingQuestAlert] = useState<boolean>(false)
   const [questAlertAnimKey, setQuestAlertAnimKey] = useState<number>(0)
+  const [isAudioAutoplayBlocked, setIsAudioAutoplayBlocked] = useState<boolean>(false)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const pendingArrivalSoundRef = useRef<boolean>(false)
+  const sfxWavUrlsRef = useRef<{ open?: string; accept?: string; skip?: string }>({})
+  const sfxAudioElRef = useRef<HTMLAudioElement | null>(null)
+
+  // Encode AudioBuffer menjadi WAV Blob URL agar bisa diputar via HTML5 <audio>
+  // (Di iOS/iPhone PWA, <audio> memakai kanal Media sehingga tetap berbunyi meski tombol silent fisik aktif)
+  const encodeAudioBufferToWavUrl = (buffer: AudioBuffer): string => {
+    const numChannels = 1
+    const sampleRate = buffer.sampleRate
+    const samples = buffer.getChannelData(0)
+    const byteLength = 44 + samples.length * 2
+    const arrayBuffer = new ArrayBuffer(byteLength)
+    const view = new DataView(arrayBuffer)
+    const writeStr = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
+    }
+    writeStr(0, 'RIFF')
+    view.setUint32(4, byteLength - 8, true)
+    writeStr(8, 'WAVE')
+    writeStr(12, 'fmt ')
+    view.setUint32(16, 16, true)
+    view.setUint16(20, 1, true)
+    view.setUint16(22, numChannels, true)
+    view.setUint32(24, sampleRate, true)
+    view.setUint32(28, sampleRate * numChannels * 2, true)
+    view.setUint16(32, numChannels * 2, true)
+    view.setUint16(34, 16, true)
+    writeStr(36, 'data')
+    view.setUint32(40, samples.length * 2, true)
+    let offset = 44
+    for (let i = 0; i < samples.length; i++) {
+      const s = Math.max(-1, Math.min(1, samples[i]))
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+      offset += 2
+    }
+    return URL.createObjectURL(new Blob([arrayBuffer], { type: 'audio/wav' }))
+  }
 
   // Helper internal: sintesis suara Solo Leveling System Window Open (telemetry HUD + sub drop + cold FM ping)
-  const renderQuestOpenSfx = (ctx: AudioContext) => {
+  const renderQuestOpenSfx = (ctx: BaseAudioContext) => {
     const now = ctx.currentTime + 0.01
 
     const master = ctx.createGain()
@@ -2417,34 +2454,98 @@ export default function Page() {
     }
   }
 
-  // Unlock permanen AudioContext (khususnya iOS Safari) pada sentuhan pertama + putar suara tertunda jika pop-up sudah muncul
+  // Pre-render WAV untuk suara System Open (agar bisa diputar via HTML5 <audio> di iOS/Android PWA)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const OfflineCtx = window.OfflineAudioContext || (window as any).webkitOfflineAudioContext
+    if (!OfflineCtx) return
+    let cancelled = false
+    const bake = async () => {
+      try {
+        const sampleRate = 22050
+        const openCtx = new OfflineCtx(1, Math.floor(sampleRate * 1.15), sampleRate)
+        renderQuestOpenSfx(openCtx)
+        const openBuf = await openCtx.startRendering()
+        if (!cancelled) {
+          sfxWavUrlsRef.current.open = encodeAudioBufferToWavUrl(openBuf)
+        }
+      } catch {}
+    }
+    bake()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Helper internal: putar suara Open via HTML5 <audio> (iOS-friendly) dengan fallback Web Audio API
+  const playOpenAudioElement = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      try {
+        const wavUrl = sfxWavUrlsRef.current.open
+        if (!wavUrl) {
+          resolve(false)
+          return
+        }
+        const el = sfxAudioElRef.current || new Audio()
+        sfxAudioElRef.current = el
+        el.src = wavUrl
+        el.volume = 1
+        el.currentTime = 0
+        const p = el.play()
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            setIsAudioAutoplayBlocked(false)
+            resolve(true)
+          }).catch(() => {
+            resolve(false)
+          })
+        } else {
+          setIsAudioAutoplayBlocked(false)
+          resolve(true)
+        }
+      } catch {
+        resolve(false)
+      }
+    })
+  }
+
+  // Unlock permanen AudioContext + HTML5 Audio (khususnya iOS Safari PWA) pada sentuhan pertama
   useEffect(() => {
     const unlock = () => {
       try {
         if (typeof window === 'undefined') return
+        if (pendingArrivalSoundRef.current && prefSound) {
+          pendingArrivalSoundRef.current = false
+          setIsAudioAutoplayBlocked(false)
+          playOpenAudioElement().then((played) => {
+            if (!played) {
+              const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+              if (!AudioCtx) return
+              const ctx = audioCtxRef.current || new AudioCtx()
+              audioCtxRef.current = ctx
+              if (ctx.state === 'suspended') {
+                ctx.resume().then(() => renderQuestOpenSfx(ctx)).catch(() => {})
+              } else {
+                renderQuestOpenSfx(ctx)
+              }
+            }
+          })
+          return
+        }
+
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
         if (!AudioCtx) return
         if (!audioCtxRef.current) {
           audioCtxRef.current = new AudioCtx()
         }
         const ctx = audioCtxRef.current
-        // Silent 1-sample buffer untuk unlock audio engine iOS Safari secara permanen
         const silentBuf = ctx.createBuffer(1, 1, 22050)
         const src = ctx.createBufferSource()
         src.buffer = silentBuf
         src.connect(ctx.destination)
         src.start(0)
-
-        const afterResume = () => {
-          if (pendingArrivalSoundRef.current && prefSound) {
-            pendingArrivalSoundRef.current = false
-            renderQuestOpenSfx(ctx)
-          }
-        }
         if (ctx.state === 'suspended') {
-          ctx.resume().then(afterResume).catch(() => {})
-        } else {
-          afterResume()
+          ctx.resume().catch(() => {})
         }
       } catch {}
     }
@@ -2462,26 +2563,43 @@ export default function Page() {
   const playQuestArrivalSound = () => {
     try {
       if (!prefSound || typeof window === 'undefined') return
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
-      if (!AudioCtx) return
-      const ctx = audioCtxRef.current || new AudioCtx()
-      audioCtxRef.current = ctx
-
-      if (ctx.state === 'running') {
-        pendingArrivalSoundRef.current = false
-        renderQuestOpenSfx(ctx)
-      } else {
-        pendingArrivalSoundRef.current = true
-        ctx
-          .resume()
-          .then(() => {
-            if (ctx.state === 'running' && pendingArrivalSoundRef.current) {
-              pendingArrivalSoundRef.current = false
-              renderQuestOpenSfx(ctx)
-            }
-          })
-          .catch(() => {})
-      }
+      playOpenAudioElement().then((played) => {
+        if (played) {
+          pendingArrivalSoundRef.current = false
+          setIsAudioAutoplayBlocked(false)
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate([45, 30, 95])
+          }
+          return
+        }
+        // Fallback Web Audio API
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+        if (!AudioCtx) {
+          pendingArrivalSoundRef.current = true
+          setIsAudioAutoplayBlocked(true)
+          return
+        }
+        const ctx = audioCtxRef.current || new AudioCtx()
+        audioCtxRef.current = ctx
+        if (ctx.state === 'running') {
+          pendingArrivalSoundRef.current = false
+          setIsAudioAutoplayBlocked(false)
+          renderQuestOpenSfx(ctx)
+        } else {
+          pendingArrivalSoundRef.current = true
+          setIsAudioAutoplayBlocked(true)
+          ctx
+            .resume()
+            .then(() => {
+              if (ctx.state === 'running' && pendingArrivalSoundRef.current) {
+                pendingArrivalSoundRef.current = false
+                setIsAudioAutoplayBlocked(false)
+                renderQuestOpenSfx(ctx)
+              }
+            })
+            .catch(() => {})
+        }
+      })
     } catch (e) {
       console.error(e)
     }
@@ -17012,10 +17130,11 @@ export default function Page() {
                 {/* Holographic Scanline Sweep */}
                 <div className="quest-scan-beam" />
 
-                {/* Discreet Sound Replay Button */}
+                {/* Discreet Sound Replay Button (+ auto-unlock hint if OS blocked cold-start audio) */}
                 <button
                   type="button"
                   onClick={() => {
+                    setIsAudioAutoplayBlocked(false)
                     setQuestAlertAnimKey((k) => k + 1)
                     playQuestArrivalSound()
                   }}
@@ -17025,19 +17144,27 @@ export default function Page() {
                     position: 'absolute',
                     top: '14px',
                     right: '14px',
-                    width: '28px',
                     height: '28px',
+                    padding: isAudioAutoplayBlocked ? '0 9px' : '0',
+                    width: isAudioAutoplayBlocked ? 'auto' : '28px',
                     borderRadius: '8px',
-                    background: 'rgba(139, 92, 246, 0.12)',
-                    border: '1px solid rgba(139, 92, 246, 0.28)',
-                    color: '#c4b5fd',
+                    background: isAudioAutoplayBlocked ? 'rgba(124, 58, 237, 0.34)' : 'rgba(139, 92, 246, 0.12)',
+                    border: isAudioAutoplayBlocked
+                      ? '1px solid rgba(192, 132, 252, 0.65)'
+                      : '1px solid rgba(139, 92, 246, 0.28)',
+                    color: isAudioAutoplayBlocked ? '#f5f3ff' : '#c4b5fd',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    gap: '5px',
+                    fontSize: '10px',
+                    fontWeight: 700,
                     cursor: 'pointer',
+                    boxShadow: isAudioAutoplayBlocked ? '0 0 12px rgba(168, 85, 247, 0.45)' : 'none',
                   }}
                 >
                   <Bell size={13} />
+                  {isAudioAutoplayBlocked && <span>Aktifkan Suara</span>}
                 </button>
 
                 {/* [ ! ] Shadow Monarch Emblem + Title */}
