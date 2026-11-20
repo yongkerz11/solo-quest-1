@@ -1,5 +1,6 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -63,36 +64,32 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                // Cegah pinch zoom di iOS Safari (gesture events)
-                document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
-                document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
-                document.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
-
-                // Cegah 2-finger multi-touch pinch zoom di layar sentuh / mobile browser
-                document.addEventListener('touchmove', function(e) {
-                  if (e.touches && e.touches.length > 1) {
-                    e.preventDefault();
-                  }
-                }, { passive: false });
-
-                // Cegah pinch zoom via trackpad laptop (Ctrl + wheel)
-                document.addEventListener('wheel', function(e) {
-                  if (e.ctrlKey) {
-                    e.preventDefault();
-                  }
-                }, { passive: false });
-              })();
-            `,
-          }}
-        />
-      </head>
       <body className="antialiased">
         {children}
+        <Script id="prevent-pinch-zoom" strategy="afterInteractive">
+          {`
+            (function() {
+              // Cegah pinch zoom di iOS Safari (gesture events)
+              document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+              document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+              document.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
+
+              // Cegah 2-finger multi-touch pinch zoom di layar sentuh / mobile browser
+              document.addEventListener('touchmove', function(e) {
+                if (e.touches && e.touches.length > 1) {
+                  e.preventDefault();
+                }
+              }, { passive: false });
+
+              // Cegah pinch zoom via trackpad laptop (Ctrl + wheel)
+              document.addEventListener('wheel', function(e) {
+                if (e.ctrlKey) {
+                  e.preventDefault();
+                }
+              }, { passive: false });
+            })();
+          `}
+        </Script>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
