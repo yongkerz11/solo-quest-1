@@ -332,20 +332,11 @@ function isQuestForToday(schedule?: string[]): boolean {
   return schedule.includes(todayDayCode)
 }
 
-const QUEST_ACTIVE_WINDOW_MINUTES = 20
-
 function parseTargetTimeMinutes(targetTime?: string): number | null {
   if (!targetTime) return null
   const parts = targetTime.split(':').map(Number)
   if (parts.length < 2 || parts.some(isNaN)) return null
   return parts[0] * 60 + parts[1]
-}
-
-function formatMinutesToHHMM(totalMinutes: number): string {
-  const wrapped = ((totalMinutes % 1440) + 1440) % 1440
-  const hh = String(Math.floor(wrapped / 60)).padStart(2, '0')
-  const mm = String(wrapped % 60).padStart(2, '0')
-  return `${hh}:${mm}`
 }
 
 // Belum masuk jam quest hari ini (mis. jam 10:00, sekarang masih 09:40 -> disembunyikan di dashboard)
@@ -359,28 +350,20 @@ function isQuestTimeUpcoming(targetTime?: string, isDone?: boolean, schedule?: s
   return nowMinutes < targetMinutes
 }
 
-// Sisa menit dalam jendela aktif 20 menit (mis. 10:00 s/d 10:20 -> muncul di dashboard)
-function getQuestActiveWindowRemainingMinutes(targetTime?: string): number | null {
-  const targetMinutes = parseTargetTimeMinutes(targetTime)
-  if (targetMinutes === null) return null
-  const now = new Date()
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  const endMinutes = targetMinutes + QUEST_ACTIVE_WINDOW_MINUTES
-  if (nowMinutes >= targetMinutes && nowMinutes <= endMinutes) {
-    return Math.max(1, endMinutes - nowMinutes)
-  }
-  return null
-}
-
-// Sudah lewat jendela aktif 20 menit (mis. > 10:20) -> otomatis skip & hilang dari dashboard
-function isQuestTimeSkipped(targetTime?: string, isDone?: boolean, schedule?: string[]): boolean {
-  if (!targetTime || isDone) return false
+// Sudah memasuki / melewati jam quest hari ini (tanpa batas durasi -> tetap terbuka sampai dikerjakan atau di-skip manual)
+function isQuestTimeArrived(targetTime?: string, schedule?: string[]): boolean {
+  if (!targetTime) return false
   if (schedule && !isQuestForToday(schedule)) return false
   const targetMinutes = parseTargetTimeMinutes(targetTime)
   if (targetMinutes === null) return false
   const now = new Date()
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  return nowMinutes > targetMinutes + QUEST_ACTIVE_WINDOW_MINUTES
+  return nowMinutes >= targetMinutes
+}
+
+// Tidak ada auto-skip berdasarkan durasi waktu lagi (skip hanya manual oleh user)
+function isQuestTimeSkipped(_targetTime?: string, _isDone?: boolean, _schedule?: string[]): boolean {
+  return false
 }
 
 // Sistem Rank Hunter Kompetitif (Tier E hingga SSS — butuh konsistensi jangka panjang)
@@ -2297,6 +2280,7 @@ export default function Page() {
   }
 
   const [arrivedQuestAlert, setArrivedQuestAlert] = useState<PersonalTask | null>(null)
+  const [pendingQuestAlertCount, setPendingQuestAlertCount] = useState<number>(0)
   const [isClosingQuestAlert, setIsClosingQuestAlert] = useState<boolean>(false)
   const [questAlertAnimKey, setQuestAlertAnimKey] = useState<number>(0)
   const audioCtxRef = useRef<AudioContext | null>(null)
@@ -3546,7 +3530,8 @@ export default function Page() {
     })
   }, [timeTick, mounted, activeWorkoutQuest?.id, activeWorkoutQuest?.viewOnly])
 
-  // Deteksi otomatis saat Quest ber-jam memasuki jendela aktif 20 menit -> Munculkan Pop-Up Game + Suara Quest Terbuka!
+  // Deteksi otomatis saat Quest ber-jam sudah memasuki / melewati jamnya (tanpa batas durasi) ->
+  // Jika ada beberapa quest terlewat (mis. 2 quest), antrekan agar pop-up muncul berurutan satu per satu!
   useEffect(() => {
     if (!mounted || arrivedQuestAlert) return
     const todayIso = getLocalIsoDate()
@@ -3561,22 +3546,26 @@ export default function Page() {
     } catch {}
     const alertedSet = new Set(alertedKeys)
 
-    const newlyArrived = todayPersonalTasks.find((t) => {
-      if (!t.targetTime) return false
-      if (t.completedDates?.includes(todayIso)) return false
-      if (t.skippedDates?.includes(todayIso)) return false
-      const remainingMin = getQuestActiveWindowRemainingMinutes(t.targetTime)
-      if (remainingMin === null) return false
-      const key = `${todayIso}:${t.id}:${t.targetTime}`
-      return !alertedSet.has(key)
-    })
+    const pendingArrived = todayPersonalTasks
+      .filter((t) => {
+        if (!t.targetTime) return false
+        if (t.completedDates?.includes(todayIso)) return false
+        if (t.skippedDates?.includes(todayIso)) return false
+        if (!isQuestTimeArrived(t.targetTime, t.schedule)) return false
+        const key = `${todayIso}:${t.id}:${t.targetTime}`
+        return !alertedSet.has(key)
+      })
+      .sort((a, b) => (parseTargetTimeMinutes(a.targetTime) ?? 0) - (parseTargetTimeMinutes(b.targetTime) ?? 0))
 
-    if (newlyArrived) {
+    if (pendingArrived.length > 0) {
+      const newlyArrived = pendingArrived[0]
       const key = `${todayIso}:${newlyArrived.id}:${newlyArrived.targetTime}`
       alertedSet.add(key)
       try {
         localStorage.setItem('solo_quest_alerted_v1', JSON.stringify(Array.from(alertedSet)))
       } catch {}
+      setPendingQuestAlertCount(pendingArrived.length)
+      setQuestAlertAnimKey((k) => k + 1)
       setArrivedQuestAlert(newlyArrived)
       playQuestArrivalSound()
       if (
@@ -3587,10 +3576,12 @@ export default function Page() {
       ) {
         try {
           new Notification(`[ ! ] QUEST TERBUKA: ${newlyArrived.title}`, {
-            body: `Jendela aktif 20 menit dimulai (${newlyArrived.targetTime}). Selesaikan untuk +${newlyArrived.xp} XP!`,
+            body: `Quest jadwal ${newlyArrived.targetTime} sudah terbuka. Selesaikan untuk +${newlyArrived.xp} XP!`,
           })
         } catch {}
       }
+    } else {
+      setPendingQuestAlertCount(0)
     }
   }, [timeTick, mounted, todayPersonalTasks, arrivedQuestAlert, prefNotification, prefSound])
 
@@ -11806,10 +11797,11 @@ export default function Page() {
                           const isDoneOnDay = isTaskDoneOnDay(task)
                           const isSkipped = isTaskSkippedOnDay(task)
                           const isUpcomingTime = isTaskUpcomingTimeOnDay(task)
-                          const activeWindowMins =
-                            activeScheduleDayObj.isToday && !isDoneOnDay && !isSkipped
-                              ? getQuestActiveWindowRemainingMinutes(task.targetTime)
-                              : null
+                          const isArrivedActive =
+                            activeScheduleDayObj.isToday &&
+                            !isDoneOnDay &&
+                            !isSkipped &&
+                            isQuestTimeArrived(task.targetTime, task.schedule)
                           return (
                             <div
                               key={task.id}
@@ -11910,7 +11902,7 @@ export default function Page() {
                                     }}
                                   >
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
-                                    {activeWindowMins !== null && (
+                                    {isArrivedActive && (
                                       <span
                                         style={{
                                           fontSize: '8.5px',
@@ -11923,7 +11915,7 @@ export default function Page() {
                                           flexShrink: 0,
                                         }}
                                       >
-                                        {activeWindowMins}m tersisa
+                                        TERBUKA
                                       </span>
                                     )}
                                     {isUpcomingTime && (
@@ -16515,7 +16507,7 @@ export default function Page() {
                     const now = new Date()
                     const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
                     const sampleQuest: PersonalTask = todayPersonalTasks[0]
-                      ? { ...todayPersonalTasks[0], targetTime: hhmm }
+                      ? { ...todayPersonalTasks[0], id: 'preview-quest', targetTime: hhmm }
                       : {
                           id: 'preview-quest',
                           userId: currentUser.id,
@@ -16528,6 +16520,7 @@ export default function Page() {
                           targetTime: hhmm,
                         }
                     setIsPreferencesModalOpen(false)
+                    setPendingQuestAlertCount(1)
                     setQuestAlertAnimKey((k) => k + 1)
                     setArrivedQuestAlert(sampleQuest)
                     playQuestArrivalSound()
@@ -16857,11 +16850,17 @@ export default function Page() {
       {arrivedQuestAlert &&
         (() => {
           const targetMins = parseTargetTimeMinutes(arrivedQuestAlert.targetTime)
-          const endTimeLabel =
-            targetMins !== null ? formatMinutesToHHMM(targetMins + QUEST_ACTIVE_WINDOW_MINUTES) : ''
-          const remainingMins =
-            getQuestActiveWindowRemainingMinutes(arrivedQuestAlert.targetTime) ?? QUEST_ACTIVE_WINDOW_MINUTES
+          const now = new Date()
+          const nowMins = now.getHours() * 60 + now.getMinutes()
+          const elapsedMins = targetMins !== null ? Math.max(0, nowMins - targetMins) : 0
+          const elapsedLabel =
+            elapsedMins <= 1
+              ? 'Baru Terbuka'
+              : elapsedMins < 60
+              ? `Terlewat ${elapsedMins} mnt`
+              : `Terlewat ${Math.floor(elapsedMins / 60)}j ${elapsedMins % 60}m`
           const isGymQuest = arrivedQuestAlert.category.toLowerCase() === 'gym'
+          const remainingInQueue = Math.max(0, pendingQuestAlertCount - 1)
 
           return (
             <div
@@ -17065,52 +17064,76 @@ export default function Page() {
                     }}
                   >
                     <span style={{ color: '#c4b5fd', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
-                      <Clock size={12} color="#a78bfa" /> {arrivedQuestAlert.targetTime} – {endTimeLabel}
+                      <Clock size={12} color="#a78bfa" /> Jadwal {arrivedQuestAlert.targetTime}
                     </span>
                     <span
                       style={{
                         padding: '2px 8px',
                         borderRadius: '6px',
-                        background: 'rgba(124, 58, 237, 0.2)',
-                        border: '1px solid rgba(167, 139, 250, 0.38)',
-                        color: '#e9d5ff',
+                        background: elapsedMins > 1 ? 'rgba(245, 158, 11, 0.16)' : 'rgba(124, 58, 237, 0.2)',
+                        border: elapsedMins > 1 ? '1px solid rgba(251, 191, 36, 0.42)' : '1px solid rgba(167, 139, 250, 0.38)',
+                        color: elapsedMins > 1 ? '#fde68a' : '#e9d5ff',
                         fontSize: '10px',
                         fontWeight: 800,
                       }}
                     >
-                      {remainingMins} mnt tersisa
+                      {elapsedLabel}
                     </span>
                   </div>
                 </div>
 
                 <p className="quest-stagger-3" style={{ margin: 0, fontSize: '11px', color: '#9a8fb2', lineHeight: 1.45 }}>
-                  Selesaikan sebelum pukul <strong style={{ color: '#ede9fe' }}>{endTimeLabel}</strong> atau quest akan otomatis ter-skip.
+                  {remainingInQueue > 0 ? (
+                    <>
+                      Quest ini sudah terbuka tanpa batas waktu.{' '}
+                      <strong style={{ color: '#ddd6fe' }}>+{remainingInQueue} quest lainnya</strong> menunggu setelah ini.
+                    </>
+                  ) : (
+                    <>
+                      Quest ini sudah terbuka tanpa batas waktu. Pilih <strong style={{ color: '#ede9fe' }}>Terima Quest</strong> untuk mulai atau <strong style={{ color: '#fca5a5' }}>Quest Skipped</strong> untuk melewati hari ini.
+                    </>
+                  )}
                 </p>
 
-                {/* CTA Buttons (Gentle Shadow Violet) */}
-                <div className="quest-stagger-4" style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '8px' }}>
+                {/* CTA Buttons (Quest Skipped & Terima Quest) */}
+                <div className="quest-stagger-4" style={{ display: 'grid', gridTemplateColumns: '1fr 1.25fr', gap: '8px' }}>
                   <button
                     type="button"
-                    onClick={() => closeQuestAlertWithAnim()}
+                    onClick={() => {
+                      const q = arrivedQuestAlert
+                      closeQuestAlertWithAnim(() => {
+                        if (q.id !== 'preview-quest') {
+                          handleSkipPersonal(q.id, getLocalIsoDate())
+                        }
+                      })
+                    }}
                     style={{
                       height: '41px',
                       borderRadius: '11px',
-                      background: 'rgba(14, 11, 24, 0.88)',
-                      border: '1px solid rgba(139, 92, 246, 0.22)',
-                      color: '#b8add1',
-                      fontSize: '12px',
-                      fontWeight: 700,
+                      background: 'linear-gradient(135deg, rgba(127, 29, 29, 0.42), rgba(69, 10, 10, 0.72))',
+                      border: '1px solid rgba(248, 113, 113, 0.45)',
+                      color: '#fecaca',
+                      fontSize: '11.5px',
+                      fontWeight: 800,
+                      letterSpacing: '0.02em',
                       cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
                     }}
                   >
-                    Nanti
+                    <FastForward size={12} />
+                    <span>Quest Skipped</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       const q = arrivedQuestAlert
+                      const hasMoreInQueue = remainingInQueue > 0
                       playQuestAcceptSound()
                       closeQuestAlertWithAnim(() => {
+                        if (hasMoreInQueue || q.id === 'preview-quest') return
                         if (isGymQuest) {
                           setWorkoutSubPage('overview')
                           setActiveWorkoutQuest({
