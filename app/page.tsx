@@ -1146,21 +1146,8 @@ function QuestCard({
               gap: '9px',
             }}
           >
-            {/* Domain Eyebrow + Quest Title */}
+            {/* Quest Title */}
             <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: '8.5px',
-                  fontWeight: 800,
-                  letterSpacing: '0.16em',
-                  color: heroMeta.accent,
-                  textTransform: 'uppercase',
-                  marginBottom: '2px',
-                  textShadow: '0 1px 6px rgba(0, 0, 0, 0.9)',
-                }}
-              >
-                {heroMeta.domainTag}
-              </div>
               <div
                 style={{
                   display: 'flex',
