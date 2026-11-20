@@ -2491,18 +2491,17 @@ export default function Page() {
   const playQuestAcceptSound = () => {
     try {
       if (!prefSound || typeof window === 'undefined') return
+      pendingArrivalSoundRef.current = false
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
       if (!AudioCtx) return
       const ctx = audioCtxRef.current || new AudioCtx()
       audioCtxRef.current = ctx
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {})
-      }
 
-      const now = ctx.currentTime + 0.005
-      const master = ctx.createGain()
-      master.gain.setValueAtTime(0.9, now)
-      master.connect(ctx.destination)
+      const trigger = () => {
+        const now = ctx.currentTime + 0.005
+        const master = ctx.createGain()
+        master.gain.setValueAtTime(0.9, now)
+        master.connect(ctx.destination)
 
       // Dark abyssal delay tail
       const delay = ctx.createDelay(0.5)
@@ -2649,6 +2648,78 @@ export default function Page() {
 
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate([35, 25, 85])
+      }
+      }
+
+      if (ctx.state === 'running') {
+        trigger()
+      } else {
+        ctx.resume().then(trigger).catch(() => {})
+      }
+    } catch {}
+  }
+
+  // Efek suara Dark Tactical Solo Leveling "QUEST SKIPPED / DISMISSED" saat tombol Quest Skipped ditekan
+  const playQuestSkipSound = () => {
+    try {
+      if (!prefSound || typeof window === 'undefined') return
+      pendingArrivalSoundRef.current = false
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = audioCtxRef.current || new AudioCtx()
+      audioCtxRef.current = ctx
+
+      const trigger = () => {
+        const now = ctx.currentTime + 0.005
+        const master = ctx.createGain()
+        master.gain.setValueAtTime(0.75, now)
+        master.connect(ctx.destination)
+
+        // 1. Short descending tactical power-down pulses (440 Hz -> 293.66 Hz)
+        ;[440, 293.66].forEach((freq, idx) => {
+          const t0 = now + idx * 0.055
+          const osc = ctx.createOscillator()
+          const flt = ctx.createBiquadFilter()
+          const g = ctx.createGain()
+          osc.type = 'sawtooth'
+          osc.frequency.setValueAtTime(freq, t0)
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.78, t0 + 0.07)
+          flt.type = 'lowpass'
+          flt.frequency.setValueAtTime(1100, t0)
+          flt.frequency.exponentialRampToValueAtTime(260, t0 + 0.08)
+          g.gain.setValueAtTime(0.001, t0)
+          g.gain.linearRampToValueAtTime(0.18, t0 + 0.008)
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.09)
+          osc.connect(flt)
+          flt.connect(g)
+          g.connect(master)
+          osc.start(t0)
+          osc.stop(t0 + 0.1)
+        })
+
+        // 2. Low obsidian shutter lock-off thud (95 Hz -> 38 Hz)
+        const sub = ctx.createOscillator()
+        const sg = ctx.createGain()
+        sub.type = 'sine'
+        sub.frequency.setValueAtTime(95, now + 0.02)
+        sub.frequency.exponentialRampToValueAtTime(38, now + 0.24)
+        sg.gain.setValueAtTime(0.001, now + 0.02)
+        sg.gain.linearRampToValueAtTime(0.32, now + 0.045)
+        sg.gain.exponentialRampToValueAtTime(0.001, now + 0.28)
+        sub.connect(sg)
+        sg.connect(master)
+        sub.start(now + 0.02)
+        sub.stop(now + 0.3)
+
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([25, 20, 25])
+        }
+      }
+
+      if (ctx.state === 'running') {
+        trigger()
+      } else {
+        ctx.resume().then(trigger).catch(() => {})
       }
     } catch {}
   }
@@ -17112,9 +17183,13 @@ export default function Page() {
                 <div className="quest-stagger-4" style={{ display: 'grid', gridTemplateColumns: '1fr 1.25fr', gap: '8px' }}>
                   <button
                     type="button"
+                    onPointerDown={() => {
+                      pendingArrivalSoundRef.current = false
+                    }}
                     onClick={() => {
                       const q = arrivedQuestAlert
                       markQuestAlertHandled(q)
+                      playQuestSkipSound()
                       closeQuestAlertWithAnim(() => {
                         if (q.id !== 'preview-quest') {
                           handleSkipPersonal(q.id, getLocalIsoDate())
@@ -17142,6 +17217,9 @@ export default function Page() {
                   </button>
                   <button
                     type="button"
+                    onPointerDown={() => {
+                      pendingArrivalSoundRef.current = false
+                    }}
                     onClick={() => {
                       const q = arrivedQuestAlert
                       const hasMoreInQueue = remainingInQueue > 0
