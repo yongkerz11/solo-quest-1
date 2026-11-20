@@ -3530,21 +3530,39 @@ export default function Page() {
     })
   }, [timeTick, mounted, activeWorkoutQuest?.id, activeWorkoutQuest?.viewOnly])
 
+  const markQuestAlertHandled = (task: PersonalTask) => {
+    if (!task.targetTime || task.id === 'preview-quest') return
+    try {
+      const todayIso = getLocalIsoDate()
+      const raw = localStorage.getItem('solo_quest_handled_v2')
+      const parsed = raw ? JSON.parse(raw) : []
+      const keys: string[] = Array.isArray(parsed)
+        ? parsed.filter((k) => typeof k === 'string' && k.startsWith(`${todayIso}:`))
+        : []
+      const handledSet = new Set(keys)
+      handledSet.add(`${todayIso}:${task.id}:${task.targetTime}`)
+      localStorage.setItem('solo_quest_handled_v2', JSON.stringify(Array.from(handledSet)))
+    } catch {}
+  }
+
   // Deteksi otomatis saat Quest ber-jam sudah memasuki / melewati jamnya (tanpa batas durasi) ->
+  // Hanya aktif saat layar/tab sedang terlihat (visible) agar tidak terlewat di background.
+  // Status "handled" HANYA disimpan saat user benar-benar menekan TERIMA QUEST atau QUEST SKIPPED.
   // Jika ada beberapa quest terlewat (mis. 2 quest), antrekan agar pop-up muncul berurutan satu per satu!
   useEffect(() => {
     if (!mounted || arrivedQuestAlert) return
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
     const todayIso = getLocalIsoDate()
-    let alertedKeys: string[] = []
+    let handledKeys: string[] = []
     try {
-      const raw = localStorage.getItem('solo_quest_alerted_v1')
+      const raw = localStorage.getItem('solo_quest_handled_v2')
       const parsed = raw ? JSON.parse(raw) : []
       if (Array.isArray(parsed)) {
         // Hanya simpan kunci hari ini agar storage tetap ringan
-        alertedKeys = parsed.filter((k) => typeof k === 'string' && k.startsWith(`${todayIso}:`))
+        handledKeys = parsed.filter((k) => typeof k === 'string' && k.startsWith(`${todayIso}:`))
       }
     } catch {}
-    const alertedSet = new Set(alertedKeys)
+    const handledSet = new Set(handledKeys)
 
     const pendingArrived = todayPersonalTasks
       .filter((t) => {
@@ -3553,17 +3571,12 @@ export default function Page() {
         if (t.skippedDates?.includes(todayIso)) return false
         if (!isQuestTimeArrived(t.targetTime, t.schedule)) return false
         const key = `${todayIso}:${t.id}:${t.targetTime}`
-        return !alertedSet.has(key)
+        return !handledSet.has(key)
       })
       .sort((a, b) => (parseTargetTimeMinutes(a.targetTime) ?? 0) - (parseTargetTimeMinutes(b.targetTime) ?? 0))
 
     if (pendingArrived.length > 0) {
       const newlyArrived = pendingArrived[0]
-      const key = `${todayIso}:${newlyArrived.id}:${newlyArrived.targetTime}`
-      alertedSet.add(key)
-      try {
-        localStorage.setItem('solo_quest_alerted_v1', JSON.stringify(Array.from(alertedSet)))
-      } catch {}
       setPendingQuestAlertCount(pendingArrived.length)
       setQuestAlertAnimKey((k) => k + 1)
       setArrivedQuestAlert(newlyArrived)
@@ -17101,6 +17114,7 @@ export default function Page() {
                     type="button"
                     onClick={() => {
                       const q = arrivedQuestAlert
+                      markQuestAlertHandled(q)
                       closeQuestAlertWithAnim(() => {
                         if (q.id !== 'preview-quest') {
                           handleSkipPersonal(q.id, getLocalIsoDate())
@@ -17131,6 +17145,7 @@ export default function Page() {
                     onClick={() => {
                       const q = arrivedQuestAlert
                       const hasMoreInQueue = remainingInQueue > 0
+                      markQuestAlertHandled(q)
                       playQuestAcceptSound()
                       closeQuestAlertWithAnim(() => {
                         if (hasMoreInQueue || q.id === 'preview-quest') return
