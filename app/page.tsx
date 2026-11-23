@@ -837,11 +837,24 @@ function QuestCard({
   onDelete?: () => void
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [openMenuUpward, setOpenMenuUpward] = useState(false)
   const [isConsistencyOpen, setIsConsistencyOpen] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const openedTimestampRef = useRef(0)
   const closedTimestampRef = useRef(0)
+  const cardWrapperRef = useRef<HTMLDivElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
+
+  const openMenuWithDirection = () => {
+    if (typeof window !== 'undefined' && cardWrapperRef.current) {
+      const rect = cardWrapperRef.current.getBoundingClientRect()
+      setOpenMenuUpward(rect.bottom + 210 > window.innerHeight - 64)
+    } else {
+      setOpenMenuUpward(false)
+    }
+    openedTimestampRef.current = Date.now()
+    setIsMenuOpen(true)
+  }
 
   const hasMenuOptions = Boolean(onInfo || onSkip || (isGym && onOpenWorkout) || (canManage && (onEdit || onDelete)))
 
@@ -911,8 +924,7 @@ function QuestCard({
     handleClearHold()
     timerRef.current = setTimeout(() => {
       timerRef.current = null
-      openedTimestampRef.current = Date.now()
-      setIsMenuOpen(true)
+      openMenuWithDirection()
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(40)
       }
@@ -950,6 +962,7 @@ function QuestCard({
 
   return (
     <div
+      ref={cardWrapperRef}
       style={{
         position: 'relative',
         zIndex: isMenuOpen ? 150 : 1,
@@ -999,8 +1012,7 @@ function QuestCard({
             if (hasMenuOptions) {
               e.preventDefault()
               handleClearHold()
-              openedTimestampRef.current = Date.now()
-              setIsMenuOpen(true)
+              openMenuWithDirection()
             }
           }}
         >
@@ -1129,8 +1141,7 @@ function QuestCard({
                     e.stopPropagation()
                     handleClearHold()
                     if (!isMenuOpen) {
-                      openedTimestampRef.current = Date.now()
-                      setIsMenuOpen(true)
+                      openMenuWithDirection()
                     } else {
                       closeMenu()
                     }
@@ -1467,8 +1478,7 @@ function QuestCard({
             if (hasMenuOptions) {
               e.preventDefault()
               handleClearHold()
-              openedTimestampRef.current = Date.now()
-              setIsMenuOpen(true)
+              openMenuWithDirection()
             }
           }}
         >
@@ -1749,8 +1759,7 @@ function QuestCard({
                 e.stopPropagation()
                 handleClearHold()
                 if (!isMenuOpen) {
-                  openedTimestampRef.current = Date.now()
-                  setIsMenuOpen(true)
+                  openMenuWithDirection()
                 } else {
                   closeMenu()
                 }
@@ -1947,7 +1956,9 @@ function QuestCard({
             ref={menuRef}
             style={{
               position: 'absolute',
-              top: 'calc(100% + 6px)',
+              ...(openMenuUpward
+                ? { bottom: 'calc(100% + 6px)' }
+                : { top: 'calc(100% + 6px)' }),
               right: '8px',
               zIndex: 160,
               background: '#161128',
@@ -13215,7 +13226,7 @@ export default function Page() {
                               borderRadius: '12px',
                               background: 'rgba(8, 10, 20, 0.85)',
                               border: '1px solid rgba(139, 92, 246, 0.2)',
-                              overflow: 'hidden',
+                              overflow: 'visible',
                             }}
                           >
                             <button
