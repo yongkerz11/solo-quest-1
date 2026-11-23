@@ -7313,7 +7313,10 @@ export default function Page() {
             id="header-normal"
             style={{
               position: 'absolute',
-              inset: '0 14px',
+              top: 'env(safe-area-inset-top, 0px)',
+              right: '14px',
+              bottom: 0,
+              left: '14px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -7512,7 +7515,10 @@ export default function Page() {
             id="header-minihud"
             style={{
               position: 'absolute',
-              inset: '0 14px',
+              top: 'env(safe-area-inset-top, 0px)',
+              right: '14px',
+              bottom: 0,
+              left: '14px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
