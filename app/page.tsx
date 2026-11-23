@@ -16532,7 +16532,9 @@ export default function Page() {
             onClick={() => openAddPersonalModal()}
           >
             <div className="nav-add-orb" aria-hidden="true">
-              <Plus size={22} strokeWidth={2.5} />
+              <span className="nav-portal-halo" />
+              <span className="nav-portal-rune" />
+              <Plus size={21} strokeWidth={2.5} />
             </div>
             <span>Tambah</span>
           </button>
