@@ -754,7 +754,7 @@ function getHabitYearGrid(
     startMonday.setDate(thisWeekMonday.getDate() - (TOTAL_WEEKS - 1) * 7)
   }
 
-  const cells: ('streak' | 'done' | 'inactive' | 'future')[] = []
+  const cells: ('streak' | 'done' | 'inactive' | 'unscheduled' | 'future')[] = []
   const cellDates: string[] = []
 
   for (let day = 0; day < TOTAL_DAYS; day++) {
@@ -765,6 +765,8 @@ function getHabitYearGrid(
 
     if (uniqueDates.has(cellIso)) {
       cells.push(streakDates.has(cellIso) ? 'streak' : 'done')
+    } else if (!isScheduledDay(cellDate)) {
+      cells.push('unscheduled')
     } else if (cellIso > todayIso) {
       cells.push('future')
     } else {
@@ -1857,7 +1859,7 @@ function QuestCard({
               {cells.map((status, cIdx) => (
                 <div
                   key={cIdx}
-                  title={cellDates[cIdx]}
+                  title={status === 'unscheduled' ? `${cellDates[cIdx]} (Tidak ada jadwal)` : cellDates[cIdx]}
                   style={{
                     aspectRatio: '1 / 1',
                     borderRadius: '1.3px',
@@ -1868,18 +1870,26 @@ function QuestCard({
                         ? '#7c3aed'
                         : status === 'inactive'
                         ? '#262430'
+                        : status === 'unscheduled'
+                        ? 'transparent'
                         : '#16151e',
+                    border:
+                      status === 'unscheduled'
+                        ? '1px solid rgba(148, 163, 184, 0.14)'
+                        : undefined,
+                    boxSizing: 'border-box',
                   }}
                 />
               ))}
             </div>
 
-            {/* Legend 3 Tipe Warna */}
+            {/* Legend Tipe Warna */}
             <div
               style={{
                 display: 'flex',
+                flexWrap: 'wrap',
                 alignItems: 'center',
-                gap: '12px',
+                gap: '10px',
                 marginTop: '8px',
                 fontSize: '9.5px',
                 color: '#9a8fb2',
@@ -1896,6 +1906,10 @@ function QuestCard({
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: '#262430' }} />
                 Tidak dikerjakan
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: 'transparent', border: '1px solid rgba(148, 163, 184, 0.35)', boxSizing: 'border-box' }} />
+                Tidak ada jadwal
               </span>
             </div>
           </div>
@@ -13745,7 +13759,7 @@ export default function Page() {
                                 {cells.map((status, cIdx) => (
                                   <div
                                     key={cIdx}
-                                    title={cellDates[cIdx]}
+                                    title={status === 'unscheduled' ? `${cellDates[cIdx]} (Tidak ada jadwal)` : cellDates[cIdx]}
                                     style={{
                                       aspectRatio: '1 / 1',
                                       borderRadius: '1.2px',
@@ -13756,7 +13770,14 @@ export default function Page() {
                                           ? '#7c3aed'
                                           : status === 'inactive'
                                           ? '#262430'
+                                          : status === 'unscheduled'
+                                          ? 'transparent'
                                           : '#16151e',
+                                      border:
+                                        status === 'unscheduled'
+                                          ? '1px solid rgba(148, 163, 184, 0.14)'
+                                          : undefined,
+                                      boxSizing: 'border-box',
                                     }}
                                   />
                                 ))}
@@ -16627,7 +16648,7 @@ export default function Page() {
                       {cells.map((status, cIdx) => (
                         <div
                           key={cIdx}
-                          title={cellDates[cIdx]}
+                          title={status === 'unscheduled' ? `${cellDates[cIdx]} (Tidak ada jadwal)` : cellDates[cIdx]}
                           style={{
                             aspectRatio: '1 / 1',
                             borderRadius: '1.2px',
@@ -16638,7 +16659,14 @@ export default function Page() {
                                 ? '#7c3aed'
                                 : status === 'inactive'
                                 ? '#262430'
+                                : status === 'unscheduled'
+                                ? 'transparent'
                                 : '#16151e',
+                            border:
+                              status === 'unscheduled'
+                                ? '1px solid rgba(148, 163, 184, 0.14)'
+                                : undefined,
+                            boxSizing: 'border-box',
                           }}
                         />
                       ))}
