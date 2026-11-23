@@ -135,6 +135,10 @@ button { font: inherit; color: inherit; }
   0% { stroke-dashoffset: 100; }
   100% { stroke-dashoffset: 0; }
 }
+@keyframes hexRipple {
+  0% { transform: scale3d(0.76, 0.76, 1); opacity: 0.68; }
+  100% { transform: scale3d(1.26, 1.26, 1); opacity: 0; }
+}
 @keyframes wingGlowPulse {
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }
@@ -152,30 +156,30 @@ button { font: inherit; color: inherit; }
 
 .hero-card-unified {
   position: relative;
-  overflow: hidden;
-  padding: 20px 18px 16px;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 82% 32%, rgba(var(--rank-rgb, 88, 52, 168), 0.15) 0%, transparent 52%),
-    radial-gradient(circle at 15% 0%, rgba(var(--rank-sec-rgb, 76, 36, 150), 0.14) 0%, transparent 48%),
-    linear-gradient(145deg, var(--rank-surface, rgba(16, 14, 28, 0.96)) 0%, rgba(7, 8, 15, 0.99) 58%, rgba(10, 10, 18, 0.98) 100%);
-  border: 1px solid rgba(var(--rank-rgb, 139, 92, 246), 0.3);
-  margin-bottom: 22px;
-  animation:
-    heroCardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-    cardBorderGlow 4s ease-in-out infinite;
+  overflow: visible;
+  padding: 8px 0 2px;
+  background: transparent;
+  border: none;
+  margin-bottom: 20px;
+  animation: heroCardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.hero-card-unified::before {
-  content: '';
+.hero-mecha-blade {
+  position: relative;
+  padding: 16px 116px 26px 16px;
+  clip-path: polygon(0 16px, 16px 0, 64% 0, 71% 20px, 100% 20px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+  background:
+    radial-gradient(circle at 82% 32%, rgba(var(--rank-rgb, 88, 52, 168), 0.22) 0%, transparent 56%),
+    radial-gradient(circle at 12% 0%, rgba(var(--rank-sec-rgb, 76, 36, 150), 0.2) 0%, transparent 50%),
+    linear-gradient(145deg, var(--rank-surface, rgba(16, 14, 28, 0.96)) 0%, rgba(7, 8, 15, 0.99) 58%, rgba(10, 10, 18, 0.98) 100%);
+}
+.hero-mecha-emblem-dock {
   position: absolute;
-  top: -55px;
-  right: -30px;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(var(--rank-rgb, 168, 85, 247), 0.28) 0%, transparent 70%);
-  pointer-events: none;
-  animation: auraPulse 4s ease-in-out infinite;
+  top: -8px;
+  right: 2px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .hero-top-row {
@@ -252,8 +256,8 @@ button { font: inherit; color: inherit; }
    ============================================================================ */
 .rank-hex-emblem {
   position: relative;
-  width: 106px;
-  height: 102px;
+  width: 96px;
+  height: 92px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -265,10 +269,18 @@ button { font: inherit; color: inherit; }
 .rank-hex-emblem:hover {
   transform: scale3d(1.06, 1.06, 1);
 }
+.rank-hex-ripple {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--rank-rgb, 168, 85, 247), 0.44);
+  pointer-events: none;
+  animation: hexRipple 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
 .rank-hex-float {
   position: relative;
-  width: 106px;
-  height: 102px;
+  width: 96px;
+  height: 92px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -289,8 +301,8 @@ button { font: inherit; color: inherit; }
 .rank-hex-svg {
   position: relative;
   z-index: 1;
-  width: 106px;
-  height: 102px;
+  width: 96px;
+  height: 92px;
   overflow: visible;
   transform: translateZ(0);
 }
@@ -362,63 +374,75 @@ button { font: inherit; color: inherit; }
 
 .hero-stats-dock {
   position: relative;
-  z-index: 2;
+  z-index: 22;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(var(--rank-rgb, 168, 85, 247), 0.18);
+  gap: 2px;
+  margin: -14px 8px 0;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(9, 13, 26, 0.95);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(var(--rank-rgb, 168, 85, 247), 0.42);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 .hero-dock-item {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  gap: 3px;
-  padding: 9px 4px;
-  min-height: 82px;
-  border-radius: 12px;
-  background: rgba(11, 8, 22, 0.58);
-  border: 1px solid rgba(var(--rank-rgb, 139, 92, 246), 0.2);
+  text-align: left;
+  gap: 6px;
+  padding: 4px 6px;
+  min-height: 36px;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
   transition: all 0.2s ease;
+}
+.hero-dock-item + .hero-dock-item {
+  border-left: 1px solid rgba(var(--rank-rgb, 168, 85, 247), 0.22);
+  border-radius: 0;
 }
 .hero-dock-item.clickable {
   cursor: pointer;
 }
 .hero-dock-item.clickable:hover {
-  transform: translateY(-2px);
-  background: rgba(var(--rank-sec-rgb, 34, 21, 66), 0.32);
-  border-color: rgba(var(--rank-rgb, 168, 85, 247), 0.48);
+  transform: translateY(-1px);
+  background: rgba(var(--rank-sec-rgb, 34, 21, 66), 0.26);
 }
 .hero-dock-icon {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 2px;
+  margin-bottom: 0;
+}
+.hero-dock-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 .hero-dock-item strong {
   display: block;
-  font-size: 12.5px;
+  font-size: 11px;
   font-weight: 800;
   color: #ffffff;
-  line-height: 1.2;
+  line-height: 1.15;
   white-space: nowrap;
 }
 .hero-dock-item span {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 2px;
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 600;
   color: #b7a9ce;
-  line-height: 1.2;
+  line-height: 1.15;
   white-space: nowrap;
 }
 

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Lenis from 'lenis'
+import { motion, AnimatePresence } from 'motion/react'
 import {
   Bell,
   CalendarDays,
@@ -3801,6 +3803,25 @@ export default function Page() {
     }
   }, [gymProgressPhotos, mounted])
 
+  // Lenis smooth inertial scrolling
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const lenis = new Lenis({
+      duration: 1.05,
+      smoothWheel: true,
+    })
+    let rafId = 0
+    const raf = (time: number) => {
+      lenis.raf(time)
+      rafId = requestAnimationFrame(raf)
+    }
+    rafId = requestAnimationFrame(raf)
+    return () => {
+      cancelAnimationFrame(rafId)
+      lenis.destroy()
+    }
+  }, [])
+
   // Cleanup live flip interval & camera stream on unmount or leave photos subpage
   useEffect(() => {
     if (workoutSubPage !== 'photos') {
@@ -7335,22 +7356,36 @@ export default function Page() {
                   )}
                 </div>
               </div>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '15px',
-                  fontWeight: 800,
-                  color: '#f5f2ff',
-                  lineHeight: 1.15,
-                  letterSpacing: '0.01em',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  maxWidth: '185px',
-                }}
-              >
-                {currentUser.username}
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    fontWeight: 900,
+                    letterSpacing: '0.16em',
+                    color: currentRankTier.primaryColor,
+                    textTransform: 'uppercase',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  RANKERZ
+                </span>
+                <span
+                  style={{
+                    display: 'block',
+                    fontSize: '14.5px',
+                    fontWeight: 800,
+                    color: '#f5f2ff',
+                    lineHeight: 1.15,
+                    letterSpacing: '0.01em',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '185px',
+                  }}
+                >
+                  {currentUser.username}
+                </span>
+              </div>
             </button>
           )}
 
@@ -11855,9 +11890,34 @@ export default function Page() {
                  (Dirancang umum untuk semua jenis Quest: Belajar, Produktivitas, Kesehatan, Gym, dll.)
                  ================================================================ */
               <>
-                <section className="hero-card-unified">
-                  <div className="hero-top-row">
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                <motion.section
+                  className="hero-card-unified"
+                  initial={{ opacity: 0, y: 14, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                >
+                  <div className="hero-mecha-blade">
+                    <svg
+                      viewBox="0 0 360 124"
+                      preserveAspectRatio="none"
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      <polygon
+                        points="1,16 16,1 230,1 255,20 359,20 359,108 344,123 1,123"
+                        fill="none"
+                        stroke={`rgba(${currentRankTier.primaryRgb}, 0.56)`}
+                        strokeWidth="1.5"
+                      />
+                    </svg>
+
+                    <div style={{ position: 'relative', zIndex: 2, minWidth: 0 }}>
                       <div className="hunter-status-pill">
                         <span className="hunter-status-dot" />
                         CURRENT LEVEL
@@ -11877,258 +11937,279 @@ export default function Page() {
                           <span style={{ color: currentRankTier.highlightColor, fontWeight: 800 }}>{levelProgress}%</span>
                         </div>
                         <div className="hero-xp-track">
-                          <span
+                          <motion.span
                             className="hero-xp-fill"
-                            style={{ width: `${Math.max(levelProgress > 0 ? levelProgress : (effectiveXp > 0 ? 5 : 0), levelProgress)}%` }}
+                            initial={{ width: 0 }}
+                            animate={{
+                              width: `${Math.max(levelProgress > 0 ? levelProgress : (effectiveXp > 0 ? 5 : 0), levelProgress)}%`,
+                            }}
+                            transition={{ type: 'spring', stiffness: 120, damping: 18 }}
                           />
                         </div>
                       </div>
                     </div>
-
-                    {/* SHADOW MONARCH WINGED HEXAGONAL SVG RANK EMBLEM + 1 CATEGORY MASTERY PILL */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                      <div
-                        className="rank-hex-emblem"
-                        style={{ filter: `drop-shadow(0 0 14px ${currentRankTier.glowColor})` }}
-                        onClick={() => setActiveTab('rank')}
-                        title="Lihat Peringkat Hunter"
-                      >
-                        <div className="rank-hex-float">
-                          <svg
-                            className="rank-hex-svg"
-                            viewBox="0 0 106 102"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <defs>
-                              <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stopColor="#ffffff" />
-                                <stop offset="45%" stopColor={currentRankTier.primaryColor} />
-                                <stop offset="100%" stopColor={currentRankTier.secondaryColor} />
-                              </linearGradient>
-                              <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
-                                <stop offset="0%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.88" />
-                                <stop offset="65%" stopColor={currentRankTier.deepSurface} stopOpacity="0.97" />
-                                <stop offset="100%" stopColor="#070410" stopOpacity="0.99" />
-                              </radialGradient>
-                              <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor={currentRankTier.primaryColor} stopOpacity="0.92" />
-                                <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.22" />
-                              </linearGradient>
-                            </defs>
-
-                            {/* 1. Cincin Orbit Luar Berputar Halus */}
-                            <g className="rank-svg-orbit-cw">
-                              <circle
-                                cx="53"
-                                cy="51"
-                                r="47"
-                                stroke={currentRankTier.primaryColor}
-                                strokeOpacity="0.28"
-                                strokeWidth="1"
-                                strokeDasharray="6 6"
-                              />
-                              <circle cx="53" cy="4" r="2.2" fill={currentRankTier.primaryColor} />
-                              <circle cx="53" cy="98" r="2.2" fill={currentRankTier.secondaryColor} />
-                            </g>
-
-                            {/* 2. Busur Energi Dalam Berputar Berlawanan */}
-                            <g className="rank-svg-orbit-ccw">
-                              <circle
-                                cx="53"
-                                cy="51"
-                                r="43"
-                                stroke={currentRankTier.primaryColor}
-                                strokeOpacity="0.4"
-                                strokeWidth="1.2"
-                                strokeDasharray="24 66"
-                                strokeLinecap="round"
-                              />
-                            </g>
-
-                            {/* 3. Sayap Geometris Kiri & Kanan (Shadow Blades) */}
-                            <g className="rank-svg-wings">
-                              <path
-                                d="M15 34 L3 25 L8 42 L15 46 Z"
-                                fill="url(#wingGrad)"
-                              />
-                              <path
-                                d="M15 50 L1 47 L7 60 L15 62 Z"
-                                fill="url(#wingGrad)"
-                                opacity="0.75"
-                              />
-                              <path
-                                d="M91 34 L103 25 L98 42 L91 46 Z"
-                                fill="url(#wingGrad)"
-                              />
-                              <path
-                                d="M91 50 L105 47 L99 60 L91 62 Z"
-                                fill="url(#wingGrad)"
-                                opacity="0.75"
-                              />
-                            </g>
-
-                            {/* 4. Bingkai Perisai Heksagonal Utama */}
-                            <polygon
-                              points="53,8 90,28 90,74 53,94 16,74 16,28"
-                              fill="url(#hexCoreGrad)"
-                              stroke="url(#hexOuterGrad)"
-                              strokeWidth="2.2"
-                              strokeLinejoin="round"
-                            />
-
-                            {/* 5. Aliran Cahaya Laser Mengelilingi Garis Heksagon (Halo + Inti Tanpa CPU Filter) */}
-                            <polygon
-                              className="rank-svg-laser-glow"
-                              pathLength={100}
-                              points="53,8 90,28 90,74 53,94 16,74 16,28"
-                              fill="none"
-                              stroke={currentRankTier.primaryColor}
-                              strokeOpacity="0.45"
-                              strokeWidth="5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <polygon
-                              className="rank-svg-laser-border"
-                              pathLength={100}
-                              points="53,8 90,28 90,74 53,94 16,74 16,28"
-                              fill="none"
-                              stroke="#ffffff"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-
-                            {/* 6. Garis Dalam Heksagon Presisi */}
-                            <polygon
-                              points="53,13 85,31 85,71 53,89 21,71 21,31"
-                              fill="none"
-                              stroke={currentRankTier.primaryColor}
-                              strokeOpacity="0.32"
-                              strokeWidth="1"
-                            />
-
-                            {/* 7. Ornamen Berlian Puncak & Bawah */}
-                            <polygon points="53,4 57,9 53,14 49,9" fill={currentRankTier.primaryColor} />
-                            <polygon points="53,88 56,93 53,98 50,93" fill={currentRankTier.secondaryColor} />
-                          </svg>
-
-                          {/* Teks Rank di Tengah Perisai Heksagon */}
-                          <div className="rank-hex-content">
-                            <span className="rank-hex-label">RANK</span>
-                            <strong
-                              className="rank-hex-letter"
-                              style={{
-                                fontSize:
-                                  currentRank.length >= 3
-                                    ? '18px'
-                                    : currentRank.length === 2
-                                      ? '23px'
-                                      : undefined,
-                                textShadow: `0 0 20px ${currentRankTier.glowColor}`,
-                              }}
-                            >
-                              {currentRank}
-                            </strong>
-                            <span className="rank-hex-sub">HUNTER</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 1 Category Mastery Pill di Bawah Rank Badge (Format 2 Baris Tanpa Icon) */}
-                      {featuredCategory ? (
-                        <button
-                          type="button"
-                          onClick={() => setIsMasteryPageOpen(true)}
-                          className="rank-mastery-pill"
-                          style={{
-                            marginTop: '6px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '4px 6px',
-                            borderRadius: '8px',
-                            background: `rgba(${currentRankTier.primaryRgb}, 0.12)`,
-                            border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.34)`,
-                            color: currentRankTier.highlightColor,
-                            cursor: 'pointer',
-                            width: '106px',
-                            textAlign: 'center',
-                            transition: 'all 0.2s ease',
-                          }}
-                          title="Buka Category Mastery (Kategori dengan XP tertinggi atau pilihanmu)"
-                        >
-                          {/* Baris 1: Nama Kategori Murni (Tanpa Icon) */}
-                          <span
-                            style={{
-                              fontSize: '10.5px',
-                              fontWeight: 700,
-                              color: '#f3f1ff',
-                              lineHeight: 1.2,
-                              textAlign: 'center',
-                              display: 'block',
-                              width: '100%',
-                              wordBreak: 'break-word',
-                            }}
-                          >
-                            {featuredCategory.name}
-                          </span>
-
-                          {/* Baris 2: XP + Panah Navigasi */}
-                          <div
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '2px',
-                              marginTop: '2px',
-                              lineHeight: 1,
-                            }}
-                          >
-                            <span style={{ color: currentRankTier.primaryColor, fontWeight: 800, fontSize: '9.5px', whiteSpace: 'nowrap' }}>
-                              {featuredCategory.xp} XP
-                            </span>
-                            <ChevronRight size={10} style={{ color: '#a79abf', flexShrink: 0 }} />
-                          </div>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setIsMasteryPageOpen(true)}
-                          className="rank-mastery-pill"
-                          style={{
-                            marginTop: '6px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '4px 6px',
-                            borderRadius: '8px',
-                            background: `rgba(${currentRankTier.primaryRgb}, 0.1)`,
-                            border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.28)`,
-                            color: currentRankTier.highlightColor,
-                            cursor: 'pointer',
-                            width: '106px',
-                            textAlign: 'center',
-                            transition: 'all 0.2s ease',
-                          }}
-                          title="Buka Category Mastery"
-                        >
-                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#f3f1ff' }}>
-                            Mastery
-                          </span>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', marginTop: '2px', fontSize: '9.5px', color: '#c084fc', fontWeight: 800 }}>
-                            <span>0 XP</span>
-                            <ChevronRight size={10} style={{ color: '#a79abf' }} />
-                          </div>
-                        </button>
-                      )}
-                    </div>
                   </div>
 
-                  {/* Integrated 3-Item Bento Stats Dock */}
+                  {/* UPGRADED SHADOW MONARCH WINGED HEXAGONAL SVG RANK EMBLEM + 2-LINE CATEGORY MASTERY PILL (TOP-RIGHT NOTCH POP-OUT) */}
+                  <div className="hero-mecha-emblem-dock">
+                    <div
+                      className="rank-hex-emblem"
+                      style={{ filter: `drop-shadow(0 0 14px ${currentRankTier.glowColor})` }}
+                      onClick={() => setActiveTab('rank')}
+                      title="Lihat Peringkat Hunter"
+                    >
+                      <div className="rank-hex-ripple" />
+                      <div className="rank-hex-float">
+                        <svg
+                          className="rank-hex-svg"
+                          viewBox="0 0 106 102"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <defs>
+                            <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
+                              <stop offset="0%" stopColor="#ffffff" />
+                              <stop offset="45%" stopColor={currentRankTier.primaryColor} />
+                              <stop offset="100%" stopColor={currentRankTier.secondaryColor} />
+                            </linearGradient>
+                            <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
+                              <stop offset="0%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.92" />
+                              <stop offset="62%" stopColor={currentRankTier.deepSurface} stopOpacity="0.98" />
+                              <stop offset="100%" stopColor="#070410" stopOpacity="0.99" />
+                            </radialGradient>
+                            <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor={currentRankTier.highlightColor} stopOpacity="0.95" />
+                              <stop offset="48%" stopColor={currentRankTier.primaryColor} stopOpacity="0.86" />
+                              <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.24" />
+                            </linearGradient>
+                          </defs>
+
+                          {/* 1. Outer CW Orbital Ring + 4 Cardinal Glowing Nodes */}
+                          <g className="rank-svg-orbit-cw">
+                            <circle
+                              cx="53"
+                              cy="51"
+                              r="48"
+                              stroke={currentRankTier.primaryColor}
+                              strokeOpacity="0.34"
+                              strokeWidth="1"
+                              strokeDasharray="5 5"
+                            />
+                            <circle cx="53" cy="3" r="2.2" fill={currentRankTier.highlightColor} />
+                            <circle cx="53" cy="99" r="2.2" fill={currentRankTier.primaryColor} />
+                            <circle cx="101" cy="51" r="1.8" fill={currentRankTier.primaryColor} opacity="0.85" />
+                            <circle cx="5" cy="51" r="1.8" fill={currentRankTier.highlightColor} opacity="0.85" />
+                          </g>
+
+                          {/* 2. Inner CCW Energy Arc */}
+                          <g className="rank-svg-orbit-ccw">
+                            <circle
+                              cx="53"
+                              cy="51"
+                              r="43.5"
+                              stroke={currentRankTier.highlightColor}
+                              strokeOpacity="0.48"
+                              strokeWidth="1.2"
+                              strokeDasharray="22 66"
+                              strokeLinecap="round"
+                            />
+                          </g>
+
+                          {/* 3. Upgraded 3-Blade Shadow Monarch Wings + Highlight Ridges */}
+                          <g className="rank-svg-wings">
+                            <path d="M16 31 L1 18 L7 36 L16 41 Z" fill="url(#wingGrad)" />
+                            <path d="M15 33 L4 22" stroke={currentRankTier.highlightColor} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
+                            <path d="M16 45 L-1 42 L6 54 L16 56 Z" fill="url(#wingGrad)" opacity="0.85" />
+                            <path d="M15 47 L3 44" stroke={currentRankTier.highlightColor} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
+                            <path d="M17 59 L4 60 L10 69 L17 69 Z" fill="url(#wingGrad)" opacity="0.62" />
+                            <path d="M16 61 L7 62" stroke={currentRankTier.highlightColor} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
+
+                            <path d="M90 31 L105 18 L99 36 L90 41 Z" fill="url(#wingGrad)" />
+                            <path d="M91 33 L102 22" stroke={currentRankTier.highlightColor} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
+                            <path d="M90 45 L107 42 L100 54 L90 56 Z" fill="url(#wingGrad)" opacity="0.85" />
+                            <path d="M91 47 L103 44" stroke={currentRankTier.highlightColor} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
+                            <path d="M89 59 L102 60 L96 69 L89 69 Z" fill="url(#wingGrad)" opacity="0.62" />
+                            <path d="M90 61 L99 62" stroke={currentRankTier.highlightColor} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
+                          </g>
+
+                          {/* 4. 3D Cut-Crystal Hexagonal Shield Core + Facet Lines */}
+                          <polygon
+                            points="53,8 90,28 90,74 53,94 16,74 16,28"
+                            fill="url(#hexCoreGrad)"
+                            stroke="url(#hexOuterGrad)"
+                            strokeWidth="2.2"
+                            strokeLinejoin="round"
+                          />
+                          <polygon points="53,8 90,28 53,51 16,28" fill="#ffffff" fillOpacity="0.07" />
+                          <g stroke={currentRankTier.highlightColor} strokeOpacity="0.18" strokeWidth="0.85">
+                            <line x1="53" y1="51" x2="53" y2="8" />
+                            <line x1="53" y1="51" x2="90" y2="28" />
+                            <line x1="53" y1="51" x2="90" y2="74" />
+                            <line x1="53" y1="51" x2="53" y2="94" />
+                            <line x1="53" y1="51" x2="16" y2="74" />
+                            <line x1="53" y1="51" x2="16" y2="28" />
+                          </g>
+
+                          {/* 5. Dual-Layer Animated Laser Border Trace */}
+                          <polygon
+                            className="rank-svg-laser-glow"
+                            pathLength={100}
+                            points="53,8 90,28 90,74 53,94 16,74 16,28"
+                            fill="none"
+                            stroke={currentRankTier.primaryColor}
+                            strokeOpacity="0.52"
+                            strokeWidth="4.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <polygon
+                            className="rank-svg-laser-border"
+                            pathLength={100}
+                            points="53,8 90,28 90,74 53,94 16,74 16,28"
+                            fill="none"
+                            stroke="#ffffff"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+
+                          {/* 6. Inner Specular Bevel + Glass Reflection */}
+                          <polygon
+                            points="53,13.5 84.5,31 84.5,71 53,88.5 21.5,71 21.5,31"
+                            fill="none"
+                            stroke={currentRankTier.highlightColor}
+                            strokeOpacity="0.44"
+                            strokeWidth="1"
+                          />
+                          <polyline
+                            points="23,32 53,15 83,32"
+                            fill="none"
+                            stroke="#ffffff"
+                            strokeOpacity="0.52"
+                            strokeWidth="1.15"
+                            strokeLinecap="round"
+                          />
+
+                          {/* 7. 3-Point Monarch Crown Crest + Bottom Sovereign Shard */}
+                          <polygon points="43.5,11 46.5,5.5 49,10.5" fill={currentRankTier.primaryColor} />
+                          <polygon points="62.5,11 59.5,5.5 57,10.5" fill={currentRankTier.primaryColor} />
+                          <polygon points="53,2 57.5,8.5 53,14.5 48.5,8.5" fill={currentRankTier.highlightColor} />
+                          <polygon points="53,87.5 56.5,93.5 53,99.5 49.5,93.5" fill={currentRankTier.secondaryColor} />
+                        </svg>
+
+                        {/* Teks Rank di Tengah Perisai Heksagon */}
+                        <div className="rank-hex-content">
+                          <span className="rank-hex-label">RANK</span>
+                          <strong
+                            className="rank-hex-letter"
+                            style={{
+                              fontSize:
+                                currentRank.length >= 3
+                                  ? '17px'
+                                  : currentRank.length === 2
+                                    ? '21px'
+                                    : '32px',
+                              textShadow: `0 0 20px ${currentRankTier.glowColor}`,
+                            }}
+                          >
+                            {currentRank}
+                          </strong>
+                          <span className="rank-hex-sub">HUNTER</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 1 Category Mastery Pill di Bawah Rank Badge (Format 2 Baris Tanpa Icon) */}
+                    {featuredCategory ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsMasteryPageOpen(true)}
+                        className="rank-mastery-pill"
+                        style={{
+                          marginTop: '2px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '3px 6px',
+                          borderRadius: '999px',
+                          background: `rgba(${currentRankTier.primaryRgb}, 0.16)`,
+                          border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.44)`,
+                          color: currentRankTier.highlightColor,
+                          cursor: 'pointer',
+                          width: '98px',
+                          textAlign: 'center',
+                          transition: 'all 0.2s ease',
+                        }}
+                        title="Buka Category Mastery (Kategori dengan XP tertinggi atau pilihanmu)"
+                      >
+                        <span
+                          style={{
+                            fontSize: '9.5px',
+                            fontWeight: 700,
+                            color: '#f3f1ff',
+                            lineHeight: 1.15,
+                            textAlign: 'center',
+                            display: 'block',
+                            width: '100%',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {featuredCategory.name}
+                        </span>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '2px',
+                            marginTop: '1px',
+                            lineHeight: 1,
+                          }}
+                        >
+                          <span style={{ color: currentRankTier.primaryColor, fontWeight: 800, fontSize: '9px', whiteSpace: 'nowrap' }}>
+                            {featuredCategory.xp} XP
+                          </span>
+                          <ChevronRight size={9} style={{ color: '#a79abf', flexShrink: 0 }} />
+                        </div>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsMasteryPageOpen(true)}
+                        className="rank-mastery-pill"
+                        style={{
+                          marginTop: '2px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '3px 6px',
+                          borderRadius: '999px',
+                          background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                          border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.36)`,
+                          color: currentRankTier.highlightColor,
+                          cursor: 'pointer',
+                          width: '98px',
+                          textAlign: 'center',
+                          transition: 'all 0.2s ease',
+                        }}
+                        title="Buka Category Mastery"
+                      >
+                        <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#f3f1ff' }}>
+                          Mastery
+                        </span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', marginTop: '1px', fontSize: '9px', color: '#c084fc', fontWeight: 800 }}>
+                          <span>0 XP</span>
+                          <ChevronRight size={9} style={{ color: '#a79abf' }} />
+                        </div>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Single Floating Horizontal Capsule Bar (Replaces 3 Rigid Boxes) */}
                   <div className="hero-stats-dock">
                     {/* 1. Streak */}
                     <div className="hero-dock-item">
@@ -12140,10 +12221,12 @@ export default function Page() {
                           color: '#fb923c',
                         }}
                       >
-                        <Flame size={13} />
+                        <Flame size={12} />
                       </div>
-                      <strong>{currentUser.streak} Hari</strong>
-                      <span>Streak</span>
+                      <div className="hero-dock-text">
+                        <strong>{currentUser.streak} Hari</strong>
+                        <span>Streak</span>
+                      </div>
                     </div>
 
                     {/* 2. History */}
@@ -12160,12 +12243,14 @@ export default function Page() {
                           color: '#38bdf8',
                         }}
                       >
-                        <Activity size={13} />
+                        <Activity size={12} />
                       </div>
-                      <strong>{userHistoryItems.length} Quest</strong>
-                      <span>
-                        Riwayat <ChevronRight size={10} style={{ opacity: 0.7, flexShrink: 0 }} />
-                      </span>
+                      <div className="hero-dock-text">
+                        <strong>{userHistoryItems.length} Quest</strong>
+                        <span>
+                          Riwayat <ChevronRight size={9} style={{ opacity: 0.75, flexShrink: 0 }} />
+                        </span>
+                      </div>
                     </div>
 
                     {/* 3. Clan */}
@@ -12182,18 +12267,199 @@ export default function Page() {
                           color: currentRankTier.primaryColor,
                         }}
                       >
-                        <Shield size={13} />
+                        <Shield size={12} />
                       </div>
-                      <strong>{userJoinedClanIds.length} Clan</strong>
-                      <span>
-                        Komunitas <ChevronRight size={10} style={{ opacity: 0.7, flexShrink: 0 }} />
-                      </span>
+                      <div className="hero-dock-text">
+                        <strong>{userJoinedClanIds.length} Clan</strong>
+                        <span>
+                          Komunitas <ChevronRight size={9} style={{ opacity: 0.75, flexShrink: 0 }} />
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </section>
+                </motion.section>
+
+                {/* WAVE #4 • DUAL COMPARISON SMOOTH WAVE (Tren XP Mingguan) */}
+                <motion.section
+                  className="weekly-strip-card"
+                  style={{ marginBottom: '16px' }}
+                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true, amount: 0.25 }}
+                  transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+                >
+                  {(() => {
+                    const shiftIso = (iso: string, deltaDays: number) => {
+                      const [y, m, d] = iso.split('-').map(Number)
+                      const dt = new Date(y, (m || 1) - 1, (d || 1) + deltaDays)
+                      return getLocalIsoDate(dt)
+                    }
+                    const dayXps = currentWeekDays.map((day) =>
+                      day.scheduledTasks
+                        .filter((t) => Boolean(t.completedDates?.includes(day.isoDate)))
+                        .reduce((sum, t) => sum + t.xp, 0)
+                    )
+                    const prevWeekDayXps = currentWeekDays.map((day) => {
+                      const prevIso = shiftIso(day.isoDate, -7)
+                      return userPersonalTasks
+                        .filter((t) => Boolean(t.completedDates?.includes(prevIso)))
+                        .reduce((sum, t) => sum + t.xp, 0)
+                    })
+                    const thisWeekTotal = dayXps.reduce((a, b) => a + b, 0)
+                    const rawPrevTotal = prevWeekDayXps.reduce((a, b) => a + b, 0)
+                    const lastWeekSeries = rawPrevTotal > 0 ? prevWeekDayXps : [45, 70, 55, 80, 65, 90, 75]
+                    const lastWeekTotal = rawPrevTotal > 0 ? rawPrevTotal : 480
+                    const deltaXp = thisWeekTotal - lastWeekTotal
+                    const growthPct = lastWeekTotal > 0 ? Math.round((deltaXp / lastWeekTotal) * 100) : 0
+
+                    const maxVal = Math.max(80, ...dayXps, ...lastWeekSeries)
+                    const baseY = 54
+                    const topY = 12
+                    const span = baseY - topY
+
+                    const toPts = (vals: number[]) =>
+                      vals.map((v, idx) => {
+                        const x = 14 + (idx / 6) * 292
+                        const y = baseY - Math.min(1, v / maxVal) * span
+                        return [x, y] as [number, number]
+                      })
+
+                    const buildWavePath = (pts: Array<[number, number]>) => {
+                      let d = `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
+                      for (let i = 1; i < pts.length; i++) {
+                        const prev = pts[i - 1]
+                        const cur = pts[i]
+                        const mx = ((prev[0] + cur[0]) / 2).toFixed(1)
+                        d += ` C ${mx},${prev[1].toFixed(1)} ${mx},${cur[1].toFixed(1)} ${cur[0].toFixed(1)},${cur[1].toFixed(1)}`
+                      }
+                      return d
+                    }
+
+                    const curPts = toPts(dayXps)
+                    const prevPts = toPts(lastWeekSeries)
+                    const curLine = buildWavePath(curPts)
+                    const prevLine = buildWavePath(prevPts)
+                    const curArea = `${curLine} L ${curPts[6][0].toFixed(1)},${baseY} L ${curPts[0][0].toFixed(1)},${baseY} Z`
+
+                    return (
+                      <div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                            marginBottom: '8px',
+                          }}
+                        >
+                          <div>
+                            <span className="eyebrow">WEEKLY MOMENTUM</span>
+                            <div style={{ fontSize: '14px', fontWeight: 800, color: '#f5f2ff', marginTop: '1px' }}>
+                              Tren XP Mingguan
+                            </div>
+                          </div>
+                          <span
+                            style={{
+                              padding: '3px 9px',
+                              borderRadius: '999px',
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              background:
+                                deltaXp >= 0 ? 'rgba(52, 211, 153, 0.14)' : `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                              border:
+                                deltaXp >= 0
+                                  ? '1px solid rgba(52, 211, 153, 0.35)'
+                                  : `1px solid rgba(${currentRankTier.primaryRgb}, 0.35)`,
+                              color: deltaXp >= 0 ? '#6ee7b7' : currentRankTier.highlightColor,
+                            }}
+                          >
+                            {deltaXp >= 0 ? '▲ +' : ''}
+                            {deltaXp} XP ({deltaXp >= 0 ? '+' : ''}
+                            {growthPct}%)
+                          </span>
+                        </div>
+
+                        <svg viewBox="0 0 320 64" style={{ width: '100%', height: '62px', overflow: 'visible', display: 'block' }}>
+                          <defs>
+                            <linearGradient id="waveAreaDualApp" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={currentRankTier.primaryColor} stopOpacity="0.34" />
+                              <stop offset="100%" stopColor={currentRankTier.primaryColor} stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
+                          <path
+                            d={prevLine}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.22)"
+                            strokeWidth="1.5"
+                            strokeDasharray="4 4"
+                          />
+                          <path d={curArea} fill="url(#waveAreaDualApp)" />
+                          <motion.path
+                            d={curLine}
+                            fill="none"
+                            stroke={currentRankTier.primaryColor}
+                            strokeWidth="2.4"
+                            strokeLinecap="round"
+                            initial={{ pathLength: 0, opacity: 0.4 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+                            style={{ filter: `drop-shadow(0 0 6px ${currentRankTier.glowColor})` }}
+                          />
+                          {curPts.map(([px, py], i) => {
+                            const dayItem = currentWeekDays[i]
+                            const isSel = dayItem?.code === activeScheduleDayCode
+                            return (
+                              <g
+                                key={dayItem?.code || i}
+                                onClick={() => {
+                                  if (dayItem) {
+                                    setSelectedWeekDay(dayItem.code)
+                                    setShowCompletedDayQuests(false)
+                                  }
+                                }}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <circle cx={px} cy={py} r="10" fill="transparent" />
+                                <circle
+                                  cx={px}
+                                  cy={py}
+                                  r={isSel ? 4.3 : 2.5}
+                                  fill={isSel ? '#ffffff' : currentRankTier.primaryColor}
+                                  stroke={currentRankTier.primaryColor}
+                                  strokeWidth={isSel ? 2 : 1}
+                                />
+                              </g>
+                            )
+                          })}
+                        </svg>
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontSize: '9.5px',
+                            fontWeight: 700,
+                            color: '#b8add1',
+                            marginTop: '2px',
+                          }}
+                        >
+                          <span>Solid: Minggu ini ({thisWeekTotal} XP)</span>
+                          <span>Putus-putus: Minggu lalu</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </motion.section>
 
                 {/* SECTION 1: JADWAL & KONSISTENSI MINGGU INI (INTERACTIVE 7-DAY STRIP UNTUK SEMUA QUEST) */}
-                <section className="weekly-strip-card" style={{ marginBottom: '20px' }}>
+                <motion.section
+                  className="weekly-strip-card"
+                  style={{ marginBottom: '20px' }}
+                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true, amount: 0.16 }}
+                  transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+                >
                   <div
                     style={{
                       display: 'flex',
@@ -12280,10 +12546,13 @@ export default function Page() {
                       (t) => !isTaskSkippedOnDay(t) && !isTaskUpcomingTimeOnDay(t)
                     )
                     const activeRemainingDayCount = activePendingDayTasks.length
+                    const hiddenDayTasks = activeScheduleDayObj.scheduledTasks.filter(
+                      (t) => !activePendingDayTasks.some((p) => p.id === t.id)
+                    )
                     const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
                     const hasExpandableDayQuests =
                       completedDayCount > 0 || skippedDayCount > 0 || upcomingTimedDayCount > 0
-                    const visibleDayTasks = showCompletedDayQuests
+                    const primaryVisibleTasks = isFutureDay
                       ? activeScheduleDayObj.scheduledTasks
                       : activePendingDayTasks
 
@@ -12321,17 +12590,11 @@ export default function Page() {
                         }}
                       >
                         <div
-                          onClick={() => {
-                            if (hasExpandableDayQuests) {
-                              setShowCompletedDayQuests((prev) => !prev)
-                            }
-                          }}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            marginBottom: visibleDayTasks.length > 0 ? '8px' : '0',
-                            cursor: hasExpandableDayQuests ? 'pointer' : 'default',
+                            marginBottom: primaryVisibleTasks.length > 0 || (!isFutureDay && hasExpandableDayQuests) ? '8px' : '0',
                             userSelect: 'none',
                           }}
                         >
@@ -12340,8 +12603,14 @@ export default function Page() {
                             {activeScheduleDayObj.isToday ? ' (Hari Ini)' : ''}
                           </span>
                           <span
+                            onClick={() => {
+                              if (hasExpandableDayQuests) {
+                                setShowCompletedDayQuests((prev) => !prev)
+                              }
+                            }}
                             style={{
                               fontSize: '10px',
+                              cursor: hasExpandableDayQuests ? 'pointer' : 'default',
                               fontWeight: allDoneForDay || showPastSkipPill || isFutureDay ? 700 : 500,
                               color: allDoneForDay
                                 ? '#67e8f9'
@@ -12384,283 +12653,194 @@ export default function Page() {
                           </span>
                         </div>
 
-                        {visibleDayTasks.length > 0 && (
-                          <div
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: 'minmax(0, 1fr)',
-                              gap: '6px',
-                              maxHeight: '320px',
-                              overflowY: 'auto',
-                              WebkitOverflowScrolling: 'touch',
-                            }}
-                          >
-                            {visibleDayTasks.map((task) => {
-                          const isGym = task.category.toLowerCase() === 'gym'
-                          const isDoneOnDay = isTaskDoneOnDay(task)
-                          const isSkipped = isTaskSkippedOnDay(task)
-                          const isUpcomingTime = isTaskUpcomingTimeOnDay(task)
-                          const isArrivedActive =
-                            activeScheduleDayObj.isToday &&
-                            !isDoneOnDay &&
-                            !isSkipped &&
-                            isQuestTimeArrived(task.targetTime, task.schedule)
-                          return (
-                            <div
-                              key={task.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '8px',
-                                padding: '7px 9px',
-                                borderRadius: '10px',
-                                opacity: isFutureDay ? 0.78 : 1,
-                                background: isSkipped && !isDoneOnDay ? 'rgba(45, 18, 28, 0.85)' : 'rgba(24, 18, 42, 0.85)',
-                                border: isSkipped && !isDoneOnDay
-                                  ? '1px solid rgba(239, 68, 68, 0.35)'
-                                  : isFutureDay
-                                    ? '1px solid rgba(148, 163, 184, 0.22)'
-                                    : '1px solid rgba(168, 85, 247, 0.22)',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                <span
-                                  className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
-                                  onClick={() => {
-                                    if (!isFutureDay) {
-                                      handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
-                                    }
-                                  }}
-                                  role={isFutureDay ? undefined : 'button'}
-                                  tabIndex={isFutureDay ? undefined : 0}
-                                  style={{
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '6px',
-                                    border: isFutureDay
-                                      ? '1px solid rgba(148, 163, 184, 0.3)'
-                                      : isDoneOnDay
-                                        ? '1px solid #38bdf8'
-                                        : isSkipped
-                                          ? '1px solid #ef4444'
-                                          : '1px solid rgba(168, 85, 247, 0.45)',
-                                    background: isFutureDay
-                                      ? 'rgba(15, 11, 26, 0.75)'
-                                      : isDoneOnDay
-                                        ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
-                                        : isSkipped
-                                          ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(153, 27, 27, 0.4))'
-                                          : 'rgba(24, 18, 42, 0.7)',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: isFutureDay ? 'not-allowed' : 'pointer',
-                                    flexShrink: 0,
-                                    color: isFutureDay
-                                      ? '#9a8fb2'
-                                      : isDoneOnDay
-                                        ? '#67e8f9'
-                                        : isSkipped
-                                          ? '#f87171'
-                                          : 'transparent',
-                                    boxShadow: isDoneOnDay ? '0 0 10px rgba(56, 189, 248, 0.3)' : 'none',
-                                    transition: 'all 0.15s ease',
-                                  }}
-                                  title={
-                                    isFutureDay
-                                      ? 'Belum saatnya dikerjakan (Hanya Lihat)'
-                                      : isDoneOnDay
-                                        ? 'Batalkan selesai'
-                                        : 'Centang selesai (+XP)'
-                                  }
-                                  aria-label={
-                                    isFutureDay
-                                      ? 'Belum saatnya dikerjakan (Hanya Lihat)'
-                                      : isDoneOnDay
-                                        ? 'Batalkan selesai'
-                                        : 'Centang selesai (+XP)'
-                                  }
-                                >
-                                  {isFutureDay ? (
-                                    <Lock size={10} color="#9a8fb2" />
-                                  ) : isDoneOnDay ? (
-                                    <Check size={13} strokeWidth={3} />
-                                  ) : isSkipped ? (
-                                    <FastForward size={11} color="#f87171" strokeWidth={2.5} />
-                                  ) : null}
-                                </span>
-                                <span style={{ width: '26px', height: '26px', borderRadius: '7px', background: 'rgba(168, 85, 247, 0.14)', border: '1px solid rgba(168, 85, 247, 0.28)', color: '#c084fc', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{renderCategoryIcon(task.category, 14)}</span>
-                                <div style={{ minWidth: 0 }}>
-                                  <strong
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '5px',
-                                      fontSize: '12px',
-                                      color: '#f3f1ff',
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
+                        {(() => {
+                          const renderDayQuestRow = (task: PersonalTask) => {
+                            const isGym = task.category.toLowerCase() === 'gym'
+                            const isDoneOnDay = isTaskDoneOnDay(task)
+                            const isSkipped = isTaskSkippedOnDay(task)
+                            const isUpcomingTime = isTaskUpcomingTimeOnDay(task)
+                            const isArrivedActive =
+                              activeScheduleDayObj.isToday &&
+                              !isDoneOnDay &&
+                              !isSkipped &&
+                              isQuestTimeArrived(task.targetTime, task.schedule)
+                            return (
+                              <motion.div
+                                key={task.id}
+                                layout
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, x: 24, scale: 0.93 }}
+                                transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '8px',
+                                  padding: '7px 9px',
+                                  borderRadius: '10px',
+                                  opacity: isFutureDay ? 0.78 : 1,
+                                  background: isSkipped && !isDoneOnDay ? 'rgba(45, 18, 28, 0.85)' : 'rgba(24, 18, 42, 0.85)',
+                                  border: isSkipped && !isDoneOnDay
+                                    ? '1px solid rgba(239, 68, 68, 0.35)'
+                                    : isFutureDay
+                                      ? '1px solid rgba(148, 163, 184, 0.22)'
+                                      : '1px solid rgba(168, 85, 247, 0.22)',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                  <span
+                                    className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
+                                    onClick={() => {
+                                      if (!isFutureDay) {
+                                        handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
+                                      }
                                     }}
+                                    role={isFutureDay ? undefined : 'button'}
+                                    tabIndex={isFutureDay ? undefined : 0}
+                                    style={{
+                                      width: '20px',
+                                      height: '20px',
+                                      borderRadius: '6px',
+                                      border: isFutureDay
+                                        ? '1px solid rgba(148, 163, 184, 0.3)'
+                                        : isDoneOnDay
+                                          ? '1px solid #38bdf8'
+                                          : isSkipped
+                                            ? '1px solid #ef4444'
+                                            : '1px solid rgba(168, 85, 247, 0.45)',
+                                      background: isFutureDay
+                                        ? 'rgba(15, 11, 26, 0.75)'
+                                        : isDoneOnDay
+                                          ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
+                                          : isSkipped
+                                            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(153, 27, 27, 0.4))'
+                                            : 'rgba(24, 18, 42, 0.7)',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: isFutureDay ? 'not-allowed' : 'pointer',
+                                      flexShrink: 0,
+                                      color: isFutureDay
+                                        ? '#9a8fb2'
+                                        : isDoneOnDay
+                                          ? '#67e8f9'
+                                          : isSkipped
+                                            ? '#f87171'
+                                            : 'transparent',
+                                      boxShadow: isDoneOnDay ? '0 0 10px rgba(56, 189, 248, 0.3)' : 'none',
+                                      transition: 'all 0.15s ease',
+                                    }}
+                                    title={
+                                      isFutureDay
+                                        ? 'Belum saatnya dikerjakan (Hanya Lihat)'
+                                        : isDoneOnDay
+                                          ? 'Batalkan selesai'
+                                          : 'Centang selesai (+XP)'
+                                    }
+                                    aria-label={
+                                      isFutureDay
+                                        ? 'Belum saatnya dikerjakan (Hanya Lihat)'
+                                        : isDoneOnDay
+                                          ? 'Batalkan selesai'
+                                          : 'Centang selesai (+XP)'
+                                    }
                                   >
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
-                                    {isArrivedActive && (
-                                      <span
-                                        style={{
-                                          fontSize: '8.5px',
-                                          color: '#e9d5ff',
-                                          background: 'rgba(124, 58, 237, 0.22)',
-                                          border: '1px solid rgba(167, 139, 250, 0.42)',
-                                          padding: '1px 5px',
-                                          borderRadius: '4px',
-                                          fontWeight: 800,
-                                          flexShrink: 0,
-                                        }}
-                                      >
-                                        TERBUKA
-                                      </span>
-                                    )}
-                                    {isUpcomingTime && (
-                                      <span
-                                        style={{
-                                          fontSize: '8.5px',
-                                          color: '#cbd5e1',
-                                          background: 'rgba(148, 163, 184, 0.14)',
-                                          border: '1px solid rgba(148, 163, 184, 0.3)',
-                                          padding: '1px 5px',
-                                          borderRadius: '4px',
-                                          fontWeight: 700,
-                                          flexShrink: 0,
-                                        }}
-                                      >
-                                        JAM {task.targetTime}
-                                      </span>
-                                    )}
-                                    {isSkipped && !isDoneOnDay && (
-                                      <span
-                                        style={{
-                                          fontSize: '8.5px',
-                                          color: '#ffffff',
-                                          background: '#ef4444',
-                                          padding: '1px 5px',
-                                          borderRadius: '4px',
-                                          fontWeight: 800,
-                                          flexShrink: 0,
-                                        }}
-                                      >
-                                        {isPastDay ? 'SKIP' : 'DILEWATI'}
-                                      </span>
-                                    )}
-                                  </strong>
-                                  <span style={{ fontSize: '9.5px', color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1', display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                                    <span>
-                                      {task.category}
-                                      {isSkipped && !isDoneOnDay
-                                        ? isPastDay
-                                          ? ' • (Skip — bisa dibatalkan)'
-                                          : ' • (Dilewati)'
-                                        : isFutureDay
-                                          ? ` • +${task.xp} XP • Terjadwal`
-                                          : ` • +${task.xp} XP`}
-                                    </span>
-                                    {task.targetTime && (
-                                      <span style={{ color: '#7dd3fc', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                        • <Clock size={9} /> {task.targetTime}
-                                      </span>
-                                    )}
+                                    {isFutureDay ? (
+                                      <Lock size={10} color="#9a8fb2" />
+                                    ) : isDoneOnDay ? (
+                                      <Check size={13} strokeWidth={3} />
+                                    ) : isSkipped ? (
+                                      <FastForward size={11} color="#f87171" strokeWidth={2.5} />
+                                    ) : null}
                                   </span>
-                                </div>
-                              </div>
-
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                {isFutureDay ? (
-                                  isGym ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setWorkoutSubPage('overview')
-                                        setActiveWorkoutQuest({
-                                          type: 'personal',
-                                          id: task.id,
-                                          dateIso: activeScheduleDayObj.isoDate,
-                                          viewOnly: true,
-                                        })
-                                      }}
+                                  <span style={{ width: '26px', height: '26px', borderRadius: '7px', background: 'rgba(168, 85, 247, 0.14)', border: '1px solid rgba(168, 85, 247, 0.28)', color: '#c084fc', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{renderCategoryIcon(task.category, 14)}</span>
+                                  <div style={{ minWidth: 0 }}>
+                                    <strong
                                       style={{
-                                        padding: '4px 8px',
-                                        borderRadius: '7px',
-                                        background: 'rgba(124, 58, 237, 0.16)',
-                                        border: '1px solid rgba(168, 85, 247, 0.45)',
-                                        color: '#e9d5ff',
-                                        fontSize: '10px',
-                                        fontWeight: 700,
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
+                                        display: 'flex',
                                         alignItems: 'center',
-                                        gap: '4px',
+                                        gap: '5px',
+                                        fontSize: '12px',
+                                        color: '#f3f1ff',
+                                        textDecoration: isDoneOnDay ? 'line-through' : 'none',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
                                       }}
-                                      title="Lihat daftar gerakan Gym (Mode Hanya Lihat)"
                                     >
-                                      <Eye size={10} color="#c084fc" />
-                                      <span>Lihat Gerakan</span>
-                                    </button>
-                                  ) : (
-                                    <span
-                                      style={{
-                                        padding: '4px 7px',
-                                        borderRadius: '7px',
-                                        background: 'rgba(148, 163, 184, 0.1)',
-                                        border: '1px solid rgba(148, 163, 184, 0.25)',
-                                        color: '#9a8fb2',
-                                        fontSize: '10px',
-                                        fontWeight: 700,
-                                        cursor: 'not-allowed',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '3px',
-                                      }}
-                                      title="Quest besok-besoknya hanya bisa dilihat"
-                                    >
-                                      <Lock size={9} />
-                                      <span>Hanya Lihat</span>
-                                    </span>
-                                  )
-                                ) : (
-                                  <>
-                                    {isDoneOnDay && (
-                                      <span
-                                        onClick={() => {
-                                          if (isGym) {
-                                            setWorkoutSubPage('overview')
-                                            setActiveWorkoutQuest({
-                                              type: 'personal',
-                                              id: task.id,
-                                              dateIso: activeScheduleDayObj.isoDate,
-                                            })
-                                          }
-                                        }}
-                                        style={{
-                                          padding: '4px 8px',
-                                          borderRadius: '7px',
-                                          background: 'rgba(56, 189, 248, 0.15)',
-                                          border: '1px solid rgba(56, 189, 248, 0.42)',
-                                          color: '#67e8f9',
-                                          fontSize: '10px',
-                                          fontWeight: 800,
-                                          cursor: isGym ? 'pointer' : 'default',
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '3px',
-                                        }}
-                                        title={isGym ? 'Selesai • Klik untuk lihat detail workout' : 'Quest Selesai'}
-                                      >
-                                        <Check size={9} strokeWidth={3} />
-                                        <span>Selesai</span>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
+                                      {isArrivedActive && (
+                                        <span
+                                          style={{
+                                            fontSize: '8.5px',
+                                            color: '#e9d5ff',
+                                            background: 'rgba(124, 58, 237, 0.22)',
+                                            border: '1px solid rgba(167, 139, 250, 0.42)',
+                                            padding: '1px 5px',
+                                            borderRadius: '4px',
+                                            fontWeight: 800,
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          TERBUKA
+                                        </span>
+                                      )}
+                                      {isUpcomingTime && (
+                                        <span
+                                          style={{
+                                            fontSize: '8.5px',
+                                            color: '#cbd5e1',
+                                            background: 'rgba(148, 163, 184, 0.14)',
+                                            border: '1px solid rgba(148, 163, 184, 0.3)',
+                                            padding: '1px 5px',
+                                            borderRadius: '4px',
+                                            fontWeight: 700,
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          JAM {task.targetTime}
+                                        </span>
+                                      )}
+                                      {isSkipped && !isDoneOnDay && (
+                                        <span
+                                          style={{
+                                            fontSize: '8.5px',
+                                            color: '#ffffff',
+                                            background: '#ef4444',
+                                            padding: '1px 5px',
+                                            borderRadius: '4px',
+                                            fontWeight: 800,
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          {isPastDay ? 'SKIP' : 'DILEWATI'}
+                                        </span>
+                                      )}
+                                    </strong>
+                                    <span style={{ fontSize: '9.5px', color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1', display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                      <span>
+                                        {task.category}
+                                        {isSkipped && !isDoneOnDay
+                                          ? isPastDay
+                                            ? ' • (Skip — bisa dibatalkan)'
+                                            : ' • (Dilewati)'
+                                          : isFutureDay
+                                            ? ` • +${task.xp} XP • Terjadwal`
+                                            : ` • +${task.xp} XP`}
                                       </span>
-                                    )}
+                                      {task.targetTime && (
+                                        <span style={{ color: '#7dd3fc', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                          • <Clock size={9} /> {task.targetTime}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
 
-                                    {isGym && !isDoneOnDay && !isSkipped && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                  {isFutureDay ? (
+                                    isGym ? (
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -12669,70 +12849,284 @@ export default function Page() {
                                             type: 'personal',
                                             id: task.id,
                                             dateIso: activeScheduleDayObj.isoDate,
+                                            viewOnly: true,
                                           })
                                         }}
                                         style={{
                                           padding: '4px 8px',
                                           borderRadius: '7px',
-                                          background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                          border: '1px solid rgba(168, 85, 247, 0.5)',
-                                          color: '#ffffff',
-                                          fontSize: '10px',
-                                          fontWeight: 800,
-                                          cursor: 'pointer',
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '3px',
-                                        }}
-                                        title="Mulai Workout"
-                                      >
-                                        <Play size={9} fill="currentColor" />
-                                        <span>Start</span>
-                                      </button>
-                                    )}
-
-                                    {!isDoneOnDay && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)}
-                                        style={{
-                                          padding: '4px 7px',
-                                          borderRadius: '7px',
-                                          background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.12)',
-                                          border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
-                                          color: isSkipped ? '#fca5a5' : '#d8b4fe',
+                                          background: 'rgba(124, 58, 237, 0.16)',
+                                          border: '1px solid rgba(168, 85, 247, 0.45)',
+                                          color: '#e9d5ff',
                                           fontSize: '10px',
                                           fontWeight: 700,
                                           cursor: 'pointer',
                                           display: 'inline-flex',
                                           alignItems: 'center',
+                                          gap: '4px',
+                                        }}
+                                        title="Lihat daftar gerakan Gym (Mode Hanya Lihat)"
+                                      >
+                                        <Eye size={10} color="#c084fc" />
+                                        <span>Lihat Gerakan</span>
+                                      </button>
+                                    ) : (
+                                      <span
+                                        style={{
+                                          padding: '4px 7px',
+                                          borderRadius: '7px',
+                                          background: 'rgba(148, 163, 184, 0.1)',
+                                          border: '1px solid rgba(148, 163, 184, 0.25)',
+                                          color: '#9a8fb2',
+                                          fontSize: '10px',
+                                          fontWeight: 700,
+                                          cursor: 'not-allowed',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
                                           gap: '3px',
                                         }}
-                                        title={
-                                          isSkipped
-                                            ? 'Batalkan status Skip agar quest bisa dikerjakan'
-                                            : 'Lewati quest (0 XP)'
-                                        }
+                                        title="Quest besok-besoknya hanya bisa dilihat"
                                       >
-                                        <FastForward size={9} />
-                                        <span>{isSkipped ? (isPastDay ? 'Batal Skip' : 'Dilewati') : 'Skip'}</span>
-                                      </button>
+                                        <Lock size={9} />
+                                        <span>Hanya Lihat</span>
+                                      </span>
+                                    )
+                                  ) : (
+                                    <>
+                                      {isDoneOnDay && (
+                                        <span
+                                          onClick={() => {
+                                            if (isGym) {
+                                              setWorkoutSubPage('overview')
+                                              setActiveWorkoutQuest({
+                                                type: 'personal',
+                                                id: task.id,
+                                                dateIso: activeScheduleDayObj.isoDate,
+                                              })
+                                            }
+                                          }}
+                                          style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '7px',
+                                            background: 'rgba(56, 189, 248, 0.15)',
+                                            border: '1px solid rgba(56, 189, 248, 0.42)',
+                                            color: '#67e8f9',
+                                            fontSize: '10px',
+                                            fontWeight: 800,
+                                            cursor: isGym ? 'pointer' : 'default',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                          }}
+                                          title={isGym ? 'Selesai • Klik untuk lihat detail workout' : 'Quest Selesai'}
+                                        >
+                                          <Check size={9} strokeWidth={3} />
+                                          <span>Selesai</span>
+                                        </span>
+                                      )}
+
+                                      {isGym && !isDoneOnDay && !isSkipped && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setWorkoutSubPage('overview')
+                                            setActiveWorkoutQuest({
+                                              type: 'personal',
+                                              id: task.id,
+                                              dateIso: activeScheduleDayObj.isoDate,
+                                            })
+                                          }}
+                                          style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '7px',
+                                            background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                            border: '1px solid rgba(168, 85, 247, 0.5)',
+                                            color: '#ffffff',
+                                            fontSize: '10px',
+                                            fontWeight: 800,
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                          }}
+                                          title="Mulai Workout"
+                                        >
+                                          <Play size={9} fill="currentColor" />
+                                          <span>Start</span>
+                                        </button>
+                                      )}
+
+                                      {!isDoneOnDay && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)}
+                                          style={{
+                                            padding: '4px 7px',
+                                            borderRadius: '7px',
+                                            background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.12)',
+                                            border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
+                                            color: isSkipped ? '#fca5a5' : '#d8b4fe',
+                                            fontSize: '10px',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                          }}
+                                          title={
+                                            isSkipped
+                                              ? 'Batalkan status Skip agar quest bisa dikerjakan'
+                                              : 'Lewati quest (0 XP)'
+                                          }
+                                        >
+                                          <FastForward size={9} />
+                                          <span>{isSkipped ? (isPastDay ? 'Batal Skip' : 'Dilewati') : 'Skip'}</span>
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )
+                          }
+
+                          return (
+                            <>
+                              {primaryVisibleTasks.length > 0 ? (
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'minmax(0, 1fr)',
+                                    gap: '6px',
+                                    maxHeight: '320px',
+                                    overflowY: 'auto',
+                                    WebkitOverflowScrolling: 'touch',
+                                  }}
+                                >
+                                  <AnimatePresence mode="popLayout">
+                                    {primaryVisibleTasks.map((task) => renderDayQuestRow(task))}
+                                  </AnimatePresence>
+                                </div>
+                              ) : !isFutureDay && totalDayTasks > 0 ? (
+                                <div
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderRadius: '10px',
+                                    textAlign: 'center',
+                                    background: allDoneForDay
+                                      ? 'rgba(56, 189, 248, 0.08)'
+                                      : 'rgba(24, 18, 42, 0.55)',
+                                    border: allDoneForDay
+                                      ? '1px solid rgba(56, 189, 248, 0.28)'
+                                      : '1px solid rgba(168, 85, 247, 0.2)',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontSize: '11.5px',
+                                      fontWeight: 800,
+                                      color: allDoneForDay ? '#67e8f9' : '#f3f1ff',
+                                    }}
+                                  >
+                                    {allDoneForDay
+                                      ? 'Semua Quest Hari Ini Tuntas!'
+                                      : 'Semua Quest Aktif Sudah Tertangani'}
+                                  </div>
+                                  <div style={{ fontSize: '9.5px', color: '#b8add1', marginTop: '2px' }}>
+                                    Quest selesai disembunyikan — buka daftar di bawah untuk melihat atau membatalkan.
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              {!isFutureDay && hiddenDayTasks.length > 0 && (
+                                <div
+                                  style={{
+                                    marginTop: '8px',
+                                    paddingTop: '8px',
+                                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowCompletedDayQuests((prev) => !prev)}
+                                    style={{
+                                      width: '100%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      background: 'transparent',
+                                      border: 'none',
+                                      padding: '2px 0',
+                                      cursor: 'pointer',
+                                      color: '#e2d9f3',
+                                    }}
+                                  >
+                                    <span style={{ fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                      <CheckCircle2 size={12} style={{ color: '#67e8f9' }} />
+                                      <span>
+                                        {completedDayCount > 0
+                                          ? `${completedDayCount} Quest Selesai Disembunyikan`
+                                          : `${hiddenDayTasks.length} Quest Lainnya Disembunyikan`}
+                                      </span>
+                                    </span>
+                                    <span
+                                      style={{
+                                        fontSize: '9.5px',
+                                        fontWeight: 800,
+                                        color: currentRankTier.primaryColor,
+                                        padding: '2px 8px',
+                                        borderRadius: '999px',
+                                        background: 'rgba(255, 255, 255, 0.06)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                      }}
+                                    >
+                                      <span>{showCompletedDayQuests ? 'Sembunyikan' : 'Lihat'}</span>
+                                      {showCompletedDayQuests ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                                    </span>
+                                  </button>
+
+                                  <AnimatePresence>
+                                    {showCompletedDayQuests && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ type: 'spring', stiffness: 280, damping: 26 }}
+                                        style={{ overflow: 'hidden' }}
+                                      >
+                                        <div
+                                          style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'minmax(0, 1fr)',
+                                            gap: '6px',
+                                            paddingTop: '8px',
+                                          }}
+                                        >
+                                          {hiddenDayTasks.map((task) => renderDayQuestRow(task))}
+                                        </div>
+                                      </motion.div>
                                     )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
+                                  </AnimatePresence>
+                                </div>
+                              )}
+                            </>
                           )
-                        })}
+                        })()}
                       </div>
-                    )}
-                  </div>
                     )
                   })()}
-                </section>
+                </motion.section>
 
                 {/* 3. STATISTIK KATEGORI HUNTER (RADAR CHART MINIMALIS - GANTI HISTORY DI DASHBOARD) */}
-                <section className="section-block">
+                <motion.section
+                  className="section-block"
+                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+                >
                   <div className="section-title">
                     <div>
                       <span className="eyebrow">SYSTEM STATUS</span>
@@ -12929,7 +13323,7 @@ export default function Page() {
                       </div>
                     )
                   })()}
-                </section>
+                </motion.section>
               </>
             )}
           </>
