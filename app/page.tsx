@@ -12049,11 +12049,8 @@ export default function Page() {
                                 ? {
                                     padding: '2px 8px',
                                     borderRadius: '999px',
-                                    background: showCompletedDayQuests
-                                      ? 'rgba(56, 189, 248, 0.24)'
-                                      : 'rgba(56, 189, 248, 0.14)',
-                                    border: '1px solid rgba(56, 189, 248, 0.42)',
-                                    boxShadow: '0 0 10px rgba(56, 189, 248, 0.16)',
+                                    background: 'rgba(56, 189, 248, 0.14)',
+                                    border: '1px solid rgba(56, 189, 248, 0.38)',
                                   }
                                 : showPastSkipPill
                                   ? {
