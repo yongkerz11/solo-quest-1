@@ -365,7 +365,7 @@ export async function dispatchDueQuestNotifications(): Promise<{
 
     if (!subExpired && sentSetChanged) {
       const preservedWfKeys = sub.sentKeys.filter(
-        (k) => typeof k === 'string' && k.startsWith(`wf:${isoDate}:`)
+        (k) => typeof k === 'string' && k.startsWith('wf:')
       )
       const nextCompletedDates = Array.from(
         new Set([...preservedWfKeys, ...Array.from(sentSet)])

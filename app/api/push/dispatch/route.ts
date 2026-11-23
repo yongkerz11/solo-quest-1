@@ -22,10 +22,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const [summary, scheduleSummary] = await Promise.all([
-      dispatchDueQuestNotifications(),
-      scheduleUpcomingQuestWorkflows({ lookaheadMinutes: 60 }),
-    ])
+    const summary = await dispatchDueQuestNotifications()
+    const scheduleSummary = await scheduleUpcomingQuestWorkflows({ lookaheadMinutes: 60 })
     return NextResponse.json({ ok: true, ...summary, ...scheduleSummary })
   } catch (err: any) {
     console.error('GET /api/push/dispatch error:', err)

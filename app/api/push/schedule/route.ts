@@ -7,14 +7,12 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const { userId, username } = body || {}
 
-    const [dispatchSummary, scheduleSummary] = await Promise.all([
-      dispatchDueQuestNotifications(),
-      scheduleUpcomingQuestWorkflows({
-        userId: typeof userId === 'string' ? userId : undefined,
-        username: typeof username === 'string' ? username : undefined,
-        lookaheadMinutes: 24 * 60,
-      }),
-    ])
+    const dispatchSummary = await dispatchDueQuestNotifications()
+    const scheduleSummary = await scheduleUpcomingQuestWorkflows({
+      userId: typeof userId === 'string' ? userId : undefined,
+      username: typeof username === 'string' ? username : undefined,
+      lookaheadMinutes: 24 * 60,
+    })
 
     return NextResponse.json({
       ok: true,
