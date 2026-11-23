@@ -13569,9 +13569,6 @@ export default function Page() {
                       </>
                     )
                   })()}
-                  <button className="add-task" onClick={openAddPersonalModal}>
-                    <Plus size={16} /> Tambah quest baru
-                  </button>
                 </section>
               </>
             )}
@@ -16479,33 +16476,85 @@ export default function Page() {
       </>
     )}
 
-    {/* BOTTOM NAVIGATION (5 MENU) */}
-    {!activeWorkoutQuest && (
-      <nav className="bottom-nav" aria-label="Navigasi utama">
-        {[
-          ['home', Home, 'Home'],
-          ['calendar', CalendarDays, 'My Quest'],
-          ['clan', Users, 'Clan'],
-          ['rank', Trophy, 'Rank'],
-          ['profile', UserRound, 'Profile'],
-        ].map(([key, Icon, label]) => (
-          <button
-            key={key as string}
-            className={activeTab === key ? 'active' : ''}
-            onClick={() => {
-              setIsHistoryPageOpen(false)
-              setIsMasteryPageOpen(false)
-              setIsRankSystemOpen(false)
-              setIsPersonalModalOpen(false)
-              setActiveTab(key as typeof activeTab)
+    {/* BOTTOM NAVIGATION (5 MENU + SMART ANIMATE + CENTER ADD QUEST) */}
+    {!activeWorkoutQuest && (() => {
+      const activeSlotIndex =
+        activeTab === 'home'
+          ? 0
+          : activeTab === 'calendar'
+            ? 1
+            : activeTab === 'clan'
+              ? 3
+              : activeTab === 'rank'
+                ? 4
+                : -1
+      const switchTab = (tabKey: typeof activeTab) => {
+        setIsHistoryPageOpen(false)
+        setIsMasteryPageOpen(false)
+        setIsRankSystemOpen(false)
+        setIsPersonalModalOpen(false)
+        setActiveTab(tabKey)
+      }
+      return (
+        <nav className="bottom-nav" aria-label="Navigasi utama">
+          <div
+            className="nav-active-pill"
+            aria-hidden="true"
+            style={{
+              transform:
+                activeSlotIndex >= 0
+                  ? `translateX(${activeSlotIndex * 100}%)`
+                  : 'translateX(0%) scale(0.86)',
+              opacity: activeSlotIndex >= 0 ? 1 : 0,
             }}
+          />
+          <button
+            type="button"
+            className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
+            onClick={() => switchTab('home')}
           >
-            <Icon size={18} />
-            <span>{label as string}</span>
+            <Home size={18} />
+            <span>Home</span>
           </button>
-        ))}
-      </nav>
-    )}
+          <button
+            type="button"
+            className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`}
+            onClick={() => switchTab('calendar')}
+          >
+            <CalendarDays size={18} />
+            <span>My Quest</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-add-slot ${isPersonalModalOpen ? 'open' : ''}`}
+            aria-label="Tambah quest baru"
+            title="Tambah Quest Baru"
+            onClick={() => openAddPersonalModal()}
+          >
+            <div className="nav-add-orb" aria-hidden="true">
+              <Plus size={22} strokeWidth={2.5} />
+            </div>
+            <span>Tambah</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${activeTab === 'clan' ? 'active' : ''}`}
+            onClick={() => switchTab('clan')}
+          >
+            <Users size={18} />
+            <span>Clan</span>
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${activeTab === 'rank' ? 'active' : ''}`}
+            onClick={() => switchTab('rank')}
+          >
+            <Trophy size={18} />
+            <span>Rank</span>
+          </button>
+        </nav>
+      )
+    })()}
   </div>
 
 
