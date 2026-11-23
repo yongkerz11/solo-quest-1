@@ -1,10 +1,14 @@
 import { handleSchedule } from '@vercel/schedules'
 import { dispatchDueQuestNotifications } from '@/lib/push-dispatcher'
+import { scheduleUpcomingQuestWorkflows } from '@/lib/push-scheduler'
 
 export const POST = handleSchedule(async (metadata) => {
-  const summary = await dispatchDueQuestNotifications()
+  const [dispatchSummary, scheduleSummary] = await Promise.all([
+    dispatchDueQuestNotifications(),
+    scheduleUpcomingQuestWorkflows({ lookaheadMinutes: 60 }),
+  ])
   console.log(
     `[push-cron] ${metadata.name} exec=${metadata.executionId} at=${metadata.scheduledAt.toISOString()}`,
-    summary
+    { ...dispatchSummary, ...scheduleSummary }
   )
 })

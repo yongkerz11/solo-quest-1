@@ -44,7 +44,7 @@ export function getSubscriptionRowId(endpoint: string): string {
   return `${PUSH_SUB_ID_PREFIX}${hash}`
 }
 
-async function supabaseRest(path: string, init?: RequestInit) {
+export async function supabaseRest(path: string, init?: RequestInit) {
   const { url, key } = getSupabaseConfig()
   const res = await fetch(`${url}/rest/v1/${path}`, {
     ...init,
@@ -154,7 +154,7 @@ export async function sendWebPush(
   }
 }
 
-function getLocalClockInTimeZone(timeZone: string, now = new Date()): {
+export function getLocalClockInTimeZone(timeZone: string, now = new Date()): {
   isoDate: string
   dayCode: (typeof DAY_CODES)[number]
   minutesNow: number
@@ -193,7 +193,48 @@ function getLocalClockInTimeZone(timeZone: string, now = new Date()): {
   }
 }
 
-function parseHHMM(targetTime?: string): number | null {
+export function computeUtcMsForLocalDateTime(isoDate: string, hhmm: string, timeZone: string): number | null {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  const [hh, mm] = hhmm.split(':').map(Number)
+  if ([y, m, d, hh, mm].some((n) => Number.isNaN(n))) return null
+  let safeTz = timeZone || 'Asia/Jakarta'
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone: safeTz })
+  } catch {
+    safeTz = 'Asia/Jakarta'
+  }
+  const targetNaive = Date.UTC(y, m - 1, d, hh, mm, 0, 0)
+  let guess = targetNaive
+  for (let i = 0; i < 2; i++) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: safeTz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date(guess))
+    const get = (t: string) => parts.find((p) => p.type === t)?.value || ''
+    let actualHour = Number(get('hour'))
+    if (actualHour === 24) actualHour = 0
+    const actualNaive = Date.UTC(
+      Number(get('year')),
+      Number(get('month')) - 1,
+      Number(get('day')),
+      actualHour,
+      Number(get('minute')),
+      0,
+      0
+    )
+    const diff = targetNaive - actualNaive
+    if (diff === 0) break
+    guess += diff
+  }
+  return guess
+}
+
+export function parseHHMM(targetTime?: string): number | null {
   if (!targetTime) return null
   const [h, m] = targetTime.split(':').map(Number)
   if (Number.isNaN(h) || Number.isNaN(m)) return null
@@ -323,11 +364,18 @@ export async function dispatchDueQuestNotifications(): Promise<{
     }
 
     if (!subExpired && sentSetChanged) {
+      const preservedWfKeys = sub.sentKeys.filter(
+        (k) => typeof k === 'string' && k.startsWith(`wf:${isoDate}:`)
+      )
+      const nextCompletedDates = Array.from(
+        new Set([...preservedWfKeys, ...Array.from(sentSet)])
+      ).slice(-80)
+
       await supabaseRest(`user_quests?id=eq.${encodeURIComponent(sub.rowId)}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
         body: JSON.stringify({
-          completed_dates: Array.from(sentSet).slice(-60),
+          completed_dates: nextCompletedDates,
           updated_at: new Date().toISOString(),
         }),
       }).catch(() => {})

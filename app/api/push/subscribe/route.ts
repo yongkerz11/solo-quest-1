@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { deletePushSubscription, upsertPushSubscription } from '@/lib/push-dispatcher'
+import { scheduleUpcomingQuestWorkflows } from '@/lib/push-scheduler'
 
 export async function POST(request: Request) {
   try {
@@ -16,6 +17,15 @@ export async function POST(request: Request) {
       timezone,
       subscription,
       userAgent: request.headers.get('user-agent') || '',
+    })
+
+    // Queue exact-time wakeups for upcoming quests in next 24h
+    await scheduleUpcomingQuestWorkflows({
+      userId,
+      username,
+      lookaheadMinutes: 24 * 60,
+    }).catch((err) => {
+      console.error('scheduleUpcomingQuestWorkflows after subscribe error:', err)
     })
 
     return NextResponse.json({ ok: true, id: rowId })

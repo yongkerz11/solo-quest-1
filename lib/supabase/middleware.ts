@@ -45,6 +45,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicSystemAsset =
     pathname === '/sw.js' ||
     pathname === '/manifest.webmanifest' ||
+    pathname.startsWith('/.well-known/') ||
     pathname.startsWith('/api/')
 
   if (isPublicSystemAsset) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { dispatchDueQuestNotifications } from '@/lib/push-dispatcher'
+import { scheduleUpcomingQuestWorkflows } from '@/lib/push-scheduler'
 
 function isAuthorized(request: Request): boolean {
   const secret = process.env.PUSH_DISPATCH_SECRET || process.env.CRON_SECRET
@@ -21,8 +22,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const summary = await dispatchDueQuestNotifications()
-    return NextResponse.json({ ok: true, ...summary })
+    const [summary, scheduleSummary] = await Promise.all([
+      dispatchDueQuestNotifications(),
+      scheduleUpcomingQuestWorkflows({ lookaheadMinutes: 60 }),
+    ])
+    return NextResponse.json({ ok: true, ...summary, ...scheduleSummary })
   } catch (err: any) {
     console.error('GET /api/push/dispatch error:', err)
     return NextResponse.json({ error: err?.message || 'Dispatch failed' }, { status: 500 })

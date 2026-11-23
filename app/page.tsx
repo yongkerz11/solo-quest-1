@@ -5585,6 +5585,7 @@ export default function Page() {
     const finalXp = catObj.xp
     const finalTime = questTargetTime.trim() || undefined
 
+    let taskToSync: PersonalTask
     if (editingPersonalTask) {
       const updatedTask: PersonalTask = {
         ...editingPersonalTask,
@@ -5598,10 +5599,10 @@ export default function Page() {
           ? templateExercises ?? (editingPersonalTask.workoutExercises ?? [])
           : undefined,
       }
+      taskToSync = updatedTask
       setPersonalTasks((curr) =>
         curr.map((t) => (t.id === editingPersonalTask.id ? updatedTask : t))
       )
-      saveCloudQuest(updatedTask, currentUser.username)
       showToast('Quest pribadi berhasil diperbarui!')
     } else {
       const newTask: PersonalTask = {
@@ -5616,14 +5617,27 @@ export default function Page() {
         targetTime: finalTime,
         workoutExercises: isGym ? (templateExercises ?? []) : undefined,
       }
+      taskToSync = newTask
       setPersonalTasks((curr) => [...curr, newTask])
-      saveCloudQuest(newTask, currentUser.username)
       showToast(
         templateExercises
           ? `Quest "${newTask.title}" dibuat dengan ${templateExercises.length} gerakan referensi!`
           : 'Quest pribadi baru ditambahkan!'
       )
     }
+    void saveCloudQuest(taskToSync, currentUser.username).then(() => {
+      if (finalTime) {
+        void fetch('/api/push/schedule', {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            username: currentUser.username,
+          }),
+        }).catch(() => {})
+      }
+    })
     if (finalTime && prefNotification && pushStatus === 'prompt') {
       void enableBackgroundPush(true)
     }
@@ -17258,6 +17272,34 @@ export default function Page() {
                         <button
                           type="button"
                           disabled={isSendingTestPush}
+                          onClick={() => void sendTestBackgroundPush(0)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 10px',
+                            borderRadius: '8px',
+                            background: 'rgba(139, 92, 246, 0.16)',
+                            border: '1px solid rgba(139, 92, 246, 0.42)',
+                            color: '#e9d5ff',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
+                            opacity: isSendingTestPush ? 0.7 : 1,
+                          }}
+                        >
+                          <Bell size={12} color="#c4b5fd" />
+                          <span>
+                            {isSendingTestPush
+                              ? 'Mengirim Test Push...'
+                              : 'Cek Kirim Push Test Sekarang'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isSendingTestPush}
                           onClick={() => void sendTestBackgroundPush(5)}
                           style={{
                             width: '100%',
@@ -17277,14 +17319,10 @@ export default function Page() {
                           }}
                         >
                           <Clock size={12} color="#7dd3fc" />
-                          <span>
-                            {isSendingTestPush
-                              ? 'Menghubungkan Server...'
-                              : 'Test Notif Saat App Tutup (Delay 5 Detik)'}
-                          </span>
+                          <span>Simulasi Test Tutup App (5 Detik)</span>
                         </button>
                         <div style={{ fontSize: '10.5px', color: '#8f7eb5', lineHeight: 1.4 }}>
-                          Tekan lalu tunggu toast konfirmasi sebelum swipe-tutup app. Pengingat quest otomatis berjalan tiap ±15 menit via server.
+                          Tombol biru hanya simulasi 5 detik. Untuk quest asli, server otomatis menjadwalkan pengingat sesuai jam quest dan tetap mengirim notif walau aplikasi &amp; seluruh tab ditutup total.
                         </div>
                       </div>
                     )}
