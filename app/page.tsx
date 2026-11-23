@@ -670,7 +670,9 @@ function getHabitYearGrid(
   seedId: string,
   basePct: number = 0,
   isDoneToday?: boolean,
-  completedDates?: string[]
+  completedDates?: string[],
+  schedule?: string[],
+  isSkippedToday?: boolean
 ) {
   const TOTAL_WEEKS = 42
   const TOTAL_DAYS = TOTAL_WEEKS * 7 // 294 days
@@ -685,6 +687,44 @@ function getHabitYearGrid(
     uniqueDates.add(todayIso)
   } else if (isDoneToday === false) {
     uniqueDates.delete(todayIso)
+  }
+
+  const isScheduledDay = (d: Date) => {
+    if (!schedule || schedule.length === 0 || schedule.includes('Everyday')) return true
+    return schedule.includes(DAY_CODES_GLOBAL[d.getDay()])
+  }
+
+  // Hitung streak berturut-turut (dalam satuan hari) & tandai tanggal yang termasuk active streak
+  const streakDates = new Set<string>()
+  let streakDays = 0
+
+  if (uniqueDates.has(todayIso)) {
+    streakDates.add(todayIso)
+    streakDays = 1
+    for (let offset = 1; offset <= 365; offset++) {
+      const d = new Date(todayLocal)
+      d.setDate(todayLocal.getDate() - offset)
+      const dIso = getLocalIsoDate(d)
+      if (uniqueDates.has(dIso)) {
+        streakDates.add(dIso)
+        streakDays++
+      } else if (isScheduledDay(d)) {
+        break
+      }
+    }
+  } else if (!isSkippedToday) {
+    // Hari ini belum dikerjakan (dan tidak di-skip): cek apakah streak hingga hari terjadwal terakhir masih aktif
+    for (let offset = 1; offset <= 365; offset++) {
+      const d = new Date(todayLocal)
+      d.setDate(todayLocal.getDate() - offset)
+      const dIso = getLocalIsoDate(d)
+      if (uniqueDates.has(dIso)) {
+        streakDates.add(dIso)
+        streakDays++
+      } else if (isScheduledDay(d)) {
+        break
+      }
+    }
   }
 
   // Tentukan Senin dari minggu awal (berdasarkan tanggal paling awal atau minggu ini)
@@ -714,7 +754,7 @@ function getHabitYearGrid(
     startMonday.setDate(thisWeekMonday.getDate() - (TOTAL_WEEKS - 1) * 7)
   }
 
-  const cells: ('active' | 'inactive' | 'future')[] = []
+  const cells: ('streak' | 'done' | 'inactive' | 'future')[] = []
   const cellDates: string[] = []
 
   for (let day = 0; day < TOTAL_DAYS; day++) {
@@ -724,7 +764,7 @@ function getHabitYearGrid(
     cellDates.push(cellIso)
 
     if (uniqueDates.has(cellIso)) {
-      cells.push('active')
+      cells.push(streakDates.has(cellIso) ? 'streak' : 'done')
     } else if (cellIso > todayIso) {
       cells.push('future')
     } else {
@@ -732,9 +772,7 @@ function getHabitYearGrid(
     }
   }
 
-  const completed = uniqueDates.size
-  const pct = completed === 0 ? 0 : Math.min(100, Math.max(1, Math.round((completed / TOTAL_DAYS) * 100)))
-  return { cells, cellDates, pct }
+  return { cells, cellDates, streakDays, pct: streakDays }
 }
 
 // ============================================================================
@@ -1738,9 +1776,14 @@ function QuestCard({
 
       {/* DROPDOWN KONSISTENSI QUEST (MUNCUL SAAT QUEST DITEKAN) */}
       {isConsistencyOpen && (() => {
-        const paletteIdx = colorIndex !== undefined ? colorIndex % HABIT_PALETTES.length : 0
-        const colorObj = HABIT_PALETTES[paletteIdx]
-        const { cells, pct } = getHabitYearGrid(questId || title, 0, done, completedDates)
+        const { cells, cellDates, streakDays } = getHabitYearGrid(
+          questId || title,
+          0,
+          done,
+          completedDates,
+          schedule,
+          isSkipped
+        )
         const scheduleText =
           schedule && schedule.length > 0
             ? schedule.includes('Everyday')
@@ -1761,7 +1804,7 @@ function QuestCard({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header: Nama Quest - Jadwal & Persentase Konsistensi */}
+            {/* Header: Nama Quest - Jadwal & Streak Hari */}
             <div
               style={{
                 display: 'flex',
@@ -1790,12 +1833,12 @@ function QuestCard({
                 style={{
                   fontSize: '13px',
                   fontWeight: 800,
-                  color: '#f3f1ff',
+                  color: streakDays > 0 ? '#2dd4bf' : '#b8add1',
                   fontVariantNumeric: 'tabular-nums',
                   flexShrink: 0,
                 }}
               >
-                {pct}%
+                {streakDays} Hari
               </div>
             </div>
 
@@ -1814,18 +1857,46 @@ function QuestCard({
               {cells.map((status, cIdx) => (
                 <div
                   key={cIdx}
+                  title={cellDates[cIdx]}
                   style={{
                     aspectRatio: '1 / 1',
                     borderRadius: '1.3px',
                     background:
-                      status === 'active'
-                        ? colorObj.color
+                      status === 'streak'
+                        ? '#2dd4bf'
+                        : status === 'done'
+                        ? '#7c3aed'
                         : status === 'inactive'
                         ? '#262430'
                         : '#16151e',
                   }}
                 />
               ))}
+            </div>
+
+            {/* Legend 3 Tipe Warna */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginTop: '8px',
+                fontSize: '9.5px',
+                color: '#9a8fb2',
+              }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: '#2dd4bf' }} />
+                Berturut-turut
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: '#7c3aed' }} />
+                Dikerjakan
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '2px', background: '#262430' }} />
+                Tidak dikerjakan
+              </span>
             </div>
           </div>
         )
@@ -13604,17 +13675,24 @@ export default function Page() {
                           Belum ada Quest di Clan ini untuk dimonitor.
                         </div>
                       ) : (
-                        selectedClanQuests.map((cq, index) => {
-                          const colorObj = HABIT_PALETTES[(index + 3) % HABIT_PALETTES.length]
+                        selectedClanQuests.map((cq) => {
                           const isCqDone = cq.completedByUserIds.includes(currentUser.id)
-                          const { cells, pct } = getHabitYearGrid(cq.id, 0, isCqDone)
+                          const isCqSkipped = (cq.skippedByUserIds || []).includes(currentUser.id)
+                          const { cells, cellDates, streakDays } = getHabitYearGrid(
+                            cq.id,
+                            0,
+                            isCqDone,
+                            undefined,
+                            cq.schedule,
+                            isCqSkipped
+                          )
                           const scheduleText = cq.schedule && cq.schedule.length > 0
                             ? (cq.schedule.includes('Everyday') ? 'Everyday' : cq.schedule.join(', '))
                             : (cq.questType === 'event' ? 'Event Khusus' : 'Everyday')
 
                           return (
                             <div key={cq.id} style={{ cursor: 'default' }}>
-                              {/* Title + Percentage */}
+                              {/* Title + Streak Hari */}
                               <div
                                 style={{
                                   display: 'flex',
@@ -13643,12 +13721,12 @@ export default function Page() {
                                   style={{
                                     fontSize: '13px',
                                     fontWeight: 700,
-                                    color: '#f3f1ff',
+                                    color: streakDays > 0 ? '#2dd4bf' : '#b8add1',
                                     fontVariantNumeric: 'tabular-nums',
                                     flexShrink: 0,
                                   }}
                                 >
-                                  {pct}%
+                                  {streakDays} Hari
                                 </div>
                               </div>
 
@@ -13667,12 +13745,15 @@ export default function Page() {
                                 {cells.map((status, cIdx) => (
                                   <div
                                     key={cIdx}
+                                    title={cellDates[cIdx]}
                                     style={{
                                       aspectRatio: '1 / 1',
                                       borderRadius: '1.2px',
                                       background:
-                                        status === 'active'
-                                          ? colorObj.color
+                                        status === 'streak'
+                                          ? '#2dd4bf'
+                                          : status === 'done'
+                                          ? '#7c3aed'
                                           : status === 'inactive'
                                           ? '#262430'
                                           : '#16151e',
@@ -16475,16 +16556,25 @@ export default function Page() {
                 paddingRight: '2px',
               }}
             >
-              {userPersonalTasks.map((task, index) => {
-                const colorObj = HABIT_PALETTES[index % HABIT_PALETTES.length]
-                const { cells, cellDates, pct } = getHabitYearGrid(task.id, 0, task.done, task.completedDates)
+              {userPersonalTasks.map((task) => {
+                const todayIsoModal = getLocalIsoDate()
+                const isDoneTodayModal = Boolean(task.completedDates?.includes(todayIsoModal))
+                const isSkippedTodayModal = Boolean(task.skippedDates?.includes(todayIsoModal))
+                const { cells, cellDates, streakDays } = getHabitYearGrid(
+                  task.id,
+                  0,
+                  isDoneTodayModal,
+                  task.completedDates,
+                  task.schedule,
+                  isSkippedTodayModal
+                )
                 const scheduleText = task.schedule && task.schedule.length > 0
                   ? (task.schedule.includes('Everyday') ? 'Everyday' : task.schedule.join(', '))
                   : 'Everyday'
 
                 return (
                   <div key={task.id} style={{ cursor: 'default' }}>
-                    {/* Habit Title + Schedule & Percentage */}
+                    {/* Habit Title + Schedule & Streak Hari */}
                     <div
                       style={{
                         display: 'flex',
@@ -16513,12 +16603,12 @@ export default function Page() {
                         style={{
                           fontSize: '13px',
                           fontWeight: 700,
-                          color: '#f3f1ff',
+                          color: streakDays > 0 ? '#2dd4bf' : '#b8add1',
                           fontVariantNumeric: 'tabular-nums',
                           flexShrink: 0,
                         }}
                       >
-                        {pct}%
+                        {streakDays} Hari
                       </div>
                     </div>
 
@@ -16542,8 +16632,10 @@ export default function Page() {
                             aspectRatio: '1 / 1',
                             borderRadius: '1.2px',
                             background:
-                              status === 'active'
-                                ? colorObj.color
+                              status === 'streak'
+                                ? '#2dd4bf'
+                                : status === 'done'
+                                ? '#7c3aed'
                                 : status === 'inactive'
                                 ? '#262430'
                                 : '#16151e',
