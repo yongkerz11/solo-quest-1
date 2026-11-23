@@ -4117,7 +4117,7 @@ export default function Page() {
     }
   }
 
-  const sendTestBackgroundPush = async (delaySeconds = 4) => {
+  const sendTestBackgroundPush = async (delaySeconds = 5) => {
     setIsSendingTestPush(true)
     try {
       const ok = await enableBackgroundPush(true)
@@ -4128,17 +4128,24 @@ export default function Page() {
         showToast('Langganan push belum tersedia di perangkat ini.')
         return
       }
-      showToast(`Tutup / minimize app sekarang! Notif test dikirim dalam ${delaySeconds} detik...`)
       const res = await fetch('/api/push/test', {
         method: 'POST',
+        keepalive: true,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subscription: sub.toJSON(),
           delaySeconds,
         }),
       })
+      const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        showToast('Server gagal mengirim push test. Coba sinkronkan ulang.')
+        showToast(json?.error || 'Server gagal mengirim push test. Coba sinkronkan ulang.')
+        return
+      }
+      if (delaySeconds > 0) {
+        showToast(`Terjadwal di server! Sekarang tutup/swipe app & semua tab — notif masuk dalam ${delaySeconds} detik.`)
+      } else {
+        showToast('Push notif langsung terkirim ke perangkat ini!')
       }
     } catch {
       showToast('Gagal menghubungi server test push.')
@@ -17247,34 +17254,39 @@ export default function Page() {
                       </span>
                     </button>
                     {pushStatus === 'active' && (
-                      <button
-                        type="button"
-                        disabled={isSendingTestPush}
-                        onClick={() => void sendTestBackgroundPush(4)}
-                        style={{
-                          width: '100%',
-                          padding: '7px 10px',
-                          borderRadius: '8px',
-                          background: 'rgba(56, 189, 248, 0.12)',
-                          border: '1px solid rgba(56, 189, 248, 0.35)',
-                          color: '#bae6fd',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
-                          opacity: isSendingTestPush ? 0.7 : 1,
-                        }}
-                      >
-                        <Clock size={12} color="#7dd3fc" />
-                        <span>
-                          {isSendingTestPush
-                            ? 'Mengirim dalam 4 detik... Tutup App Sekarang!'
-                            : 'Test Notif Saat App Tutup (Delay 4 Detik)'}
-                        </span>
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <button
+                          type="button"
+                          disabled={isSendingTestPush}
+                          onClick={() => void sendTestBackgroundPush(5)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 10px',
+                            borderRadius: '8px',
+                            background: 'rgba(56, 189, 248, 0.12)',
+                            border: '1px solid rgba(56, 189, 248, 0.35)',
+                            color: '#bae6fd',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
+                            opacity: isSendingTestPush ? 0.7 : 1,
+                          }}
+                        >
+                          <Clock size={12} color="#7dd3fc" />
+                          <span>
+                            {isSendingTestPush
+                              ? 'Menghubungkan Server...'
+                              : 'Test Notif Saat App Tutup (Delay 5 Detik)'}
+                          </span>
+                        </button>
+                        <div style={{ fontSize: '10.5px', color: '#8f7eb5', lineHeight: 1.4 }}>
+                          Tekan lalu tunggu toast konfirmasi sebelum swipe-tutup app. Pengingat quest otomatis berjalan tiap ±15 menit via server.
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

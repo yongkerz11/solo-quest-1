@@ -42,7 +42,13 @@ self.addEventListener('push', (event) => {
     },
   }
 
-  event.waitUntil(self.registration.showNotification(data.title, options))
+  event.waitUntil(
+    self.registration.showNotification(data.title, options).catch(() =>
+      self.registration.showNotification(data.title || '[ ! ] QUEST TERBUKA', {
+        body: data.body || 'Ada quest yang sudah memasuki jadwalnya.',
+      })
+    )
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {

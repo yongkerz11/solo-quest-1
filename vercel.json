@@ -12,7 +12,7 @@
     "quest-push-dispatch": {
       "schedule": "*/15 * * * *",
       "timezone": "Asia/Jakarta",
-      "jitter": 15,
+      "jitter": 1,
       "function": "api/push-cron"
     }
   }

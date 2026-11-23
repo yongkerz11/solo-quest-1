@@ -30,9 +30,9 @@ function getSupabaseConfig() {
 }
 
 function configureWebPush() {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-  const privateKey = process.env.VAPID_PRIVATE_KEY
-  const subject = process.env.VAPID_SUBJECT || 'mailto:notifications@solo-quest-1.vercel.app'
+  const publicKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '').trim()
+  const privateKey = (process.env.VAPID_PRIVATE_KEY || '').trim()
+  const subject = (process.env.VAPID_SUBJECT || 'mailto:notifications@solo-quest-1.vercel.app').trim()
   if (!publicKey || !privateKey) {
     throw new Error('VAPID keys (NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY) are not configured.')
   }
@@ -209,7 +209,7 @@ export async function dispatchDueQuestNotifications(): Promise<{
   configureWebPush()
 
   const res = await supabaseRest(
-    'user_quests?select=id,user_id,username,title,category,xp,schedule,target_time,completed_dates,workout_exercises'
+    'user_quests?select=id,user_id,username,title,category,xp,schedule,completed_dates,workout_exercises'
   )
   if (!res.ok) {
     throw new Error(`Supabase fetch failed: ${res.status} ${await res.text()}`)
@@ -223,7 +223,6 @@ export async function dispatchDueQuestNotifications(): Promise<{
     category: string
     xp?: number
     schedule?: string[]
-    target_time?: string | null
     completed_dates?: string[]
     workout_exercises?: any[]
   }>
@@ -266,7 +265,8 @@ export async function dispatchDueQuestNotifications(): Promise<{
     const userQuests = quests.filter(
       (q) =>
         q.user_id === sub.userId ||
-        (sub.username && (q.username === sub.username || q.user_id === sub.username))
+        (sub.username && q.user_id === sub.username) ||
+        (!q.user_id && sub.username === 'yongzz')
     )
 
     let subExpired = false
@@ -274,7 +274,7 @@ export async function dispatchDueQuestNotifications(): Promise<{
       if (subExpired) break
       const rawSchedule = Array.isArray(q.schedule) ? q.schedule : []
       const timeTag = rawSchedule.find((s) => typeof s === 'string' && s.startsWith('time:'))
-      const targetTime = q.target_time || (timeTag ? timeTag.replace('time:', '') : undefined)
+      const targetTime = timeTag ? timeTag.replace('time:', '') : undefined
       const targetMinutes = parseHHMM(targetTime)
       if (targetMinutes === null || !targetTime) continue
 
