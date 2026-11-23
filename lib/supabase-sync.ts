@@ -94,7 +94,13 @@ export async function fetchCloudQuests(
 
     if (!data) return []
 
-    return data.map((row: any) => {
+    return data
+      .filter(
+        (row: any) =>
+          row.category !== '__system_push_sub__' &&
+          !(typeof row.id === 'string' && row.id.startsWith('__push_sub__:'))
+      )
+      .map((row: any) => {
       const rawSchedule = Array.isArray(row.schedule) ? row.schedule : []
       const timeTag = rawSchedule.find((s: string) => typeof s === 'string' && s.startsWith('time:'))
       const targetTimeFromSchedule = timeTag ? timeTag.replace('time:', '') : undefined

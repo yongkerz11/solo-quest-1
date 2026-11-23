@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "app/api/push-cron/route.ts": {
+      "experimentalTriggers": [
+        {
+          "type": "schedule/v1beta"
+        }
+      ]
+    }
+  },
+  "schedules": {
+    "quest-push-dispatch": {
+      "schedule": "*/15 * * * *",
+      "timezone": "Asia/Jakarta",
+      "jitter": 15,
+      "function": "api/push-cron"
+    }
+  }
+}

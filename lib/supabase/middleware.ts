@@ -42,6 +42,14 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/auth')
+  const isPublicSystemAsset =
+    pathname === '/sw.js' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname.startsWith('/api/')
+
+  if (isPublicSystemAsset) {
+    return supabaseResponse
+  }
 
   // If not logged in and not on auth page, redirect to /login
   if (!isAuthenticated && !isAuthPage) {

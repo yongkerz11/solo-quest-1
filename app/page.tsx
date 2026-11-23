@@ -2411,6 +2411,23 @@ export default function Page() {
     }
   }
 
+  const [pushStatus, setPushStatus] = useState<'loading' | 'active' | 'prompt' | 'denied' | 'unsupported' | 'needs-pwa'>('loading')
+  const [isSubscribingPush, setIsSubscribingPush] = useState<boolean>(false)
+  const [isSendingTestPush, setIsSendingTestPush] = useState<boolean>(false)
+  const [pushStatusNote, setPushStatusNote] = useState<string>('')
+  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null)
+
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    return outputArray
+  }
+
   const [arrivedQuestAlert, setArrivedQuestAlert] = useState<PersonalTask | null>(null)
   const [pendingQuestAlertCount, setPendingQuestAlertCount] = useState<number>(0)
   const [isClosingQuestAlert, setIsClosingQuestAlert] = useState<boolean>(false)
@@ -3931,6 +3948,205 @@ export default function Page() {
     }
   }, [timeTick, mounted, todayPersonalTasks, arrivedQuestAlert, prefNotification, prefSound])
 
+  const getPushEnvironmentInfo = (): 'ready' | 'needs-pwa' | 'unsupported' => {
+    if (typeof window === 'undefined') return 'unsupported'
+    const ua = window.navigator.userAgent || ''
+    const isIos = /iPad|iPhone|iPod/.test(ua) || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
+    const isStandalone =
+      window.matchMedia?.('(display-mode: standalone)')?.matches || Boolean((window.navigator as any).standalone)
+    if (isIos && !isStandalone) {
+      return 'needs-pwa'
+    }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+      return 'unsupported'
+    }
+    return 'ready'
+  }
+
+  const syncSubscriptionToServer = async (subscription: PushSubscription) => {
+    if (!currentUser?.id) return false
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta'
+    const res = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser.id,
+        username: currentUser.username,
+        timezone,
+        subscription: subscription.toJSON(),
+      }),
+    })
+    return res.ok
+  }
+
+  useEffect(() => {
+    if (!mounted || !currentUser?.id) return
+    let cancelled = false
+    const initServiceWorkerAndPush = async () => {
+      const env = getPushEnvironmentInfo()
+      if (env !== 'ready') {
+        if (!cancelled) {
+          setPushStatus(env)
+          setPushStatusNote(
+            env === 'needs-pwa'
+              ? 'Di iPhone/iPad: tekan Share -> Add to Home Screen dulu, lalu buka app dari layar utama.'
+              : 'Browser ini belum mendukung Web Push Latar Belakang.'
+          )
+        }
+        return
+      }
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        await navigator.serviceWorker.ready
+        if (cancelled) return
+        swRegistrationRef.current = reg
+        const existingSub = await reg.pushManager.getSubscription()
+        if (existingSub && Notification.permission === 'granted') {
+          setPushStatus('active')
+          setPushStatusNote('')
+          await syncSubscriptionToServer(existingSub)
+        } else if (Notification.permission === 'denied') {
+          setPushStatus('denied')
+          setPushStatusNote('Izin notifikasi diblokir. Aktifkan lagi di Pengaturan situs browser/HP.')
+        } else {
+          setPushStatus('prompt')
+          setPushStatusNote('')
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setPushStatus('prompt')
+          setPushStatusNote(err?.message || '')
+        }
+      }
+    }
+    void initServiceWorkerAndPush()
+    return () => {
+      cancelled = true
+    }
+  }, [mounted, currentUser?.id, currentUser?.username])
+
+  const enableBackgroundPush = async (silent = false): Promise<boolean> => {
+    const env = getPushEnvironmentInfo()
+    if (env === 'needs-pwa') {
+      setPushStatus('needs-pwa')
+      if (!silent) {
+        showToast('Di iPhone/iPad: install app via Share -> Add to Home Screen dulu agar notifikasi background bisa aktif.')
+      }
+      return false
+    }
+    if (env === 'unsupported') {
+      setPushStatus('unsupported')
+      if (!silent) {
+        showToast('Perangkat atau browser ini belum mendukung notifikasi latar belakang.')
+      }
+      return false
+    }
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+    if (!vapidPublicKey) {
+      if (!silent) showToast('VAPID key belum terkonfigurasi di server.')
+      return false
+    }
+    setIsSubscribingPush(true)
+    try {
+      let perm: NotificationPermission = Notification.permission
+      if (perm === 'default') {
+        perm = await Notification.requestPermission()
+      }
+      if (perm !== 'granted') {
+        setPushStatus('denied')
+        setPushStatusNote('Izin notifikasi ditolak atau diblokir oleh browser.')
+        if (!silent) {
+          showToast('Izin notifikasi ditolak. Aktifkan izin notifikasi di pengaturan browser/perangkat.')
+        }
+        return false
+      }
+      const reg = swRegistrationRef.current || (await navigator.serviceWorker.register('/sw.js', { scope: '/' }))
+      await navigator.serviceWorker.ready
+      swRegistrationRef.current = reg
+
+      let sub = await reg.pushManager.getSubscription()
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        })
+      }
+      const synced = await syncSubscriptionToServer(sub)
+      if (!synced) {
+        if (!silent) showToast('Gagal menyimpan langganan push ke server cloud.')
+        return false
+      }
+      setPushStatus('active')
+      setPushStatusNote('')
+      setPrefNotification(true)
+      if (!silent) {
+        showToast('Notifikasi latar belakang aktif! Quest terjadwal akan berbunyi meski app ditutup.')
+      }
+      return true
+    } catch (err: any) {
+      if (!silent) {
+        showToast(`Gagal mengaktifkan notifikasi background: ${err?.message || 'Unknown error'}`)
+      }
+      return false
+    } finally {
+      setIsSubscribingPush(false)
+    }
+  }
+
+  const disableBackgroundPush = async () => {
+    setIsSubscribingPush(true)
+    try {
+      const reg = swRegistrationRef.current || (await navigator.serviceWorker?.getRegistration?.('/'))
+      const sub = await reg?.pushManager?.getSubscription?.()
+      if (sub) {
+        const endpoint = sub.endpoint
+        await sub.unsubscribe()
+        await fetch('/api/push/subscribe', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint }),
+        })
+      }
+      setPushStatus('prompt')
+      setPrefNotification(false)
+      showToast('Notifikasi latar belakang dinonaktifkan untuk perangkat ini.')
+    } catch {
+      setPrefNotification(false)
+    } finally {
+      setIsSubscribingPush(false)
+    }
+  }
+
+  const sendTestBackgroundPush = async (delaySeconds = 4) => {
+    setIsSendingTestPush(true)
+    try {
+      const ok = await enableBackgroundPush(true)
+      if (!ok) return
+      const reg = swRegistrationRef.current || (await navigator.serviceWorker.ready)
+      const sub = await reg.pushManager.getSubscription()
+      if (!sub) {
+        showToast('Langganan push belum tersedia di perangkat ini.')
+        return
+      }
+      showToast(`Tutup / minimize app sekarang! Notif test dikirim dalam ${delaySeconds} detik...`)
+      const res = await fetch('/api/push/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscription: sub.toJSON(),
+          delaySeconds,
+        }),
+      })
+      if (!res.ok) {
+        showToast('Server gagal mengirim push test. Coba sinkronkan ulang.')
+      }
+    } catch {
+      showToast('Gagal menghubungi server test push.')
+    } finally {
+      setIsSendingTestPush(false)
+    }
+  }
+
   // Sinkronisasi otomatis XP hunter & Daily All-Clear Bonus ke state serta profil cloud
   useEffect(() => {
     if (!mounted || !currentUser) return
@@ -5400,6 +5616,9 @@ export default function Page() {
           ? `Quest "${newTask.title}" dibuat dengan ${templateExercises.length} gerakan referensi!`
           : 'Quest pribadi baru ditambahkan!'
       )
+    }
+    if (finalTime && prefNotification && pushStatus === 'prompt') {
+      void enableBackgroundPush(true)
     }
     const scheduledForToday = isQuestForToday(questDays)
     setQuestScheduleTab(scheduledForToday ? 'today' : 'upcoming')
@@ -16882,7 +17101,15 @@ export default function Page() {
                   <input
                     type="checkbox"
                     checked={prefNotification}
-                    onChange={(e) => setPrefNotification(e.target.checked)}
+                    onChange={(e) => {
+                      const next = e.target.checked
+                      setPrefNotification(next)
+                      if (next && pushStatus !== 'active') {
+                        void enableBackgroundPush()
+                      } else if (!next && pushStatus === 'active') {
+                        void disableBackgroundPush()
+                      }
+                    }}
                     style={{ accentColor: '#9333ea', cursor: 'pointer' }}
                   />
                 </label>
@@ -16905,6 +17132,152 @@ export default function Page() {
                     style={{ accentColor: '#9333ea', cursor: 'pointer' }}
                   />
                 </label>
+                <div style={{ height: '1px', background: '#24193d' }} />
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    background: 'rgba(18, 13, 34, 0.9)',
+                    border: `1px solid ${
+                      pushStatus === 'active'
+                        ? 'rgba(34, 197, 94, 0.35)'
+                        : pushStatus === 'denied' || pushStatus === 'needs-pwa'
+                          ? 'rgba(245, 158, 11, 0.35)'
+                          : 'rgba(139, 92, 246, 0.25)'
+                    }`,
+                    borderRadius: '8px',
+                    padding: '10px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                    }}
+                  >
+                    <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#e9d5ff' }}>
+                      Notifikasi Saat App Ditutup
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                        background:
+                          pushStatus === 'active'
+                            ? 'rgba(34, 197, 94, 0.16)'
+                            : pushStatus === 'denied' || pushStatus === 'needs-pwa'
+                              ? 'rgba(245, 158, 11, 0.16)'
+                              : 'rgba(139, 92, 246, 0.16)',
+                        color:
+                          pushStatus === 'active'
+                            ? '#86efac'
+                            : pushStatus === 'denied' || pushStatus === 'needs-pwa'
+                              ? '#fcd34d'
+                              : '#c4b5fd',
+                        border: `1px solid ${
+                          pushStatus === 'active'
+                            ? 'rgba(34, 197, 94, 0.35)'
+                            : pushStatus === 'denied' || pushStatus === 'needs-pwa'
+                              ? 'rgba(245, 158, 11, 0.35)'
+                              : 'rgba(139, 92, 246, 0.32)'
+                        }`,
+                      }}
+                    >
+                      {pushStatus === 'active'
+                        ? 'Aktif'
+                        : pushStatus === 'loading'
+                          ? 'Memeriksa...'
+                          : pushStatus === 'needs-pwa'
+                            ? 'Install PWA iOS'
+                            : pushStatus === 'denied'
+                              ? 'Diblokir'
+                              : pushStatus === 'unsupported'
+                                ? 'Tidak Didukung'
+                                : 'Belum Aktif'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#a594c7', lineHeight: 1.45 }}>
+                    {pushStatusNote
+                      ? pushStatusNote
+                      : pushStatus === 'active'
+                        ? 'Perangkat ini sudah terhubung. Quest terjadwal akan mengirim push notif otomatis meski app tidak dibuka.'
+                        : 'Aktifkan agar perangkat tetap menerima notifikasi quest sesuai jam jadwal meskipun app ditutup.'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <button
+                      type="button"
+                      disabled={isSubscribingPush || pushStatus === 'unsupported'}
+                      onClick={() => void enableBackgroundPush()}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background:
+                          pushStatus === 'active'
+                            ? 'rgba(34, 197, 94, 0.15)'
+                            : 'linear-gradient(135deg, rgba(124, 58, 237, 0.34), rgba(168, 85, 247, 0.24))',
+                        border: `1px solid ${
+                          pushStatus === 'active'
+                            ? 'rgba(34, 197, 94, 0.42)'
+                            : 'rgba(167, 139, 250, 0.5)'
+                        }`,
+                        color: pushStatus === 'active' ? '#bbf7d0' : '#f3e8ff',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        cursor: isSubscribingPush || pushStatus === 'unsupported' ? 'not-allowed' : 'pointer',
+                        opacity: isSubscribingPush ? 0.7 : 1,
+                      }}
+                    >
+                      <CheckCircle2 size={13} color={pushStatus === 'active' ? '#4ade80' : '#c4b5fd'} />
+                      <span>
+                        {isSubscribingPush
+                          ? 'Menghubungkan Perangkat...'
+                          : pushStatus === 'active'
+                            ? 'Sinkronkan Ulang Perangkat Ini'
+                            : 'Aktifkan Notif Latar Belakang'}
+                      </span>
+                    </button>
+                    {pushStatus === 'active' && (
+                      <button
+                        type="button"
+                        disabled={isSendingTestPush}
+                        onClick={() => void sendTestBackgroundPush(4)}
+                        style={{
+                          width: '100%',
+                          padding: '7px 10px',
+                          borderRadius: '8px',
+                          background: 'rgba(56, 189, 248, 0.12)',
+                          border: '1px solid rgba(56, 189, 248, 0.35)',
+                          color: '#bae6fd',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          cursor: isSendingTestPush ? 'not-allowed' : 'pointer',
+                          opacity: isSendingTestPush ? 0.7 : 1,
+                        }}
+                      >
+                        <Clock size={12} color="#7dd3fc" />
+                        <span>
+                          {isSendingTestPush
+                            ? 'Mengirim dalam 4 detik... Tutup App Sekarang!'
+                            : 'Test Notif Saat App Tutup (Delay 4 Detik)'}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <div style={{ height: '1px', background: '#24193d' }} />
                 <button
                   type="button"
