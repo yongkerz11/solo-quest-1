@@ -375,6 +375,10 @@ interface HunterRankTier {
   nextXp: number | null
   primaryColor: string
   secondaryColor: string
+  highlightColor: string
+  deepSurface: string
+  primaryRgb: string
+  secondaryRgb: string
   glowColor: string
 }
 
@@ -387,7 +391,11 @@ const HUNTER_RANK_TIERS: HunterRankTier[] = [
     nextXp: 500,
     primaryColor: '#a78bfa',
     secondaryColor: '#6d28d9',
-    glowColor: 'rgba(167, 139, 250, 0.42)',
+    highlightColor: '#e9d5ff',
+    deepSurface: '#170d2b',
+    primaryRgb: '167, 139, 250',
+    secondaryRgb: '109, 40, 217',
+    glowColor: 'rgba(167, 139, 250, 0.45)',
   },
   {
     rank: 'D',
@@ -397,7 +405,11 @@ const HUNTER_RANK_TIERS: HunterRankTier[] = [
     nextXp: 1500,
     primaryColor: '#38bdf8',
     secondaryColor: '#1d4ed8',
-    glowColor: 'rgba(56, 189, 248, 0.45)',
+    highlightColor: '#bae6fd',
+    deepSurface: '#0b1830',
+    primaryRgb: '56, 189, 248',
+    secondaryRgb: '29, 78, 216',
+    glowColor: 'rgba(56, 189, 248, 0.48)',
   },
   {
     rank: 'C',
@@ -405,9 +417,13 @@ const HUNTER_RANK_TIERS: HunterRankTier[] = [
     subtitle: 'Petarung garis depan dengan konsistensi fisik dan fokus yang teruji.',
     minXp: 1500,
     nextXp: 3500,
-    primaryColor: '#67e8f9',
-    secondaryColor: '#0284c7',
-    glowColor: 'rgba(103, 232, 249, 0.5)',
+    primaryColor: '#22d3ee',
+    secondaryColor: '#0369a1',
+    highlightColor: '#cffafe',
+    deepSurface: '#081d29',
+    primaryRgb: '34, 211, 238',
+    secondaryRgb: '3, 105, 161',
+    glowColor: 'rgba(34, 211, 238, 0.52)',
   },
   {
     rank: 'B',
@@ -417,7 +433,11 @@ const HUNTER_RANK_TIERS: HunterRankTier[] = [
     nextXp: 7000,
     primaryColor: '#c084fc',
     secondaryColor: '#7c3aed',
-    glowColor: 'rgba(192, 132, 252, 0.55)',
+    highlightColor: '#f3e8ff',
+    deepSurface: '#190d2e',
+    primaryRgb: '192, 132, 252',
+    secondaryRgb: '124, 58, 237',
+    glowColor: 'rgba(192, 132, 252, 0.56)',
   },
   {
     rank: 'A',
@@ -426,7 +446,11 @@ const HUNTER_RANK_TIERS: HunterRankTier[] = [
     minXp: 7000,
     nextXp: 14000,
     primaryColor: '#e879f9',
-    secondaryColor: '#7e22ce',
+    secondaryColor: '#86198f',
+    highlightColor: '#fae8ff',
+    deepSurface: '#220b2c',
+    primaryRgb: '232, 121, 249',
+    secondaryRgb: '134, 25, 143',
     glowColor: 'rgba(232, 121, 249, 0.58)',
   },
   {
@@ -435,9 +459,13 @@ const HUNTER_RANK_TIERS: HunterRankTier[] = [
     subtitle: 'Melampaui batas manusia biasa dengan dedikasi tingkat tinggi.',
     minXp: 14000,
     nextXp: 28000,
-    primaryColor: '#fb923c',
-    secondaryColor: '#9333ea',
-    glowColor: 'rgba(251, 146, 60, 0.6)',
+    primaryColor: '#fbbf24',
+    secondaryColor: '#b45309',
+    highlightColor: '#fef3c7',
+    deepSurface: '#241409',
+    primaryRgb: '251, 191, 36',
+    secondaryRgb: '180, 83, 9',
+    glowColor: 'rgba(251, 191, 36, 0.62)',
   },
   {
     rank: 'SS',
@@ -446,8 +474,12 @@ const HUNTER_RANK_TIERS: HunterRankTier[] = [
     minXp: 28000,
     nextXp: 50000,
     primaryColor: '#f43f5e',
-    secondaryColor: '#a855f7',
-    glowColor: 'rgba(244, 63, 94, 0.62)',
+    secondaryColor: '#9f1239',
+    highlightColor: '#ffe4e6',
+    deepSurface: '#260915',
+    primaryRgb: '244, 63, 94',
+    secondaryRgb: '159, 18, 57',
+    glowColor: 'rgba(244, 63, 94, 0.64)',
   },
   {
     rank: 'SSS',
@@ -456,7 +488,11 @@ const HUNTER_RANK_TIERS: HunterRankTier[] = [
     minXp: 50000,
     nextXp: null,
     primaryColor: '#67e8f9',
-    secondaryColor: '#c084fc',
+    secondaryColor: '#9333ea',
+    highlightColor: '#ecfeff',
+    deepSurface: '#0d152b',
+    primaryRgb: '103, 232, 249',
+    secondaryRgb: '147, 51, 234',
     glowColor: 'rgba(103, 232, 249, 0.72)',
   },
 ]
@@ -3501,6 +3537,7 @@ export default function Page() {
   const levelInfo = getHunterLevelInfo(effectiveXp)
   const currentLevel = levelInfo.level
   const currentRank = getHunterRank(effectiveXp)
+  const currentRankTier = HUNTER_RANK_TIERS.find((t) => t.rank === currentRank) || HUNTER_RANK_TIERS[0]
   const nextLevelXp = levelInfo.nextLevelTotalXp
   const levelProgress = levelInfo.progressPct
 
@@ -6925,7 +6962,19 @@ export default function Page() {
   }
 
   return (
-    <main className="app-shell">
+    <main
+      className="app-shell"
+      data-rank={currentRank}
+      style={{
+        ['--rank-primary' as any]: currentRankTier.primaryColor,
+        ['--rank-secondary' as any]: currentRankTier.secondaryColor,
+        ['--rank-highlight' as any]: currentRankTier.highlightColor,
+        ['--rank-rgb' as any]: currentRankTier.primaryRgb,
+        ['--rank-sec-rgb' as any]: currentRankTier.secondaryRgb,
+        ['--rank-glow' as any]: currentRankTier.glowColor,
+        ['--rank-surface' as any]: currentRankTier.deepSurface,
+      }}
+    >
       <div className="phone-frame">
         {/* TOPBAR */}
         <header className="topbar" style={{ marginBottom: '18px', gap: '12px' }}>
@@ -6936,7 +6985,7 @@ export default function Page() {
                   fontSize: '12px',
                   fontWeight: 800,
                   letterSpacing: '0.16em',
-                  color: '#a78bfa',
+                  color: currentRankTier.primaryColor,
                   textTransform: 'uppercase',
                 }}
               >
@@ -6977,14 +7026,14 @@ export default function Page() {
                 <svg viewBox="0 0 100 100" className="portal-vortex-svg" aria-hidden="true">
                   <defs>
                     <linearGradient id="slPortalViolet" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#c084fc" />
-                      <stop offset="50%" stopColor="#7c3aed" />
-                      <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.15" />
+                      <stop offset="0%" stopColor={currentRankTier.highlightColor} />
+                      <stop offset="50%" stopColor={currentRankTier.secondaryColor} />
+                      <stop offset="100%" stopColor={currentRankTier.primaryColor} stopOpacity="0.18" />
                     </linearGradient>
                     <linearGradient id="slPortalCyan" x1="100%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#67e8f9" />
-                      <stop offset="55%" stopColor="#38bdf8" />
-                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.1" />
+                      <stop offset="0%" stopColor={currentRankTier.primaryColor} />
+                      <stop offset="55%" stopColor={currentRankTier.highlightColor} />
+                      <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.15" />
                     </linearGradient>
                   </defs>
                   {/* Outer swirling Solo Leveling gate wisps */}
@@ -7006,20 +7055,20 @@ export default function Page() {
                     <path
                       d="M 10 64 A 44 44 0 0 1 32 10"
                       fill="none"
-                      stroke="#a855f7"
+                      stroke={currentRankTier.primaryColor}
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeDasharray="10 8"
                     />
-                    <circle cx="92" cy="38" r="2.2" fill="#67e8f9" />
-                    <circle cx="22" cy="86" r="2.2" fill="#c084fc" />
+                    <circle cx="92" cy="38" r="2.2" fill={currentRankTier.highlightColor} />
+                    <circle cx="22" cy="86" r="2.2" fill={currentRankTier.primaryColor} />
                   </g>
                   {/* Inner counter-rotating mana vortex */}
                   <g className="portal-ring-inner">
                     <path
                       d="M 50 13 A 37 37 0 0 1 84 65"
                       fill="none"
-                      stroke="#38bdf8"
+                      stroke={currentRankTier.primaryColor}
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeOpacity="0.85"
@@ -7027,7 +7076,7 @@ export default function Page() {
                     <path
                       d="M 62 85 A 37 37 0 0 1 14 42"
                       fill="none"
-                      stroke="#c084fc"
+                      stroke={currentRankTier.highlightColor}
                       strokeWidth="2.2"
                       strokeLinecap="round"
                       strokeOpacity="0.85"
@@ -7077,11 +7126,13 @@ export default function Page() {
                 borderRadius: '14px',
                 display: 'grid',
                 placeItems: 'center',
-                background: isSettingsMenuOpen ? '#361c6b' : '#18112b',
+                background: isSettingsMenuOpen
+                  ? `rgba(${currentRankTier.secondaryRgb}, 0.42)`
+                  : `rgba(${currentRankTier.secondaryRgb}, 0.14)`,
                 border: isSettingsMenuOpen
-                  ? '1px solid #a855f7'
-                  : '1px solid rgba(141, 98, 239, 0.48)',
-                color: isSettingsMenuOpen ? '#ffffff' : '#d5beff',
+                  ? `1px solid ${currentRankTier.primaryColor}`
+                  : `1px solid rgba(${currentRankTier.primaryRgb}, 0.45)`,
+                color: isSettingsMenuOpen ? '#ffffff' : currentRankTier.highlightColor,
                 cursor: 'pointer',
                 flexShrink: 0,
                 boxShadow: isSettingsMenuOpen
@@ -11579,11 +11630,11 @@ export default function Page() {
                             <Zap
                               size={11}
                               fill="currentColor"
-                              style={{ display: 'inline', color: '#c084fc', marginRight: '4px', verticalAlign: '-1px' }}
+                              style={{ display: 'inline', color: currentRankTier.primaryColor, marginRight: '4px', verticalAlign: '-1px' }}
                             />
                             {effectiveXp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
                           </span>
-                          <span style={{ color: '#e9d5ff', fontWeight: 800 }}>{levelProgress}%</span>
+                          <span style={{ color: currentRankTier.highlightColor, fontWeight: 800 }}>{levelProgress}%</span>
                         </div>
                         <div className="hero-xp-track">
                           <span
@@ -11598,6 +11649,7 @@ export default function Page() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                       <div
                         className="rank-hex-emblem"
+                        style={{ filter: `drop-shadow(0 0 14px ${currentRankTier.glowColor})` }}
                         onClick={() => setActiveTab('rank')}
                         title="Lihat Peringkat Hunter"
                       >
@@ -11610,18 +11662,18 @@ export default function Page() {
                           >
                             <defs>
                               <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stopColor="#e9d5ff" />
-                                <stop offset="45%" stopColor="#9333ea" />
-                                <stop offset="100%" stopColor="#4c1d95" />
+                                <stop offset="0%" stopColor="#ffffff" />
+                                <stop offset="45%" stopColor={currentRankTier.primaryColor} />
+                                <stop offset="100%" stopColor={currentRankTier.secondaryColor} />
                               </linearGradient>
                               <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
-                                <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
-                                <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
-                                <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
+                                <stop offset="0%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.88" />
+                                <stop offset="65%" stopColor={currentRankTier.deepSurface} stopOpacity="0.97" />
+                                <stop offset="100%" stopColor="#070410" stopOpacity="0.99" />
                               </radialGradient>
                               <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
-                                <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
+                                <stop offset="0%" stopColor={currentRankTier.primaryColor} stopOpacity="0.92" />
+                                <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.22" />
                               </linearGradient>
                             </defs>
 
@@ -11631,12 +11683,13 @@ export default function Page() {
                                 cx="53"
                                 cy="51"
                                 r="47"
-                                stroke="rgba(168, 85, 247, 0.25)"
+                                stroke={currentRankTier.primaryColor}
+                                strokeOpacity="0.28"
                                 strokeWidth="1"
                                 strokeDasharray="6 6"
                               />
-                              <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
-                              <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
+                              <circle cx="53" cy="4" r="2.2" fill={currentRankTier.primaryColor} />
+                              <circle cx="53" cy="98" r="2.2" fill={currentRankTier.secondaryColor} />
                             </g>
 
                             {/* 2. Busur Energi Dalam Berputar Berlawanan */}
@@ -11645,7 +11698,8 @@ export default function Page() {
                                 cx="53"
                                 cy="51"
                                 r="43"
-                                stroke="rgba(216, 180, 254, 0.35)"
+                                stroke={currentRankTier.primaryColor}
+                                strokeOpacity="0.4"
                                 strokeWidth="1.2"
                                 strokeDasharray="24 66"
                                 strokeLinecap="round"
@@ -11679,7 +11733,7 @@ export default function Page() {
                               points="53,8 90,28 90,74 53,94 16,74 16,28"
                               fill="url(#hexCoreGrad)"
                               stroke="url(#hexOuterGrad)"
-                              strokeWidth="2"
+                              strokeWidth="2.2"
                               strokeLinejoin="round"
                             />
 
@@ -11689,7 +11743,8 @@ export default function Page() {
                               pathLength={100}
                               points="53,8 90,28 90,74 53,94 16,74 16,28"
                               fill="none"
-                              stroke="rgba(216, 180, 254, 0.42)"
+                              stroke={currentRankTier.primaryColor}
+                              strokeOpacity="0.45"
                               strokeWidth="5"
                               strokeLinecap="round"
                               strokeLinejoin="round"
@@ -11699,8 +11754,8 @@ export default function Page() {
                               pathLength={100}
                               points="53,8 90,28 90,74 53,94 16,74 16,28"
                               fill="none"
-                              stroke="#f3e8ff"
-                              strokeWidth="2.2"
+                              stroke="#ffffff"
+                              strokeWidth="2"
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             />
@@ -11709,13 +11764,14 @@ export default function Page() {
                             <polygon
                               points="53,13 85,31 85,71 53,89 21,71 21,31"
                               fill="none"
-                              stroke="rgba(192, 132, 252, 0.28)"
+                              stroke={currentRankTier.primaryColor}
+                              strokeOpacity="0.32"
                               strokeWidth="1"
                             />
 
                             {/* 7. Ornamen Berlian Puncak & Bawah */}
-                            <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
-                            <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
+                            <polygon points="53,4 57,9 53,14 49,9" fill={currentRankTier.primaryColor} />
+                            <polygon points="53,88 56,93 53,98 50,93" fill={currentRankTier.secondaryColor} />
                           </svg>
 
                           {/* Teks Rank di Tengah Perisai Heksagon */}
@@ -11730,6 +11786,7 @@ export default function Page() {
                                     : currentRank.length === 2
                                       ? '23px'
                                       : undefined,
+                                textShadow: `0 0 20px ${currentRankTier.glowColor}`,
                               }}
                             >
                               {currentRank}
@@ -11753,9 +11810,9 @@ export default function Page() {
                             justifyContent: 'center',
                             padding: '4px 6px',
                             borderRadius: '8px',
-                            background: 'rgba(168, 85, 247, 0.14)',
-                            border: '1px solid rgba(168, 85, 247, 0.32)',
-                            color: '#e9d5ff',
+                            background: `rgba(${currentRankTier.primaryRgb}, 0.12)`,
+                            border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.34)`,
+                            color: currentRankTier.highlightColor,
                             cursor: 'pointer',
                             width: '106px',
                             textAlign: 'center',
@@ -11790,7 +11847,7 @@ export default function Page() {
                               lineHeight: 1,
                             }}
                           >
-                            <span style={{ color: '#c084fc', fontWeight: 800, fontSize: '9.5px', whiteSpace: 'nowrap' }}>
+                            <span style={{ color: currentRankTier.primaryColor, fontWeight: 800, fontSize: '9.5px', whiteSpace: 'nowrap' }}>
                               {featuredCategory.xp} XP
                             </span>
                             <ChevronRight size={10} style={{ color: '#a79abf', flexShrink: 0 }} />
@@ -11809,9 +11866,9 @@ export default function Page() {
                             justifyContent: 'center',
                             padding: '4px 6px',
                             borderRadius: '8px',
-                            background: 'rgba(168, 85, 247, 0.12)',
-                            border: '1px solid rgba(168, 85, 247, 0.28)',
-                            color: '#e9d5ff',
+                            background: `rgba(${currentRankTier.primaryRgb}, 0.1)`,
+                            border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.28)`,
+                            color: currentRankTier.highlightColor,
                             cursor: 'pointer',
                             width: '106px',
                             textAlign: 'center',
@@ -11880,9 +11937,9 @@ export default function Page() {
                       <div
                         className="hero-dock-icon"
                         style={{
-                          background: 'rgba(168, 85, 247, 0.18)',
-                          border: '1px solid rgba(192, 132, 252, 0.38)',
-                          color: '#c084fc',
+                          background: `rgba(${currentRankTier.primaryRgb}, 0.18)`,
+                          border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.4)`,
+                          color: currentRankTier.primaryColor,
                         }}
                       >
                         <Shield size={13} />
@@ -12020,7 +12077,7 @@ export default function Page() {
                           background: 'rgba(10, 8, 19, 0.72)',
                           border: allDoneForDay
                             ? '1px solid rgba(56, 189, 248, 0.28)'
-                            : '1px solid rgba(139, 92, 246, 0.18)',
+                            : `1px solid rgba(${currentRankTier.primaryRgb}, 0.2)`,
                         }}
                       >
                         <div
@@ -12975,10 +13032,10 @@ export default function Page() {
                         padding: '9px 14px',
                         minHeight: '38px',
                         borderRadius: '9px',
-                        border: questScheduleTab === 'today' ? '1px solid rgba(168, 85, 247, 0.55)' : '1px solid transparent',
+                        border: questScheduleTab === 'today' ? `1px solid rgba(${currentRankTier.primaryRgb}, 0.55)` : '1px solid transparent',
                         background:
                           questScheduleTab === 'today'
-                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.45), rgba(88, 28, 135, 0.55))'
+                            ? `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.34), rgba(${currentRankTier.secondaryRgb}, 0.48))`
                             : 'transparent',
                         color: questScheduleTab === 'today' ? '#ffffff' : '#b7a9ce',
                         fontSize: '12px',
@@ -12997,8 +13054,8 @@ export default function Page() {
                           fontSize: '10.5px',
                           padding: '1px 7px',
                           borderRadius: '999px',
-                          background: questScheduleTab === 'today' ? 'rgba(168, 85, 247, 0.45)' : 'rgba(255, 255, 255, 0.08)',
-                          color: questScheduleTab === 'today' ? '#f3e8ff' : '#b7a9ce',
+                          background: questScheduleTab === 'today' ? `rgba(${currentRankTier.primaryRgb}, 0.36)` : 'rgba(255, 255, 255, 0.08)',
+                          color: questScheduleTab === 'today' ? currentRankTier.highlightColor : '#b7a9ce',
                           fontWeight: 800,
                         }}
                       >
@@ -13013,10 +13070,10 @@ export default function Page() {
                         padding: '9px 14px',
                         minHeight: '38px',
                         borderRadius: '9px',
-                        border: questScheduleTab === 'upcoming' ? '1px solid rgba(168, 85, 247, 0.55)' : '1px solid transparent',
+                        border: questScheduleTab === 'upcoming' ? `1px solid rgba(${currentRankTier.primaryRgb}, 0.55)` : '1px solid transparent',
                         background:
                           questScheduleTab === 'upcoming'
-                            ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.45), rgba(88, 28, 135, 0.55))'
+                            ? `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.34), rgba(${currentRankTier.secondaryRgb}, 0.48))`
                             : 'transparent',
                         color: questScheduleTab === 'upcoming' ? '#ffffff' : '#b7a9ce',
                         fontSize: '12px',
@@ -13035,8 +13092,8 @@ export default function Page() {
                           fontSize: '10.5px',
                           padding: '1px 7px',
                           borderRadius: '999px',
-                          background: questScheduleTab === 'upcoming' ? 'rgba(168, 85, 247, 0.45)' : 'rgba(255, 255, 255, 0.08)',
-                          color: questScheduleTab === 'upcoming' ? '#f3e8ff' : '#b7a9ce',
+                          background: questScheduleTab === 'upcoming' ? `rgba(${currentRankTier.primaryRgb}, 0.36)` : 'rgba(255, 255, 255, 0.08)',
+                          color: questScheduleTab === 'upcoming' ? currentRankTier.highlightColor : '#b7a9ce',
                           fontWeight: 800,
                         }}
                       >
@@ -13054,11 +13111,11 @@ export default function Page() {
                       <div
                         style={{
                           background: isAllDone
-                            ? 'linear-gradient(135deg, rgba(14, 116, 144, 0.18), rgba(88, 28, 135, 0.28))'
-                            : 'linear-gradient(135deg, rgba(37, 20, 68, 0.75), rgba(18, 14, 30, 0.92))',
+                            ? `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.2), rgba(${currentRankTier.secondaryRgb}, 0.34))`
+                            : `linear-gradient(135deg, rgba(${currentRankTier.secondaryRgb}, 0.24), rgba(14, 12, 24, 0.94))`,
                           border: isAllDone
-                            ? '1px solid rgba(56, 189, 248, 0.38)'
-                            : '1px solid rgba(168, 85, 247, 0.35)',
+                            ? `1px solid rgba(${currentRankTier.primaryRgb}, 0.48)`
+                            : `1px solid rgba(${currentRankTier.primaryRgb}, 0.32)`,
                           borderRadius: '14px',
                           padding: '11px 14px',
                           marginBottom: '12px',
@@ -13073,7 +13130,7 @@ export default function Page() {
                             style={{
                               fontSize: '12px',
                               fontWeight: 800,
-                              color: isAllDone ? '#67e8f9' : '#d8b4fe',
+                              color: isAllDone ? currentRankTier.highlightColor : currentRankTier.primaryColor,
                               display: 'flex',
                               alignItems: 'center',
                               gap: '6px',
@@ -13082,7 +13139,7 @@ export default function Page() {
                             <Zap size={14} />
                             {isAllDone ? 'DAILY REWARD DIPEROLEH!' : 'DAILY REWARD LIST'}
                           </div>
-                          <div style={{ fontSize: '11px', color: isAllDone ? '#bae6fd' : '#c4b5de', marginTop: '2px', lineHeight: 1.4 }}>
+                          <div style={{ fontSize: '11px', color: isAllDone ? currentRankTier.highlightColor : '#c4b5de', marginTop: '2px', lineHeight: 1.4 }}>
                             {isAllDone
                               ? `Seluruh (${completedTodayPersonalCount}/${todayPersonalTasks.length}) quest selesai • +${totalPersonalListXp} XP aktif`
                               : `Dapatkan XP untuk setiap quest yang kamu selesaikan (${completedTodayPersonalCount}/${todayPersonalTasks.length} selesai)`}
@@ -13092,12 +13149,12 @@ export default function Page() {
                           style={{
                             fontSize: '12.5px',
                             fontWeight: 900,
-                            color: isAllDone ? '#67e8f9' : '#f3e8ff',
-                            background: isAllDone ? 'rgba(56, 189, 248, 0.16)' : 'rgba(168, 85, 247, 0.22)',
+                            color: currentRankTier.highlightColor,
+                            background: `rgba(${currentRankTier.primaryRgb}, 0.18)`,
                             padding: '5px 11px',
                             borderRadius: '8px',
-                            border: isAllDone ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid rgba(168, 85, 247, 0.4)',
-                            boxShadow: isAllDone ? '0 0 10px rgba(56, 189, 248, 0.18)' : 'none',
+                            border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.44)`,
+                            boxShadow: isAllDone ? `0 0 12px ${currentRankTier.glowColor}` : 'none',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -15691,10 +15748,9 @@ export default function Page() {
                 position: 'relative',
                 padding: '18px 16px 16px',
                 borderRadius: '22px',
-                background:
-                  'radial-gradient(circle at 88% 18%, rgba(124, 58, 237, 0.22), transparent 52%), linear-gradient(155deg, rgba(24, 17, 42, 0.96), rgba(11, 8, 20, 0.99))',
-                border: '1px solid rgba(139, 92, 246, 0.32)',
-                boxShadow: '0 14px 36px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                background: `radial-gradient(circle at 88% 18%, rgba(${currentRankTier.primaryRgb}, 0.22), transparent 54%), linear-gradient(155deg, ${currentRankTier.deepSurface}, rgba(10, 8, 18, 0.99))`,
+                border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.36)`,
+                boxShadow: `0 14px 36px rgba(0, 0, 0, 0.58), 0 0 24px rgba(${currentRankTier.secondaryRgb}, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.08)`,
                 overflow: 'hidden',
               }}
             >
@@ -15815,9 +15871,9 @@ export default function Page() {
                         style={{
                           padding: '3px 8px',
                           borderRadius: '999px',
-                          background: 'rgba(56, 189, 248, 0.14)',
-                          border: '1px solid rgba(56, 189, 248, 0.35)',
-                          color: '#67e8f9',
+                          background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                          border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.38)`,
+                          color: currentRankTier.primaryColor,
                           fontSize: '10.5px',
                           fontWeight: 800,
                         }}
@@ -15828,7 +15884,7 @@ export default function Page() {
                         style={{
                           fontSize: '10.5px',
                           fontWeight: 700,
-                          color: '#c4b5fd',
+                          color: currentRankTier.highlightColor,
                         }}
                       >
                         {effectiveXp.toLocaleString('id-ID')} XP
@@ -15858,31 +15914,38 @@ export default function Page() {
                     flexShrink: 0,
                   }}
                 >
-                  <div className="rank-hex-emblem" style={{ transform: 'scale(0.86)', transformOrigin: 'center' }}>
+                  <div
+                    className="rank-hex-emblem"
+                    style={{
+                      transform: 'scale(0.86)',
+                      transformOrigin: 'center',
+                      filter: `drop-shadow(0 0 14px ${currentRankTier.glowColor})`,
+                    }}
+                  >
                     <svg className="rank-hex-svg" viewBox="0 0 106 102" fill="none">
                       <defs>
                         <linearGradient id="profHexOuterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#f3e8ff" />
-                          <stop offset="45%" stopColor="#a855f7" />
-                          <stop offset="100%" stopColor="#6d28d9" />
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="45%" stopColor={currentRankTier.primaryColor} />
+                          <stop offset="100%" stopColor={currentRankTier.secondaryColor} />
                         </linearGradient>
                         <radialGradient id="profHexCoreGrad" cx="50%" cy="28%" r="72%">
-                          <stop offset="0%" stopColor="#581c87" stopOpacity="0.88" />
-                          <stop offset="65%" stopColor="#170d2b" stopOpacity="0.97" />
-                          <stop offset="100%" stopColor="#090514" stopOpacity="0.99" />
+                          <stop offset="0%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.88" />
+                          <stop offset="65%" stopColor={currentRankTier.deepSurface} stopOpacity="0.97" />
+                          <stop offset="100%" stopColor="#070410" stopOpacity="0.99" />
                         </radialGradient>
                         <linearGradient id="profWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.85" />
-                          <stop offset="100%" stopColor="#6d28d9" stopOpacity="0.2" />
+                          <stop offset="0%" stopColor={currentRankTier.primaryColor} stopOpacity="0.92" />
+                          <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.22" />
                         </linearGradient>
                       </defs>
                       <g className="rank-svg-orbit-cw">
-                        <circle cx="53" cy="51" r="47" stroke="rgba(168, 85, 247, 0.25)" strokeWidth="1" strokeDasharray="6 6" />
-                        <circle cx="53" cy="4" r="2.2" fill="#e9d5ff" />
-                        <circle cx="53" cy="98" r="2.2" fill="#a855f7" />
+                        <circle cx="53" cy="51" r="47" stroke={currentRankTier.primaryColor} strokeOpacity="0.28" strokeWidth="1" strokeDasharray="6 6" />
+                        <circle cx="53" cy="4" r="2.2" fill={currentRankTier.primaryColor} />
+                        <circle cx="53" cy="98" r="2.2" fill={currentRankTier.secondaryColor} />
                       </g>
                       <g className="rank-svg-orbit-ccw">
-                        <circle cx="53" cy="51" r="43" stroke="rgba(216, 180, 254, 0.35)" strokeWidth="1.2" strokeDasharray="24 66" strokeLinecap="round" />
+                        <circle cx="53" cy="51" r="43" stroke={currentRankTier.primaryColor} strokeOpacity="0.4" strokeWidth="1.2" strokeDasharray="24 66" strokeLinecap="round" />
                       </g>
                       <g className="rank-svg-wings">
                         <path d="M15 34 L3 25 L8 42 L15 46 Z" fill="url(#profWingGrad)" />
@@ -15890,12 +15953,12 @@ export default function Page() {
                         <path d="M91 34 L103 25 L98 42 L91 46 Z" fill="url(#profWingGrad)" />
                         <path d="M91 50 L105 47 L99 60 L91 62 Z" fill="url(#profWingGrad)" opacity="0.75" />
                       </g>
-                      <polygon points="53,8 90,28 90,74 53,94 16,74 16,28" fill="url(#profHexCoreGrad)" stroke="url(#profHexOuterGrad)" strokeWidth="2" strokeLinejoin="round" />
-                      <polygon className="rank-svg-laser-glow" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="rgba(216, 180, 254, 0.42)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-                      <polygon className="rank-svg-laser-border" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="#f3e8ff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                      <polygon points="53,13 85,31 85,71 53,89 21,71 21,31" fill="none" stroke="rgba(192, 132, 252, 0.28)" strokeWidth="1" />
-                      <polygon points="53,4 57,9 53,14 49,9" fill="#e9d5ff" />
-                      <polygon points="53,88 56,93 53,98 50,93" fill="#c084fc" />
+                      <polygon points="53,8 90,28 90,74 53,94 16,74 16,28" fill="url(#profHexCoreGrad)" stroke="url(#profHexOuterGrad)" strokeWidth="2.2" strokeLinejoin="round" />
+                      <polygon className="rank-svg-laser-glow" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke={currentRankTier.primaryColor} strokeOpacity="0.45" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                      <polygon className="rank-svg-laser-border" pathLength={100} points="53,8 90,28 90,74 53,94 16,74 16,28" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <polygon points="53,13 85,31 85,71 53,89 21,71 21,31" fill="none" stroke={currentRankTier.primaryColor} strokeOpacity="0.32" strokeWidth="1" />
+                      <polygon points="53,4 57,9 53,14 49,9" fill={currentRankTier.primaryColor} />
+                      <polygon points="53,88 56,93 53,98 50,93" fill={currentRankTier.secondaryColor} />
                     </svg>
                     <div className="rank-hex-content">
                       <span className="rank-hex-label">RANK</span>
@@ -15908,6 +15971,7 @@ export default function Page() {
                               : currentRank.length === 2
                                 ? '23px'
                                 : undefined,
+                          textShadow: `0 0 20px ${currentRankTier.glowColor}`,
                         }}
                       >
                         {currentRank}
@@ -15922,9 +15986,9 @@ export default function Page() {
                       gap: '2px',
                       padding: '2px 8px',
                       borderRadius: '999px',
-                      background: 'rgba(56, 189, 248, 0.12)',
-                      border: '1px solid rgba(56, 189, 248, 0.35)',
-                      color: '#67e8f9',
+                      background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                      border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.4)`,
+                      color: currentRankTier.primaryColor,
                       fontSize: '9.5px',
                       fontWeight: 800,
                       marginTop: '-4px',
@@ -15950,14 +16014,14 @@ export default function Page() {
                   }}
                 >
                   <span>Progres Level {currentLevel}</span>
-                  <span style={{ color: '#67e8f9' }}>{levelProgress}%</span>
+                  <span style={{ color: currentRankTier.primaryColor }}>{levelProgress}%</span>
                 </div>
                 <div
                   style={{
                     height: '6px',
                     borderRadius: '999px',
                     background: '#0a0714',
-                    border: '1px solid rgba(139, 92, 246, 0.22)',
+                    border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.25)`,
                     overflow: 'hidden',
                   }}
                 >
@@ -15966,8 +16030,8 @@ export default function Page() {
                       width: `${Math.max(4, levelProgress)}%`,
                       height: '100%',
                       borderRadius: '999px',
-                      background: 'linear-gradient(90deg, #7c3aed, #38bdf8)',
-                      boxShadow: '0 0 10px rgba(56, 189, 248, 0.5)',
+                      background: `linear-gradient(90deg, ${currentRankTier.secondaryColor}, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
+                      boxShadow: `0 0 10px ${currentRankTier.glowColor}`,
                     }}
                   />
                 </div>
