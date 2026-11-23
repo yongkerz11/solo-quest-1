@@ -346,8 +346,8 @@ export async function dispatchDueQuestNotifications(): Promise<{
       if (sentSet.has(sentKey)) continue
 
       const result = await sendWebPush(sub.subscription, {
-        title: `[ ! ] QUEST TERBUKA: ${q.title}`,
-        body: `${q.category} (+${q.xp ?? 20} XP) • Jadwal ${targetTime} sudah tiba!`,
+        title: q.title,
+        body: `${targetTime} • ${q.category} (+${q.xp ?? 20} XP)`,
         url: '/',
         tag: `quest-${isoDate}-${q.id}`,
         questId: q.id,

@@ -3938,8 +3938,8 @@ export default function Page() {
         Notification.permission === 'granted'
       ) {
         try {
-          new Notification(`[ ! ] QUEST TERBUKA: ${newlyArrived.title}`, {
-            body: `Quest jadwal ${newlyArrived.targetTime} sudah terbuka. Selesaikan untuk +${newlyArrived.xp} XP!`,
+          new Notification(newlyArrived.title, {
+            body: `${newlyArrived.targetTime} • ${newlyArrived.category} (+${newlyArrived.xp} XP)`,
           })
         } catch {}
       }

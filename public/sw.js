@@ -10,8 +10,8 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('push', (event) => {
   let data = {
-    title: '[ ! ] QUEST TERBUKA',
-    body: 'Ada quest yang sudah memasuki jadwalnya. Ketuk untuk membuka!',
+    title: 'Quest Siap Dikerjakan',
+    body: 'Waktunya mengerjakan quest terjadwal.',
     url: '/',
     tag: 'solo-quest-alert',
   }
