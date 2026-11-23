@@ -2391,6 +2391,7 @@ export default function Page() {
   const [customHistWeight, setCustomHistWeight] = useState<string>('')
   const [customHistReps, setCustomHistReps] = useState<string>('10')
   const chartScrollRef = useRef<HTMLDivElement>(null)
+  const heroTiltTargetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
   const requestNotificationPermission = () => {
     try {
@@ -3803,18 +3804,86 @@ export default function Page() {
     }
   }, [gymProgressPhotos, mounted])
 
-  // Lenis smooth inertial scrolling
+  // Lenis smooth inertial scrolling + real-time 60fps scroll-linked morph header & 3D card uncurl
   useEffect(() => {
     if (typeof window === 'undefined') return
     const lenis = new Lenis({
       duration: 1.05,
+      lerp: 0.11,
       smoothWheel: true,
     })
+
     let rafId = 0
+    let smoothScroll = window.scrollY || 0
+    let currentTiltX = 0
+    let currentTiltY = 0
+    const cardLerp: Record<number, number> = {}
+
     const raf = (time: number) => {
       lenis.raf(time)
+
+      const rawScroll = Math.max(0, lenis.animatedScroll ?? window.scrollY ?? 0)
+      smoothScroll += (rawScroll - smoothScroll) * 0.25
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+      const scrollRatio = maxScroll > 0 ? Math.min(1, Math.max(0, smoothScroll / maxScroll)) : 0
+
+      // 1. Sticky Morphing Header (#header-normal <-> #header-minihud + #scroll-laser)
+      const pctEl = document.getElementById('header-scroll-pct')
+      if (pctEl) pctEl.textContent = `${Math.round(scrollRatio * 100)}%`
+
+      const laserEl = document.getElementById('scroll-laser')
+      if (laserEl) laserEl.style.width = `${(scrollRatio * 100).toFixed(1)}%`
+
+      const morphT = Math.min(1, Math.max(0, (smoothScroll - 22) / 40))
+      const hNormal = document.getElementById('header-normal')
+      const hMini = document.getElementById('header-minihud')
+      if (hNormal && hMini) {
+        hNormal.style.opacity = (1 - morphT).toFixed(3)
+        hNormal.style.transform = `translate3d(0, ${(-morphT * 10).toFixed(1)}px, 0)`
+        hNormal.style.pointerEvents = morphT > 0.5 ? 'none' : 'auto'
+
+        hMini.style.opacity = morphT.toFixed(3)
+        hMini.style.transform = `translate3d(0, ${((1 - morphT) * -10).toFixed(1)}px, 0)`
+        hMini.style.pointerEvents = morphT > 0.5 ? 'auto' : 'none'
+      }
+
+      // 2. Hero #hero-card 3D Scroll Parallax + Cursor Tilt
+      const heroEl = document.getElementById('hero-card')
+      if (heroEl) {
+        const heroT = Math.min(1, smoothScroll / 160)
+        const hScale = 1 - heroT * 0.085
+        const hRotX = heroT * 10
+        const hOpacity = Math.max(0.42, 1 - heroT * 0.52)
+        currentTiltX += (heroTiltTargetRef.current.x - currentTiltX) * 0.16
+        currentTiltY += (heroTiltTargetRef.current.y - currentTiltY) * 0.16
+
+        heroEl.style.transform = `perspective(700px) scale(${hScale.toFixed(4)}) rotateX(${(hRotX + currentTiltX).toFixed(2)}deg) rotateY(${currentTiltY.toFixed(2)}deg) translate3d(0, ${(heroT * 10).toFixed(1)}px, 0)`
+        heroEl.style.opacity = hOpacity.toFixed(3)
+      }
+
+      // 3. Scroll-Linked 3D Card Uncurl for [data-scroll-card] sections
+      const vpH = window.innerHeight || 720
+      const scrollCards = document.querySelectorAll<HTMLElement>('[data-scroll-card]')
+      scrollCards.forEach((card, idx) => {
+        const rect = card.getBoundingClientRect()
+        const inView = rect.top < vpH - 20 && rect.bottom > 24
+        const bottomVis = Math.min(1, Math.max(0, (vpH - rect.top) / 140))
+        const topVis = Math.min(1, Math.max(0, (rect.bottom - 54) / 120))
+        const target = inView ? Math.min(1, 0.22 + 0.78 * Math.min(bottomVis, topVis)) : 0.18
+        const prev = cardLerp[idx] !== undefined ? cardLerp[idx] : (inView ? 1 : 0.18)
+        const next = prev + (target - prev) * 0.16
+        cardLerp[idx] = next
+
+        const yOff = (1 - next) * 24
+        const sc = 0.94 + next * 0.06
+        const rx = (1 - next) * 7
+        card.style.transform = `perspective(650px) translate3d(0, ${yOff.toFixed(1)}px, 0) scale(${sc.toFixed(4)}) rotateX(${rx.toFixed(2)}deg)`
+        card.style.opacity = Math.min(1, next + 0.08).toFixed(3)
+      })
+
       rafId = requestAnimationFrame(raf)
     }
+
     rafId = requestAnimationFrame(raf)
     return () => {
       cancelAnimationFrame(rafId)
@@ -7237,114 +7306,331 @@ export default function Page() {
       }}
     >
       <div className="phone-frame">
-        {/* TOPBAR */}
-        <header className="topbar" style={{ marginBottom: '18px', gap: '12px' }}>
-          {activeTab === 'profile' ? (
-            <div style={{ display: 'flex', alignItems: 'center', minHeight: '44px' }}>
-              <span
+        {/* STICKY MORPHING HEADER (Persis Preview #sticky-header + #header-normal / #header-minihud + #scroll-laser) */}
+        <header id="sticky-header" className="topbar sticky-morph-header">
+          {/* NORMAL HEADER STATE */}
+          <div
+            id="header-normal"
+            style={{
+              position: 'absolute',
+              inset: '0 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            {activeTab === 'profile' ? (
+              <div style={{ display: 'flex', alignItems: 'center', minHeight: '34px' }}>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 900,
+                    letterSpacing: '0.14em',
+                    color: currentRankTier.primaryColor,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  HUNTER PROFILE
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveWorkoutQuest(null)
+                  setActiveExerciseId(null)
+                  setIsHistoryPageOpen(false)
+                  setIsMasteryPageOpen(false)
+                  setIsQuestProgramPageOpen(false)
+                  setIsPersonalModalOpen(false)
+                  setActiveTab('profile')
+                }}
+                title="Lihat Profil Hunter"
                 style={{
-                  fontSize: '12px',
-                  fontWeight: 800,
-                  letterSpacing: '0.16em',
-                  color: currentRankTier.primaryColor,
-                  textTransform: 'uppercase',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: 0,
+                  background: 'transparent',
+                  border: 0,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  minWidth: 0,
                 }}
               >
-                HUNTER PROFILE
-              </span>
-            </div>
-          ) : (
+                <div
+                  className="portal-avatar-wrap"
+                  style={{ width: '32px', height: '32px' }}
+                >
+                  <svg viewBox="0 0 100 100" className="portal-vortex-svg" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="slPortalViolet" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor={currentRankTier.highlightColor} />
+                        <stop offset="50%" stopColor={currentRankTier.secondaryColor} />
+                        <stop offset="100%" stopColor={currentRankTier.primaryColor} stopOpacity="0.18" />
+                      </linearGradient>
+                      <linearGradient id="slPortalCyan" x1="100%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor={currentRankTier.primaryColor} />
+                        <stop offset="55%" stopColor={currentRankTier.highlightColor} />
+                        <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.15" />
+                      </linearGradient>
+                    </defs>
+                    <g className="portal-ring-outer">
+                      <path
+                        d="M 50 6 A 44 44 0 0 1 92 38"
+                        fill="none"
+                        stroke={currentRankTier.primaryColor}
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M 90 68 A 44 44 0 0 1 22 86"
+                        fill="none"
+                        stroke={currentRankTier.secondaryColor}
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M 10 64 A 44 44 0 0 1 32 10"
+                        fill="none"
+                        stroke="#ffffff"
+                        strokeOpacity="0.65"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeDasharray="10 8"
+                      />
+                    </g>
+                  </svg>
+                  <div
+                    style={{
+                      position: 'relative',
+                      zIndex: 1,
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '999px',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: '#090d1a',
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      fontSize: '10px',
+                      fontWeight: 900,
+                      color: '#ffffff',
+                    }}
+                  >
+                    {currentUser.avatarUrl ? (
+                      <img
+                        src={currentUser.avatarUrl}
+                        alt={currentUser.username}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span
+                      style={{
+                        fontSize: '11.5px',
+                        fontWeight: 900,
+                        letterSpacing: '0.12em',
+                        color: '#ffffff',
+                        textTransform: 'uppercase',
+                        lineHeight: 1,
+                      }}
+                    >
+                      RANKERZ
+                    </span>
+                    <span
+                      id="header-scroll-pct"
+                      style={{
+                        fontSize: '8.5px',
+                        fontWeight: 700,
+                        fontVariantNumeric: 'tabular-nums',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        color: currentRankTier.primaryColor,
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      0%
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      color: '#cbd5e1',
+                      lineHeight: 1.2,
+                      marginTop: '2px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: '185px',
+                    }}
+                  >
+                    {currentUser.username}
+                  </span>
+                </div>
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => {
-                setActiveWorkoutQuest(null)
-                setActiveExerciseId(null)
-                setIsHistoryPageOpen(false)
-                setIsMasteryPageOpen(false)
-                setIsQuestProgramPageOpen(false)
-                setIsPersonalModalOpen(false)
-                setActiveTab('profile')
-              }}
-              title="Lihat Profil Hunter"
+              onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
+              title="Pengaturan & Konsistensi"
+              aria-label="Pengaturan & Konsistensi"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                minHeight: '44px',
-                padding: '2px 10px 2px 2px',
-                borderRadius: '999px',
-                background: 'transparent',
-                border: '1px solid transparent',
+                width: '32px',
+                height: '32px',
+                borderRadius: '10px',
+                display: 'grid',
+                placeItems: 'center',
+                background: isSettingsMenuOpen
+                  ? `rgba(${currentRankTier.secondaryRgb}, 0.4)`
+                  : 'rgba(255, 255, 255, 0.05)',
+                border: isSettingsMenuOpen
+                  ? `1px solid ${currentRankTier.primaryColor}`
+                  : '1px solid rgba(255, 255, 255, 0.15)',
+                color: isSettingsMenuOpen ? '#ffffff' : '#e2e8f0',
                 cursor: 'pointer',
-                textAlign: 'left',
-                minWidth: 0,
+                flexShrink: 0,
+                transition: 'all 0.2s ease',
               }}
             >
-              <div
-                className="portal-avatar-wrap"
-                style={{ width: '44px', height: '44px' }}
+              <Settings size={16} strokeWidth={2} />
+            </button>
+          </div>
+
+          {/* MINI-HUD STATE SAAT SCROLL */}
+          <div
+            id="header-minihud"
+            style={{
+              position: 'absolute',
+              inset: '0 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              opacity: 0,
+              pointerEvents: 'none',
+              transform: 'translate3d(0, -10px, 0)',
+            }}
+          >
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: 'rgba(255, 255, 255, 0.06)',
+              }}
+            >
+              <span style={{ fontSize: '9px', fontWeight: 900, letterSpacing: '0.08em', color: '#ffffff' }}>
+                RANKERZ
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '8.5px' }}>•</span>
+              <span style={{ fontSize: '9.5px', fontWeight: 900, color: currentRankTier.primaryColor }}>
+                LVL {currentLevel}
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '8.5px' }}>•</span>
+              <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#e2e8f0', fontVariantNumeric: 'tabular-nums' }}>
+                {effectiveXp.toLocaleString('id-ID')} XP
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '8.5px' }}>•</span>
+              <span
+                style={{
+                  fontSize: '9.5px',
+                  fontWeight: 700,
+                  color: '#fcd34d',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                }}
               >
-                <svg viewBox="0 0 100 100" className="portal-vortex-svg" aria-hidden="true">
-                  <defs>
-                    <linearGradient id="slPortalViolet" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor={currentRankTier.highlightColor} />
-                      <stop offset="50%" stopColor={currentRankTier.secondaryColor} />
-                      <stop offset="100%" stopColor={currentRankTier.primaryColor} stopOpacity="0.18" />
-                    </linearGradient>
-                    <linearGradient id="slPortalCyan" x1="100%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor={currentRankTier.primaryColor} />
-                      <stop offset="55%" stopColor={currentRankTier.highlightColor} />
-                      <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.15" />
-                    </linearGradient>
-                  </defs>
-                  {/* Outer swirling Solo Leveling gate wisps */}
-                  <g className="portal-ring-outer">
-                    <path
-                      d="M 50 6 A 44 44 0 0 1 92 38"
-                      fill="none"
-                      stroke="url(#slPortalCyan)"
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M 90 68 A 44 44 0 0 1 22 86"
-                      fill="none"
-                      stroke="url(#slPortalViolet)"
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M 10 64 A 44 44 0 0 1 32 10"
-                      fill="none"
-                      stroke={currentRankTier.primaryColor}
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeDasharray="10 8"
-                    />
-                    <circle cx="92" cy="38" r="2.2" fill={currentRankTier.highlightColor} />
-                    <circle cx="22" cy="86" r="2.2" fill={currentRankTier.primaryColor} />
-                  </g>
-                  {/* Inner counter-rotating mana vortex */}
-                  <g className="portal-ring-inner">
-                    <path
-                      d="M 50 13 A 37 37 0 0 1 84 65"
-                      fill="none"
-                      stroke={currentRankTier.primaryColor}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeOpacity="0.85"
-                    />
-                    <path
-                      d="M 62 85 A 37 37 0 0 1 14 42"
-                      fill="none"
-                      stroke={currentRankTier.highlightColor}
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeOpacity="0.85"
-                    />
-                  </g>
-                </svg>
-                <div className="portal-avatar-core" style={{ fontSize: '15px', letterSpacing: '0.02em' }}>
+                <Flame size={10} />
+                {currentUser.streak}H
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
+                title="Pengaturan"
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: '#cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+              >
+                <Settings size={14} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveWorkoutQuest(null)
+                  setActiveExerciseId(null)
+                  setIsHistoryPageOpen(false)
+                  setIsMasteryPageOpen(false)
+                  setIsQuestProgramPageOpen(false)
+                  setIsPersonalModalOpen(false)
+                  setActiveTab('profile')
+                }}
+                title="Profil Hunter"
+                style={{
+                  position: 'relative',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '999px',
+                  border: 0,
+                  background: 'transparent',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '999px',
+                    border: `1px dashed ${currentRankTier.primaryColor}`,
+                    animation: 'portalSpin 11s linear infinite',
+                  }}
+                />
+                <span
+                  style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '999px',
+                    background: '#1e293b',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '9px',
+                    fontWeight: 900,
+                    color: '#ffffff',
+                    overflow: 'hidden',
+                  }}
+                >
                   {currentUser.avatarUrl ? (
                     <img
                       src={currentUser.avatarUrl}
@@ -7352,94 +7638,57 @@ export default function Page() {
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : (
-                    <span>{(currentUser.username || 'H').slice(0, 1).toUpperCase()}</span>
+                    (currentUser.username || 'H').slice(0, 1).toUpperCase()
                   )}
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                <span
-                  style={{
-                    fontSize: '10.5px',
-                    fontWeight: 900,
-                    letterSpacing: '0.16em',
-                    color: currentRankTier.primaryColor,
-                    textTransform: 'uppercase',
-                    lineHeight: 1.1,
-                  }}
-                >
-                  RANKERZ
                 </span>
-                <span
-                  style={{
-                    display: 'block',
-                    fontSize: '14.5px',
-                    fontWeight: 800,
-                    color: '#f5f2ff',
-                    lineHeight: 1.15,
-                    letterSpacing: '0.01em',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    maxWidth: '185px',
-                  }}
-                >
-                  {currentUser.username}
-                </span>
-              </div>
-            </button>
-          )}
+              </button>
+            </div>
+          </div>
 
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
-              title="Pengaturan & Konsistensi"
-              aria-label="Pengaturan & Konsistensi"
+          {/* SCROLL PROGRESS LASER LINE */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '2px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              id="scroll-laser"
               style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '14px',
-                display: 'grid',
-                placeItems: 'center',
-                background: isSettingsMenuOpen
-                  ? `rgba(${currentRankTier.secondaryRgb}, 0.42)`
-                  : `rgba(${currentRankTier.secondaryRgb}, 0.14)`,
-                border: isSettingsMenuOpen
-                  ? `1px solid ${currentRankTier.primaryColor}`
-                  : `1px solid rgba(${currentRankTier.primaryRgb}, 0.45)`,
-                color: isSettingsMenuOpen ? '#ffffff' : currentRankTier.highlightColor,
-                cursor: 'pointer',
-                flexShrink: 0,
-                boxShadow: isSettingsMenuOpen
-                  ? '0 0 18px rgba(168, 85, 247, 0.4)'
-                  : '0 0 14px rgba(124, 58, 237, 0.16)',
-                transition: 'all 0.2s ease',
+                height: '100%',
+                width: '0%',
+                background: `linear-gradient(90deg, ${currentRankTier.secondaryColor}, ${currentRankTier.primaryColor})`,
+                boxShadow: `0 0 10px ${currentRankTier.primaryColor}`,
               }}
-            >
-              <Settings size={20} strokeWidth={2.1} />
-            </button>
+            />
+          </div>
 
-            {/* POPUP DROPDOWN MENU */}
-            {isSettingsMenuOpen && (
-              <>
-                <div
-                  style={{ position: 'fixed', inset: 0, zIndex: 90 }}
-                  onClick={() => setIsSettingsMenuOpen(false)}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 8px)',
-                    right: 0,
-                    zIndex: 100,
-                    background: '#130f23',
-                    border: '1px solid #4a2f77',
-                    borderRadius: '14px',
-                    padding: '6px',
-                    width: '210px',
-                    boxShadow: '0 12px 35px rgba(0,0,0,0.85), 0 0 20px rgba(139,92,246,0.3)',
-                  }}
-                >
+          {/* POPUP DROPDOWN MENU */}
+          {isSettingsMenuOpen && (
+            <>
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+                onClick={() => setIsSettingsMenuOpen(false)}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: '14px',
+                  zIndex: 100,
+                  background: '#130f23',
+                  border: '1px solid #4a2f77',
+                  borderRadius: '14px',
+                  padding: '6px',
+                  width: '210px',
+                  boxShadow: '0 12px 35px rgba(0,0,0,0.85), 0 0 20px rgba(139,92,246,0.3)',
+                }}
+              >
                   {/* Menu 1: Consistency */}
                   <button
                     type="button"
@@ -7586,7 +7835,6 @@ export default function Page() {
                 </div>
               </>
             )}
-          </div>
         </header>
 
         {/* FLOATING HEADS-UP REST TIMER (DYNAMIC ISLAND STYLE, MUNCUL HANYA SAAT SELESAI SET) */}
@@ -11890,1042 +12138,1075 @@ export default function Page() {
                  (Dirancang umum untuk semua jenis Quest: Belajar, Produktivitas, Kesehatan, Gym, dll.)
                  ================================================================ */
               <>
-                <motion.section
+                <section
+                  id="hero-card"
                   className="hero-card-unified"
-                  initial={{ opacity: 0, y: 14, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const nx = (e.clientX - rect.left) / Math.max(1, rect.width)
+                    const ny = (e.clientY - rect.top) / Math.max(1, rect.height)
+                    heroTiltTargetRef.current = {
+                      x: -(ny - 0.5) * 12,
+                      y: (nx - 0.5) * 16,
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    heroTiltTargetRef.current = { x: 0, y: 0 }
+                  }}
                 >
-                  <div className="hero-mecha-blade">
-                    <svg
-                      viewBox="0 0 360 124"
-                      preserveAspectRatio="none"
-                      aria-hidden="true"
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      <polygon
-                        points="1,16 16,1 230,1 255,20 359,20 359,108 344,123 1,123"
-                        fill="none"
-                        stroke={`rgba(${currentRankTier.primaryRgb}, 0.56)`}
-                        strokeWidth="1.5"
-                      />
-                    </svg>
+                  <motion.div
+                    initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                    style={{ position: 'relative' }}
+                  >
+                    <div className="hero-mecha-blade">
+                      <svg
+                        viewBox="0 0 360 120"
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        <polygon
+                          points="1,14 14,1 237,1 262,18 359,18 359,105 345,119 1,119"
+                          fill="none"
+                          stroke={`rgba(${currentRankTier.primaryRgb}, 0.55)`}
+                          strokeWidth="1.5"
+                        />
+                      </svg>
 
-                    <div style={{ position: 'relative', zIndex: 2, minWidth: 0 }}>
-                      <div className="hunter-status-pill">
-                        <span className="hunter-status-dot" />
-                        CURRENT LEVEL
-                      </div>
-                      <h1 className="hero-level-number">Level {currentLevel}</h1>
-
-                      <div className="hero-progress-inline">
-                        <div className="hero-progress-meta">
-                          <span>
-                            <Zap
-                              size={11}
-                              fill="currentColor"
-                              style={{ display: 'inline', color: currentRankTier.primaryColor, marginRight: '4px', verticalAlign: '-1px' }}
-                            />
-                            {effectiveXp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
-                          </span>
-                          <span style={{ color: currentRankTier.highlightColor, fontWeight: 800 }}>{levelProgress}%</span>
+                      <div style={{ position: 'relative', zIndex: 2, minWidth: 0 }}>
+                        <div className="hunter-status-pill">
+                          <span className="hunter-status-dot" />
+                          STATUS MONARCH
                         </div>
-                        <div className="hero-xp-track">
-                          <motion.span
-                            className="hero-xp-fill"
-                            initial={{ width: 0 }}
-                            animate={{
-                              width: `${Math.max(levelProgress > 0 ? levelProgress : (effectiveXp > 0 ? 5 : 0), levelProgress)}%`,
-                            }}
-                            transition={{ type: 'spring', stiffness: 120, damping: 18 }}
-                          />
+                        <h1 className="hero-level-number">Level {currentLevel}</h1>
+
+                        <div className="hero-progress-inline">
+                          <div className="hero-progress-meta">
+                            <span>
+                              <Zap
+                                size={10}
+                                fill="currentColor"
+                                style={{
+                                  display: 'inline',
+                                  color: currentRankTier.primaryColor,
+                                  marginRight: '4px',
+                                  verticalAlign: '-1px',
+                                }}
+                              />
+                              {effectiveXp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
+                            </span>
+                            <span style={{ color: currentRankTier.highlightColor, fontWeight: 900 }}>
+                              {levelProgress}%
+                            </span>
+                          </div>
+                          <div className="hero-xp-track">
+                            <motion.span
+                              className="hero-xp-fill"
+                              initial={{ width: 0 }}
+                              animate={{
+                                width: `${Math.max(levelProgress > 0 ? levelProgress : (effectiveXp > 0 ? 5 : 0), levelProgress)}%`,
+                              }}
+                              transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* UPGRADED SHADOW MONARCH WINGED HEXAGONAL SVG RANK EMBLEM + 2-LINE CATEGORY MASTERY PILL (TOP-RIGHT NOTCH POP-OUT) */}
-                  <div className="hero-mecha-emblem-dock">
-                    <div
-                      className="rank-hex-emblem"
-                      style={{ filter: `drop-shadow(0 0 14px ${currentRankTier.glowColor})` }}
-                      onClick={() => setActiveTab('rank')}
-                      title="Lihat Peringkat Hunter"
-                    >
-                      <div className="rank-hex-ripple" />
-                      <div className="rank-hex-float">
-                        <svg
-                          className="rank-hex-svg"
-                          viewBox="0 0 106 102"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <defs>
-                            <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
-                              <stop offset="0%" stopColor="#ffffff" />
-                              <stop offset="45%" stopColor={currentRankTier.primaryColor} />
-                              <stop offset="100%" stopColor={currentRankTier.secondaryColor} />
-                            </linearGradient>
-                            <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
-                              <stop offset="0%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.92" />
-                              <stop offset="62%" stopColor={currentRankTier.deepSurface} stopOpacity="0.98" />
-                              <stop offset="100%" stopColor="#070410" stopOpacity="0.99" />
-                            </radialGradient>
-                            <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor={currentRankTier.highlightColor} stopOpacity="0.95" />
-                              <stop offset="48%" stopColor={currentRankTier.primaryColor} stopOpacity="0.86" />
-                              <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.24" />
-                            </linearGradient>
-                          </defs>
+                    {/* UPGRADED SHADOW MONARCH WINGED HEXAGONAL EMBLEM + CATEGORY MASTERY PILL */}
+                    <div className="hero-mecha-emblem-dock">
+                      <div
+                        className="rank-hex-emblem"
+                        style={{ filter: `drop-shadow(0 0 14px ${currentRankTier.glowColor})` }}
+                        onClick={() => setActiveTab('rank')}
+                        title="Lihat Peringkat Hunter"
+                      >
+                        <div className="rank-hex-ripple" />
+                        <span
+                          className="spark-p1"
+                          aria-hidden="true"
+                          style={{
+                            position: 'absolute',
+                            left: '-2px',
+                            bottom: '12px',
+                            width: '4px',
+                            height: '4px',
+                            borderRadius: '999px',
+                            background: currentRankTier.highlightColor,
+                            boxShadow: `0 0 6px ${currentRankTier.primaryColor}`,
+                            pointerEvents: 'none',
+                          }}
+                        />
+                        <span
+                          className="spark-p2"
+                          aria-hidden="true"
+                          style={{
+                            position: 'absolute',
+                            right: '-2px',
+                            bottom: '16px',
+                            width: '4px',
+                            height: '4px',
+                            borderRadius: '999px',
+                            background: currentRankTier.primaryColor,
+                            boxShadow: `0 0 6px ${currentRankTier.primaryColor}`,
+                            pointerEvents: 'none',
+                          }}
+                        />
+                        <span
+                          className="spark-p3"
+                          aria-hidden="true"
+                          style={{
+                            position: 'absolute',
+                            left: '8px',
+                            top: '12px',
+                            width: '2px',
+                            height: '2px',
+                            borderRadius: '999px',
+                            background: '#ffffff',
+                            boxShadow: `0 0 5px ${currentRankTier.highlightColor}`,
+                            pointerEvents: 'none',
+                          }}
+                        />
+                        <span
+                          className="spark-p4"
+                          aria-hidden="true"
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '8px',
+                            width: '2px',
+                            height: '2px',
+                            borderRadius: '999px',
+                            background: currentRankTier.highlightColor,
+                            boxShadow: `0 0 5px ${currentRankTier.primaryColor}`,
+                            pointerEvents: 'none',
+                          }}
+                        />
 
-                          {/* 1. Outer CW Orbital Ring + 4 Cardinal Glowing Nodes */}
-                          <g className="rank-svg-orbit-cw">
-                            <circle
-                              cx="53"
-                              cy="51"
-                              r="48"
-                              stroke={currentRankTier.primaryColor}
-                              strokeOpacity="0.34"
-                              strokeWidth="1"
-                              strokeDasharray="5 5"
+                        <div className="rank-hex-float">
+                          <svg
+                            className="rank-hex-svg"
+                            viewBox="0 0 106 102"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <defs>
+                              <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stopColor="#ffffff" />
+                                <stop offset="45%" stopColor={currentRankTier.primaryColor} />
+                                <stop offset="100%" stopColor={currentRankTier.secondaryColor} />
+                              </linearGradient>
+                              <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
+                                <stop offset="0%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.92" />
+                                <stop offset="62%" stopColor={currentRankTier.deepSurface} stopOpacity="0.98" />
+                                <stop offset="100%" stopColor="#070410" stopOpacity="0.99" />
+                              </radialGradient>
+                              <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor={currentRankTier.highlightColor} stopOpacity="0.95" />
+                                <stop offset="48%" stopColor={currentRankTier.primaryColor} stopOpacity="0.86" />
+                                <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.24" />
+                              </linearGradient>
+                            </defs>
+
+                            <g className="rank-svg-orbit-cw">
+                              <circle
+                                cx="53"
+                                cy="51"
+                                r="48"
+                                stroke={currentRankTier.primaryColor}
+                                strokeOpacity="0.34"
+                                strokeWidth="1"
+                                strokeDasharray="5 5"
+                              />
+                              <circle cx="53" cy="3" r="2.2" fill={currentRankTier.highlightColor} />
+                              <circle cx="53" cy="99" r="2.2" fill={currentRankTier.primaryColor} />
+                              <circle cx="101" cy="51" r="1.8" fill={currentRankTier.primaryColor} opacity="0.85" />
+                              <circle cx="5" cy="51" r="1.8" fill={currentRankTier.highlightColor} opacity="0.85" />
+                            </g>
+
+                            <g className="rank-svg-orbit-ccw">
+                              <circle
+                                cx="53"
+                                cy="51"
+                                r="43.5"
+                                stroke={currentRankTier.highlightColor}
+                                strokeOpacity="0.48"
+                                strokeWidth="1.2"
+                                strokeDasharray="22 66"
+                                strokeLinecap="round"
+                              />
+                            </g>
+
+                            <g className="rank-svg-wings">
+                              <path d="M16 31 L1 18 L7 36 L16 41 Z" fill="url(#wingGrad)" />
+                              <path d="M15 33 L4 22" stroke={currentRankTier.highlightColor} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
+                              <path d="M16 45 L-1 42 L6 54 L16 56 Z" fill="url(#wingGrad)" opacity="0.85" />
+                              <path d="M15 47 L3 44" stroke={currentRankTier.highlightColor} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
+                              <path d="M17 59 L4 60 L10 69 L17 69 Z" fill="url(#wingGrad)" opacity="0.62" />
+                              <path d="M16 61 L7 62" stroke={currentRankTier.highlightColor} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
+
+                              <path d="M90 31 L105 18 L99 36 L90 41 Z" fill="url(#wingGrad)" />
+                              <path d="M91 33 L102 22" stroke={currentRankTier.highlightColor} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
+                              <path d="M90 45 L107 42 L100 54 L90 56 Z" fill="url(#wingGrad)" opacity="0.85" />
+                              <path d="M91 47 L103 44" stroke={currentRankTier.highlightColor} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
+                              <path d="M89 59 L102 60 L96 69 L89 69 Z" fill="url(#wingGrad)" opacity="0.62" />
+                              <path d="M90 61 L99 62" stroke={currentRankTier.highlightColor} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
+                            </g>
+
+                            <polygon
+                              points="53,8 90,28 90,74 53,94 16,74 16,28"
+                              fill="url(#hexCoreGrad)"
+                              stroke="url(#hexOuterGrad)"
+                              strokeWidth="2.2"
+                              strokeLinejoin="round"
                             />
-                            <circle cx="53" cy="3" r="2.2" fill={currentRankTier.highlightColor} />
-                            <circle cx="53" cy="99" r="2.2" fill={currentRankTier.primaryColor} />
-                            <circle cx="101" cy="51" r="1.8" fill={currentRankTier.primaryColor} opacity="0.85" />
-                            <circle cx="5" cy="51" r="1.8" fill={currentRankTier.highlightColor} opacity="0.85" />
-                          </g>
+                            <polygon points="53,8 90,28 53,51 16,28" fill="#ffffff" fillOpacity="0.07" />
+                            <g stroke={currentRankTier.highlightColor} strokeOpacity="0.18" strokeWidth="0.85">
+                              <line x1="53" y1="51" x2="53" y2="8" />
+                              <line x1="53" y1="51" x2="90" y2="28" />
+                              <line x1="53" y1="51" x2="90" y2="74" />
+                              <line x1="53" y1="51" x2="53" y2="94" />
+                              <line x1="53" y1="51" x2="16" y2="74" />
+                              <line x1="53" y1="51" x2="16" y2="28" />
+                            </g>
 
-                          {/* 2. Inner CCW Energy Arc */}
-                          <g className="rank-svg-orbit-ccw">
-                            <circle
-                              cx="53"
-                              cy="51"
-                              r="43.5"
+                            <polygon
+                              className="rank-svg-laser-glow"
+                              pathLength={100}
+                              points="53,8 90,28 90,74 53,94 16,74 16,28"
+                              fill="none"
+                              stroke={currentRankTier.primaryColor}
+                              strokeOpacity="0.58"
+                              strokeWidth="4.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <polygon
+                              className="rank-svg-laser-border"
+                              pathLength={100}
+                              points="53,8 90,28 90,74 53,94 16,74 16,28"
+                              fill="none"
+                              stroke="#ffffff"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+
+                            <polygon
+                              points="53,13.5 84.5,31 84.5,71 53,88.5 21.5,71 21.5,31"
+                              fill="none"
                               stroke={currentRankTier.highlightColor}
-                              strokeOpacity="0.48"
-                              strokeWidth="1.2"
-                              strokeDasharray="22 66"
+                              strokeOpacity="0.46"
+                              strokeWidth="1"
+                            />
+                            <polyline
+                              points="23,32 53,15 83,32"
+                              fill="none"
+                              stroke="#ffffff"
+                              strokeOpacity="0.52"
+                              strokeWidth="1.15"
                               strokeLinecap="round"
                             />
-                          </g>
 
-                          {/* 3. Upgraded 3-Blade Shadow Monarch Wings + Highlight Ridges */}
-                          <g className="rank-svg-wings">
-                            <path d="M16 31 L1 18 L7 36 L16 41 Z" fill="url(#wingGrad)" />
-                            <path d="M15 33 L4 22" stroke={currentRankTier.highlightColor} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
-                            <path d="M16 45 L-1 42 L6 54 L16 56 Z" fill="url(#wingGrad)" opacity="0.85" />
-                            <path d="M15 47 L3 44" stroke={currentRankTier.highlightColor} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
-                            <path d="M17 59 L4 60 L10 69 L17 69 Z" fill="url(#wingGrad)" opacity="0.62" />
-                            <path d="M16 61 L7 62" stroke={currentRankTier.highlightColor} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
+                            <polygon points="43.5,11 46.5,5.5 49,10.5" fill={currentRankTier.primaryColor} />
+                            <polygon points="62.5,11 59.5,5.5 57,10.5" fill={currentRankTier.primaryColor} />
+                            <polygon points="53,2 57.5,8.5 53,14.5 48.5,8.5" fill={currentRankTier.highlightColor} />
+                            <polygon points="53,87.5 56.5,93.5 53,99.5 49.5,93.5" fill={currentRankTier.secondaryColor} />
+                          </svg>
 
-                            <path d="M90 31 L105 18 L99 36 L90 41 Z" fill="url(#wingGrad)" />
-                            <path d="M91 33 L102 22" stroke={currentRankTier.highlightColor} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
-                            <path d="M90 45 L107 42 L100 54 L90 56 Z" fill="url(#wingGrad)" opacity="0.85" />
-                            <path d="M91 47 L103 44" stroke={currentRankTier.highlightColor} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
-                            <path d="M89 59 L102 60 L96 69 L89 69 Z" fill="url(#wingGrad)" opacity="0.62" />
-                            <path d="M90 61 L99 62" stroke={currentRankTier.highlightColor} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
-                          </g>
-
-                          {/* 4. 3D Cut-Crystal Hexagonal Shield Core + Facet Lines */}
-                          <polygon
-                            points="53,8 90,28 90,74 53,94 16,74 16,28"
-                            fill="url(#hexCoreGrad)"
-                            stroke="url(#hexOuterGrad)"
-                            strokeWidth="2.2"
-                            strokeLinejoin="round"
-                          />
-                          <polygon points="53,8 90,28 53,51 16,28" fill="#ffffff" fillOpacity="0.07" />
-                          <g stroke={currentRankTier.highlightColor} strokeOpacity="0.18" strokeWidth="0.85">
-                            <line x1="53" y1="51" x2="53" y2="8" />
-                            <line x1="53" y1="51" x2="90" y2="28" />
-                            <line x1="53" y1="51" x2="90" y2="74" />
-                            <line x1="53" y1="51" x2="53" y2="94" />
-                            <line x1="53" y1="51" x2="16" y2="74" />
-                            <line x1="53" y1="51" x2="16" y2="28" />
-                          </g>
-
-                          {/* 5. Dual-Layer Animated Laser Border Trace */}
-                          <polygon
-                            className="rank-svg-laser-glow"
-                            pathLength={100}
-                            points="53,8 90,28 90,74 53,94 16,74 16,28"
-                            fill="none"
-                            stroke={currentRankTier.primaryColor}
-                            strokeOpacity="0.52"
-                            strokeWidth="4.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <polygon
-                            className="rank-svg-laser-border"
-                            pathLength={100}
-                            points="53,8 90,28 90,74 53,94 16,74 16,28"
-                            fill="none"
-                            stroke="#ffffff"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-
-                          {/* 6. Inner Specular Bevel + Glass Reflection */}
-                          <polygon
-                            points="53,13.5 84.5,31 84.5,71 53,88.5 21.5,71 21.5,31"
-                            fill="none"
-                            stroke={currentRankTier.highlightColor}
-                            strokeOpacity="0.44"
-                            strokeWidth="1"
-                          />
-                          <polyline
-                            points="23,32 53,15 83,32"
-                            fill="none"
-                            stroke="#ffffff"
-                            strokeOpacity="0.52"
-                            strokeWidth="1.15"
-                            strokeLinecap="round"
-                          />
-
-                          {/* 7. 3-Point Monarch Crown Crest + Bottom Sovereign Shard */}
-                          <polygon points="43.5,11 46.5,5.5 49,10.5" fill={currentRankTier.primaryColor} />
-                          <polygon points="62.5,11 59.5,5.5 57,10.5" fill={currentRankTier.primaryColor} />
-                          <polygon points="53,2 57.5,8.5 53,14.5 48.5,8.5" fill={currentRankTier.highlightColor} />
-                          <polygon points="53,87.5 56.5,93.5 53,99.5 49.5,93.5" fill={currentRankTier.secondaryColor} />
-                        </svg>
-
-                        {/* Teks Rank di Tengah Perisai Heksagon */}
-                        <div className="rank-hex-content">
-                          <span className="rank-hex-label">RANK</span>
-                          <strong
-                            className="rank-hex-letter"
-                            style={{
-                              fontSize:
-                                currentRank.length >= 3
-                                  ? '17px'
-                                  : currentRank.length === 2
-                                    ? '21px'
-                                    : '32px',
-                              textShadow: `0 0 20px ${currentRankTier.glowColor}`,
-                            }}
-                          >
-                            {currentRank}
-                          </strong>
-                          <span className="rank-hex-sub">HUNTER</span>
+                          <div className="rank-hex-content">
+                            <span className="rank-hex-label">RANK</span>
+                            <strong
+                              className="rank-hex-letter"
+                              style={{
+                                fontSize:
+                                  currentRank.length >= 3
+                                    ? '14px'
+                                    : currentRank.length === 2
+                                      ? '18px'
+                                      : '22px',
+                                textShadow: `0 0 12px rgba(${currentRankTier.primaryRgb}, 0.96), 0 0 24px rgba(${currentRankTier.secondaryRgb}, 0.72)`,
+                              }}
+                            >
+                              {currentRank}
+                            </strong>
+                            <span className="rank-hex-sub">HUNTER</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* 1 Category Mastery Pill di Bawah Rank Badge (Format 2 Baris Tanpa Icon) */}
-                    {featuredCategory ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsMasteryPageOpen(true)}
-                        className="rank-mastery-pill"
-                        style={{
-                          marginTop: '2px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '3px 6px',
-                          borderRadius: '999px',
-                          background: `rgba(${currentRankTier.primaryRgb}, 0.16)`,
-                          border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.44)`,
-                          color: currentRankTier.highlightColor,
-                          cursor: 'pointer',
-                          width: '98px',
-                          textAlign: 'center',
-                          transition: 'all 0.2s ease',
-                        }}
-                        title="Buka Category Mastery (Kategori dengan XP tertinggi atau pilihanmu)"
-                      >
-                        <span
+                      {/* Pill Category Mastery di bawah Emblem */}
+                      {featuredCategory ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsMasteryPageOpen(true)}
+                          className="rank-mastery-pill"
                           style={{
-                            fontSize: '9.5px',
-                            fontWeight: 700,
-                            color: '#f3f1ff',
-                            lineHeight: 1.15,
-                            textAlign: 'center',
-                            display: 'block',
-                            width: '100%',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
-                          {featuredCategory.name}
-                        </span>
-                        <div
-                          style={{
-                            display: 'inline-flex',
+                            marginTop: '-2px',
+                            display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '2px',
-                            marginTop: '1px',
-                            lineHeight: 1,
+                            padding: '2px 9px',
+                            borderRadius: '999px',
+                            background: `rgba(${currentRankTier.primaryRgb}, 0.22)`,
+                            border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.52)`,
+                            color: '#ffffff',
+                            cursor: 'pointer',
+                            minWidth: '86px',
+                            maxWidth: '102px',
+                            textAlign: 'center',
                           }}
+                          title="Buka Category Mastery (Kategori dengan XP tertinggi atau pilihanmu)"
                         >
-                          <span style={{ color: currentRankTier.primaryColor, fontWeight: 800, fontSize: '9px', whiteSpace: 'nowrap' }}>
-                            {featuredCategory.xp} XP
-                          </span>
-                          <ChevronRight size={9} style={{ color: '#a79abf', flexShrink: 0 }} />
-                        </div>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setIsMasteryPageOpen(true)}
-                        className="rank-mastery-pill"
-                        style={{
-                          marginTop: '2px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '3px 6px',
-                          borderRadius: '999px',
-                          background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
-                          border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.36)`,
-                          color: currentRankTier.highlightColor,
-                          cursor: 'pointer',
-                          width: '98px',
-                          textAlign: 'center',
-                          transition: 'all 0.2s ease',
-                        }}
-                        title="Buka Category Mastery"
-                      >
-                        <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#f3f1ff' }}>
-                          Mastery
-                        </span>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', marginTop: '1px', fontSize: '9px', color: '#c084fc', fontWeight: 800 }}>
-                          <span>0 XP</span>
-                          <ChevronRight size={9} style={{ color: '#a79abf' }} />
-                        </div>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Single Floating Horizontal Capsule Bar (Replaces 3 Rigid Boxes) */}
-                  <div className="hero-stats-dock">
-                    {/* 1. Streak */}
-                    <div className="hero-dock-item">
-                      <div
-                        className="hero-dock-icon"
-                        style={{
-                          background: 'rgba(249, 115, 22, 0.16)',
-                          border: '1px solid rgba(251, 146, 60, 0.35)',
-                          color: '#fb923c',
-                        }}
-                      >
-                        <Flame size={12} />
-                      </div>
-                      <div className="hero-dock-text">
-                        <strong>{currentUser.streak} Hari</strong>
-                        <span>Streak</span>
-                      </div>
-                    </div>
-
-                    {/* 2. History */}
-                    <div
-                      className="hero-dock-item clickable"
-                      onClick={() => setIsHistoryPageOpen(true)}
-                      title="Buka History Quest"
-                    >
-                      <div
-                        className="hero-dock-icon"
-                        style={{
-                          background: 'rgba(56, 189, 248, 0.16)',
-                          border: '1px solid rgba(56, 189, 248, 0.38)',
-                          color: '#38bdf8',
-                        }}
-                      >
-                        <Activity size={12} />
-                      </div>
-                      <div className="hero-dock-text">
-                        <strong>{userHistoryItems.length} Quest</strong>
-                        <span>
-                          Riwayat <ChevronRight size={9} style={{ opacity: 0.75, flexShrink: 0 }} />
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 3. Clan */}
-                    <div
-                      className="hero-dock-item clickable"
-                      onClick={() => setActiveTab('clan')}
-                      title="Buka Komunitas Clan"
-                    >
-                      <div
-                        className="hero-dock-icon"
-                        style={{
-                          background: `rgba(${currentRankTier.primaryRgb}, 0.18)`,
-                          border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.4)`,
-                          color: currentRankTier.primaryColor,
-                        }}
-                      >
-                        <Shield size={12} />
-                      </div>
-                      <div className="hero-dock-text">
-                        <strong>{userJoinedClanIds.length} Clan</strong>
-                        <span>
-                          Komunitas <ChevronRight size={9} style={{ opacity: 0.75, flexShrink: 0 }} />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.section>
-
-                {/* WAVE #4 • DUAL COMPARISON SMOOTH WAVE (Tren XP Mingguan) */}
-                <motion.section
-                  className="weekly-strip-card"
-                  style={{ marginBottom: '16px' }}
-                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                  viewport={{ once: true, amount: 0.25 }}
-                  transition={{ type: 'spring', stiffness: 240, damping: 24 }}
-                >
-                  {(() => {
-                    const shiftIso = (iso: string, deltaDays: number) => {
-                      const [y, m, d] = iso.split('-').map(Number)
-                      const dt = new Date(y, (m || 1) - 1, (d || 1) + deltaDays)
-                      return getLocalIsoDate(dt)
-                    }
-                    const dayXps = currentWeekDays.map((day) =>
-                      day.scheduledTasks
-                        .filter((t) => Boolean(t.completedDates?.includes(day.isoDate)))
-                        .reduce((sum, t) => sum + t.xp, 0)
-                    )
-                    const prevWeekDayXps = currentWeekDays.map((day) => {
-                      const prevIso = shiftIso(day.isoDate, -7)
-                      return userPersonalTasks
-                        .filter((t) => Boolean(t.completedDates?.includes(prevIso)))
-                        .reduce((sum, t) => sum + t.xp, 0)
-                    })
-                    const thisWeekTotal = dayXps.reduce((a, b) => a + b, 0)
-                    const rawPrevTotal = prevWeekDayXps.reduce((a, b) => a + b, 0)
-                    const lastWeekSeries = rawPrevTotal > 0 ? prevWeekDayXps : [45, 70, 55, 80, 65, 90, 75]
-                    const lastWeekTotal = rawPrevTotal > 0 ? rawPrevTotal : 480
-                    const deltaXp = thisWeekTotal - lastWeekTotal
-                    const growthPct = lastWeekTotal > 0 ? Math.round((deltaXp / lastWeekTotal) * 100) : 0
-
-                    const maxVal = Math.max(80, ...dayXps, ...lastWeekSeries)
-                    const baseY = 54
-                    const topY = 12
-                    const span = baseY - topY
-
-                    const toPts = (vals: number[]) =>
-                      vals.map((v, idx) => {
-                        const x = 14 + (idx / 6) * 292
-                        const y = baseY - Math.min(1, v / maxVal) * span
-                        return [x, y] as [number, number]
-                      })
-
-                    const buildWavePath = (pts: Array<[number, number]>) => {
-                      let d = `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
-                      for (let i = 1; i < pts.length; i++) {
-                        const prev = pts[i - 1]
-                        const cur = pts[i]
-                        const mx = ((prev[0] + cur[0]) / 2).toFixed(1)
-                        d += ` C ${mx},${prev[1].toFixed(1)} ${mx},${cur[1].toFixed(1)} ${cur[0].toFixed(1)},${cur[1].toFixed(1)}`
-                      }
-                      return d
-                    }
-
-                    const curPts = toPts(dayXps)
-                    const prevPts = toPts(lastWeekSeries)
-                    const curLine = buildWavePath(curPts)
-                    const prevLine = buildWavePath(prevPts)
-                    const curArea = `${curLine} L ${curPts[6][0].toFixed(1)},${baseY} L ${curPts[0][0].toFixed(1)},${baseY} Z`
-
-                    return (
-                      <div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '8px',
-                            marginBottom: '8px',
-                          }}
-                        >
-                          <div>
-                            <span className="eyebrow">WEEKLY MOMENTUM</span>
-                            <div style={{ fontSize: '14px', fontWeight: 800, color: '#f5f2ff', marginTop: '1px' }}>
-                              Tren XP Mingguan
-                            </div>
-                          </div>
                           <span
                             style={{
-                              padding: '3px 9px',
-                              borderRadius: '999px',
-                              fontSize: '10px',
+                              fontSize: '8.5px',
                               fontWeight: 800,
-                              background:
-                                deltaXp >= 0 ? 'rgba(52, 211, 153, 0.14)' : `rgba(${currentRankTier.primaryRgb}, 0.14)`,
-                              border:
-                                deltaXp >= 0
-                                  ? '1px solid rgba(52, 211, 153, 0.35)'
-                                  : `1px solid rgba(${currentRankTier.primaryRgb}, 0.35)`,
-                              color: deltaXp >= 0 ? '#6ee7b7' : currentRankTier.highlightColor,
+                              color: '#ffffff',
+                              lineHeight: 1.1,
+                              display: 'block',
+                              width: '100%',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
                             }}
                           >
-                            {deltaXp >= 0 ? '▲ +' : ''}
-                            {deltaXp} XP ({deltaXp >= 0 ? '+' : ''}
-                            {growthPct}%)
+                            {featuredCategory.name}
                           </span>
-                        </div>
-
-                        <svg viewBox="0 0 320 64" style={{ width: '100%', height: '62px', overflow: 'visible', display: 'block' }}>
-                          <defs>
-                            <linearGradient id="waveAreaDualApp" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={currentRankTier.primaryColor} stopOpacity="0.34" />
-                              <stop offset="100%" stopColor={currentRankTier.primaryColor} stopOpacity="0" />
-                            </linearGradient>
-                          </defs>
-                          <path
-                            d={prevLine}
-                            fill="none"
-                            stroke="rgba(255,255,255,0.22)"
-                            strokeWidth="1.5"
-                            strokeDasharray="4 4"
-                          />
-                          <path d={curArea} fill="url(#waveAreaDualApp)" />
-                          <motion.path
-                            d={curLine}
-                            fill="none"
-                            stroke={currentRankTier.primaryColor}
-                            strokeWidth="2.4"
-                            strokeLinecap="round"
-                            initial={{ pathLength: 0, opacity: 0.4 }}
-                            animate={{ pathLength: 1, opacity: 1 }}
-                            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
-                            style={{ filter: `drop-shadow(0 0 6px ${currentRankTier.glowColor})` }}
-                          />
-                          {curPts.map(([px, py], i) => {
-                            const dayItem = currentWeekDays[i]
-                            const isSel = dayItem?.code === activeScheduleDayCode
-                            return (
-                              <g
-                                key={dayItem?.code || i}
-                                onClick={() => {
-                                  if (dayItem) {
-                                    setSelectedWeekDay(dayItem.code)
-                                    setShowCompletedDayQuests(false)
-                                  }
-                                }}
-                                style={{ cursor: 'pointer' }}
-                              >
-                                <circle cx={px} cy={py} r="10" fill="transparent" />
-                                <circle
-                                  cx={px}
-                                  cy={py}
-                                  r={isSel ? 4.3 : 2.5}
-                                  fill={isSel ? '#ffffff' : currentRankTier.primaryColor}
-                                  stroke={currentRankTier.primaryColor}
-                                  strokeWidth={isSel ? 2 : 1}
-                                />
-                              </g>
-                            )
-                          })}
-                        </svg>
-
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            fontSize: '9.5px',
-                            fontWeight: 700,
-                            color: '#b8add1',
-                            marginTop: '2px',
-                          }}
-                        >
-                          <span>Solid: Minggu ini ({thisWeekTotal} XP)</span>
-                          <span>Putus-putus: Minggu lalu</span>
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </motion.section>
-
-                {/* SECTION 1: JADWAL & KONSISTENSI MINGGU INI (INTERACTIVE 7-DAY STRIP UNTUK SEMUA QUEST) */}
-                <motion.section
-                  className="weekly-strip-card"
-                  style={{ marginBottom: '20px' }}
-                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                  viewport={{ once: true, amount: 0.16 }}
-                  transition={{ type: 'spring', stiffness: 240, damping: 24 }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    <div>
-                      <span className="eyebrow">WEEKLY SCHEDULE</span>
-                      <h2 style={{ fontSize: '15.5px', fontWeight: 800, margin: '2px 0 0', color: '#f5f2ff' }}>
-                        Jadwal Minggu Ini
-                      </h2>
-                    </div>
-                    <button
-                      type="button"
-                      className="show-more-btn"
-                      onClick={() => setIsConsistencyModalOpen(true)}
-                      title="Lihat Konsistensi Tahunan"
-                    >
-                      <BarChart2 size={12} />
-                      <span>Heatmap</span>
-                    </button>
-                  </div>
-
-                  {/* 7-Day Interactive Strip (Sen - Min) */}
-                  <div className="week-days-grid" style={{ marginBottom: '12px' }}>
-                    {currentWeekDays.map((day) => {
-                      const isSelected = day.code === activeScheduleDayCode
-                      const hasScheduled = day.scheduledTasks.length > 0
-                      return (
-                        <button
-                          key={day.code}
-                          type="button"
-                          onClick={() => {
-                            setSelectedWeekDay(day.code)
-                            setShowCompletedDayQuests(false)
-                          }}
-                          className={`week-day-pill ${isSelected ? 'selected' : ''} ${day.isToday ? 'today-ring' : ''}`}
-                        >
-                          <span className="week-day-name">{day.shortLabel}</span>
-                          <span className="week-day-num">{day.dateNum}</span>
-                          <span
-                            className={`week-day-dot ${
-                              day.isDone ? 'done' : hasScheduled ? 'scheduled' : ''
-                            }`}
-                          />
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {/* Preview Quest pada Hari yang Dipilih (Default menyembunyikan yang sudah selesai; tap badge ✓ X/X Selesai untuk lihat/tutup) */}
-                  {(() => {
-                    const isPastDay = Boolean(activeScheduleDayObj.isPast)
-                    const isFutureDay = Boolean(activeScheduleDayObj.isFuture)
-                    const isTaskDoneOnDay = (t: PersonalTask) =>
-                      Boolean(t.completedDates?.includes(activeScheduleDayObj.isoDate))
-                    const isTaskSkippedOnDay = (t: PersonalTask) => {
-                      if (isFutureDay || isTaskDoneOnDay(t)) return false
-                      if (isPastDay) {
-                        return !t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
-                      }
-                      const wasUnskipped = Boolean(t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`))
-                      return Boolean(
-                        t.skippedDates?.includes(activeScheduleDayObj.isoDate) ||
-                          (!wasUnskipped && isQuestTimeSkipped(t.targetTime, false, t.schedule))
-                      )
-                    }
-
-                    const isTaskUpcomingTimeOnDay = (t: PersonalTask) => {
-                      if (isPastDay || isFutureDay || isTaskDoneOnDay(t) || isTaskSkippedOnDay(t)) return false
-                      return isQuestTimeUpcoming(t.targetTime, false, t.schedule)
-                    }
-
-                    const totalDayTasks = activeScheduleDayObj.scheduledTasks.length
-                    const remainingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
-                      (t) => !isTaskDoneOnDay(t)
-                    )
-                    const completedDayCount = totalDayTasks - remainingDayTasks.length
-                    const skippedDayCount = remainingDayTasks.filter((t) => isTaskSkippedOnDay(t)).length
-                    const upcomingTimedDayCount = remainingDayTasks.filter((t) => isTaskUpcomingTimeOnDay(t)).length
-                    const activePendingDayTasks = remainingDayTasks.filter(
-                      (t) => !isTaskSkippedOnDay(t) && !isTaskUpcomingTimeOnDay(t)
-                    )
-                    const activeRemainingDayCount = activePendingDayTasks.length
-                    const hiddenDayTasks = activeScheduleDayObj.scheduledTasks.filter(
-                      (t) => !activePendingDayTasks.some((p) => p.id === t.id)
-                    )
-                    const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
-                    const hasExpandableDayQuests =
-                      completedDayCount > 0 || skippedDayCount > 0 || upcomingTimedDayCount > 0
-                    const primaryVisibleTasks = isFutureDay
-                      ? activeScheduleDayObj.scheduledTasks
-                      : activePendingDayTasks
-
-                    const headerBadgeText = allDoneForDay
-                      ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
-                      : totalDayTasks === 0
-                        ? 'Belum Ada Jadwal'
-                        : isFutureDay
-                          ? `Hanya Lihat • ${totalDayTasks} Quest`
-                          : [
-                              activeRemainingDayCount > 0 ? `${activeRemainingDayCount} Aktif` : null,
-                              upcomingTimedDayCount > 0 ? `${upcomingTimedDayCount} Menunggu` : null,
-                              completedDayCount > 0 && activeRemainingDayCount === 0
-                                ? `${completedDayCount} Selesai`
-                                : null,
-                              skippedDayCount > 0 ? `${skippedDayCount} Skip` : null,
-                            ]
-                              .filter(Boolean)
-                              .join(' • ')
-
-                    const showPastSkipPill =
-                      (isPastDay || (activeRemainingDayCount === 0 && upcomingTimedDayCount === 0)) &&
-                      skippedDayCount > 0 &&
-                      !allDoneForDay
-
-                    return (
-                      <div
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: '13px',
-                          background: 'rgba(10, 8, 19, 0.72)',
-                          border: allDoneForDay
-                            ? '1px solid rgba(56, 189, 248, 0.28)'
-                            : `1px solid rgba(${currentRankTier.primaryRgb}, 0.2)`,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginBottom: primaryVisibleTasks.length > 0 || (!isFutureDay && hasExpandableDayQuests) ? '8px' : '0',
-                            userSelect: 'none',
-                          }}
-                        >
-                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#c4b5fd' }}>
-                            {activeScheduleDayObj.fullName}
-                            {activeScheduleDayObj.isToday ? ' (Hari Ini)' : ''}
-                          </span>
-                          <span
-                            onClick={() => {
-                              if (hasExpandableDayQuests) {
-                                setShowCompletedDayQuests((prev) => !prev)
-                              }
-                            }}
+                          <div
                             style={{
-                              fontSize: '10px',
-                              cursor: hasExpandableDayQuests ? 'pointer' : 'default',
-                              fontWeight: allDoneForDay || showPastSkipPill || isFutureDay ? 700 : 500,
-                              color: allDoneForDay
-                                ? '#67e8f9'
-                                : showPastSkipPill
-                                  ? '#fca5a5'
-                                  : isFutureDay && totalDayTasks > 0
-                                    ? '#c4b5fd'
-                                    : '#b8add1',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              ...(allDoneForDay
-                                ? {
-                                    padding: '2px 8px',
-                                    borderRadius: '999px',
-                                    background: 'rgba(56, 189, 248, 0.14)',
-                                    border: '1px solid rgba(56, 189, 248, 0.38)',
-                                  }
-                                : showPastSkipPill
-                                  ? {
-                                      padding: '2px 8px',
-                                      borderRadius: '999px',
-                                      background: 'rgba(239, 68, 68, 0.16)',
-                                      border: '1px solid rgba(239, 68, 68, 0.38)',
-                                    }
-                                  : isFutureDay && totalDayTasks > 0
-                                    ? {
-                                        padding: '2px 8px',
-                                        borderRadius: '999px',
-                                        background: 'rgba(148, 163, 184, 0.12)',
-                                        border: '1px solid rgba(148, 163, 184, 0.3)',
-                                      }
-                                    : {}),
+                              justifyContent: 'center',
+                              gap: '1px',
+                              lineHeight: 1,
+                              marginTop: '1px',
                             }}
                           >
-                            {isFutureDay && totalDayTasks > 0 && <Lock size={10} />}
-                            <span>{headerBadgeText}</span>
-                            {hasExpandableDayQuests &&
-                              (showCompletedDayQuests ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
+                            <span style={{ color: currentRankTier.primaryColor, fontWeight: 800, fontSize: '8px', whiteSpace: 'nowrap' }}>
+                              {featuredCategory.xp} XP
+                            </span>
+                            <ChevronRight size={8} style={{ color: '#e2e8f0', flexShrink: 0 }} />
+                          </div>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsMasteryPageOpen(true)}
+                          className="rank-mastery-pill"
+                          style={{
+                            marginTop: '-2px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '2px 9px',
+                            borderRadius: '999px',
+                            background: `rgba(${currentRankTier.primaryRgb}, 0.18)`,
+                            border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.44)`,
+                            color: '#ffffff',
+                            cursor: 'pointer',
+                            minWidth: '86px',
+                            textAlign: 'center',
+                          }}
+                          title="Buka Category Mastery"
+                        >
+                          <span style={{ fontSize: '8.5px', fontWeight: 800, color: '#ffffff' }}>
+                            Mastery
+                          </span>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '1px', fontSize: '8px', color: currentRankTier.primaryColor, fontWeight: 800 }}>
+                            <span>0 XP</span>
+                            <ChevronRight size={8} style={{ color: '#e2e8f0' }} />
+                          </div>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Sleek Single Floating Horizontal Capsule Bar */}
+                    <div className="hero-stats-dock">
+                      <div className="hero-dock-item">
+                        <Flame size={11} style={{ color: '#fcd34d', flexShrink: 0 }} />
+                        <div className="hero-dock-text">
+                          <strong style={{ color: '#fcd34d' }}>{currentUser.streak}H</strong>
+                          <span>Streak</span>
+                        </div>
+                      </div>
+
+                      <div
+                        className="hero-dock-item clickable"
+                        onClick={() => setIsHistoryPageOpen(true)}
+                        title="Buka History Quest"
+                      >
+                        <div className="hero-dock-text">
+                          <strong style={{ color: '#7dd3fc' }}>{userHistoryItems.length}</strong>
+                          <span>
+                            Riwayat <ChevronRight size={9} style={{ opacity: 0.78, flexShrink: 0 }} />
                           </span>
                         </div>
+                      </div>
 
-                        {(() => {
-                          const renderDayQuestRow = (task: PersonalTask) => {
-                            const isGym = task.category.toLowerCase() === 'gym'
-                            const isDoneOnDay = isTaskDoneOnDay(task)
-                            const isSkipped = isTaskSkippedOnDay(task)
-                            const isUpcomingTime = isTaskUpcomingTimeOnDay(task)
-                            const isArrivedActive =
-                              activeScheduleDayObj.isToday &&
-                              !isDoneOnDay &&
-                              !isSkipped &&
-                              isQuestTimeArrived(task.targetTime, task.schedule)
+                      <div
+                        className="hero-dock-item clickable"
+                        onClick={() => setActiveTab('clan')}
+                        title="Buka Komunitas Clan"
+                      >
+                        <div className="hero-dock-text">
+                          <strong style={{ color: '#ffffff' }}>{userJoinedClanIds.length} Clan</strong>
+                          <span>
+                            Komunitas <ChevronRight size={9} style={{ opacity: 0.78, flexShrink: 0 }} />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </section>
+
+                {/* WAVE #4 • DUAL COMPARISON SMOOTH WAVE (Tren XP Mingguan) */}
+                <motion.div
+                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: false, amount: 0.15 }}
+                  transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+                >
+                  <section data-scroll-card className="weekly-strip-card" style={{ marginBottom: '12px' }}>
+                    {(() => {
+                      const shiftIso = (iso: string, deltaDays: number) => {
+                        const [y, m, d] = iso.split('-').map(Number)
+                        const dt = new Date(y, (m || 1) - 1, (d || 1) + deltaDays)
+                        return getLocalIsoDate(dt)
+                      }
+                      const dayXps = currentWeekDays.map((day) =>
+                        day.scheduledTasks
+                          .filter((t) => Boolean(t.completedDates?.includes(day.isoDate)))
+                          .reduce((sum, t) => sum + t.xp, 0)
+                      )
+                      const prevWeekDayXps = currentWeekDays.map((day) => {
+                        const prevIso = shiftIso(day.isoDate, -7)
+                        return userPersonalTasks
+                          .filter((t) => Boolean(t.completedDates?.includes(prevIso)))
+                          .reduce((sum, t) => sum + t.xp, 0)
+                      })
+                      const thisWeekTotal = dayXps.reduce((a, b) => a + b, 0)
+                      const rawPrevTotal = prevWeekDayXps.reduce((a, b) => a + b, 0)
+                      const lastWeekSeries = rawPrevTotal > 0 ? prevWeekDayXps : [45, 70, 55, 80, 65, 90, 75]
+                      const lastWeekTotal = rawPrevTotal > 0 ? rawPrevTotal : 480
+                      const deltaXp = thisWeekTotal - lastWeekTotal
+                      const growthPct = lastWeekTotal > 0 ? Math.round((deltaXp / lastWeekTotal) * 100) : 0
+
+                      const maxVal = Math.max(80, ...dayXps, ...lastWeekSeries)
+                      const baseY = 54
+                      const topY = 12
+                      const span = baseY - topY
+
+                      const toPts = (vals: number[]) =>
+                        vals.map((v, idx) => {
+                          const x = 14 + (idx / 6) * 292
+                          const y = baseY - Math.min(1, v / maxVal) * span
+                          return [x, y] as [number, number]
+                        })
+
+                      const buildWavePath = (pts: Array<[number, number]>) => {
+                        let d = `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
+                        for (let i = 1; i < pts.length; i++) {
+                          const prev = pts[i - 1]
+                          const cur = pts[i]
+                          const mx = ((prev[0] + cur[0]) / 2).toFixed(1)
+                          d += ` C ${mx},${prev[1].toFixed(1)} ${mx},${cur[1].toFixed(1)} ${cur[0].toFixed(1)},${cur[1].toFixed(1)}`
+                        }
+                        return d
+                      }
+
+                      const curPts = toPts(dayXps)
+                      const prevPts = toPts(lastWeekSeries)
+                      const curLine = buildWavePath(curPts)
+                      const prevLine = buildWavePath(prevPts)
+                      const curArea = `${curLine} L ${curPts[6][0].toFixed(1)},${baseY} L ${curPts[0][0].toFixed(1)},${baseY} Z`
+
+                      return (
+                        <div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '8px',
+                              marginBottom: '6px',
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#ffffff' }}>
+                                Tren XP Mingguan
+                              </div>
+                              <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '1px' }}>
+                                Solid: minggu ini ({thisWeekTotal} XP) • Putus-putus: lalu
+                              </div>
+                            </div>
+                            <span
+                              style={{
+                                padding: '2px 8px',
+                                borderRadius: '999px',
+                                fontSize: '9.5px',
+                                fontWeight: 900,
+                                fontVariantNumeric: 'tabular-nums',
+                                background:
+                                  deltaXp >= 0 ? 'rgba(52, 211, 153, 0.14)' : `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                                border:
+                                  deltaXp >= 0
+                                    ? '1px solid rgba(52, 211, 153, 0.35)'
+                                    : `1px solid rgba(${currentRankTier.primaryRgb}, 0.35)`,
+                                color: deltaXp >= 0 ? '#6ee7b7' : currentRankTier.highlightColor,
+                              }}
+                            >
+                              {deltaXp >= 0 ? '▲ +' : ''}
+                              {deltaXp} XP ({deltaXp >= 0 ? '+' : ''}
+                              {growthPct}%)
+                            </span>
+                          </div>
+
+                          <svg viewBox="0 0 320 60" style={{ width: '100%', height: '56px', overflow: 'visible', display: 'block' }}>
+                            <defs>
+                              <linearGradient id="waveAreaDualApp" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor={currentRankTier.primaryColor} stopOpacity="0.34" />
+                                <stop offset="100%" stopColor={currentRankTier.primaryColor} stopOpacity="0" />
+                              </linearGradient>
+                            </defs>
+                            <path
+                              d={prevLine}
+                              fill="none"
+                              stroke="rgba(255,255,255,0.22)"
+                              strokeWidth="1.5"
+                              strokeDasharray="4 4"
+                            />
+                            <path d={curArea} fill="url(#waveAreaDualApp)" />
+                            <motion.path
+                              d={curLine}
+                              fill="none"
+                              stroke={currentRankTier.primaryColor}
+                              strokeWidth="2.4"
+                              strokeLinecap="round"
+                              initial={{ pathLength: 0, opacity: 0.4 }}
+                              whileInView={{ pathLength: 1, opacity: 1 }}
+                              viewport={{ once: false, amount: 0.15 }}
+                              transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+                              style={{ filter: `drop-shadow(0 0 6px ${currentRankTier.glowColor})` }}
+                            />
+                            {curPts.map(([px, py], i) => {
+                              const dayItem = currentWeekDays[i]
+                              const isSel = dayItem?.code === activeScheduleDayCode
+                              return (
+                                <g
+                                  key={dayItem?.code || i}
+                                  onClick={() => {
+                                    if (dayItem) {
+                                      setSelectedWeekDay(dayItem.code)
+                                      setShowCompletedDayQuests(false)
+                                    }
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  <circle cx={px} cy={py} r="10" fill="transparent" />
+                                  <circle
+                                    cx={px}
+                                    cy={py}
+                                    r={isSel ? 4.3 : 2.5}
+                                    fill={isSel ? '#ffffff' : currentRankTier.primaryColor}
+                                    stroke={currentRankTier.primaryColor}
+                                    strokeWidth={isSel ? 2 : 1}
+                                  />
+                                </g>
+                              )
+                            })}
+                          </svg>
+                        </div>
+                      )
+                    })()}
+                  </section>
+                </motion.div>
+
+                {/* SECTION 1: JADWAL & KONSISTENSI MINGGU INI (MAGNETIC SLIDING 7-DAY STRIP + AUTO-HIDE DRAWER) */}
+                <motion.div
+                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: false, amount: 0.15 }}
+                  transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+                >
+                  <section data-scroll-card className="weekly-strip-card" style={{ marginBottom: '12px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '10px',
+                      }}
+                    >
+                      <div>
+                        <span
+                          style={{
+                            fontSize: '8.5px',
+                            fontWeight: 800,
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase',
+                            color: currentRankTier.primaryColor,
+                            display: 'block',
+                          }}
+                        >
+                          WEEKLY SCHEDULE
+                        </span>
+                        <h2 style={{ fontSize: '13.5px', fontWeight: 800, margin: '1px 0 0', color: '#ffffff' }}>
+                          Jadwal Minggu Ini
+                        </h2>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsConsistencyModalOpen(true)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '5px 10px',
+                          borderRadius: '11px',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          color: '#e2e8f0',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                        title="Lihat Konsistensi Tahunan"
+                      >
+                        <BarChart2 size={11} />
+                        <span>Heatmap</span>
+                      </button>
+                    </div>
+
+                    {/* Magnetic Sliding 7-Day Strip (Sen - Min) */}
+                    {(() => {
+                      const selectedDayIdx = Math.max(
+                        0,
+                        currentWeekDays.findIndex((d) => d.code === activeScheduleDayCode)
+                      )
+                      return (
+                        <div
+                          style={{
+                            position: 'relative',
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(7, 1fr)',
+                            padding: '2px',
+                            borderRadius: '12px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            marginBottom: '10px',
+                          }}
+                        >
+                          <div
+                            className="magnetic-pill"
+                            aria-hidden="true"
+                            style={{
+                              pointerEvents: 'none',
+                              position: 'absolute',
+                              top: '2px',
+                              bottom: '2px',
+                              left: '2px',
+                              width: 'calc(14.2857% - 1px)',
+                              borderRadius: '10px',
+                              border: '1px solid rgba(255, 255, 255, 0.25)',
+                              transform: `translateX(${selectedDayIdx * 100}%)`,
+                              background: `linear-gradient(160deg, rgba(${currentRankTier.primaryRgb}, 0.14), rgba(255, 255, 255, 0.06))`,
+                              boxShadow: `0 4px 14px -4px ${currentRankTier.glowColor}`,
+                            }}
+                          />
+                          {currentWeekDays.map((day) => {
+                            const isSelected = day.code === activeScheduleDayCode
+                            const hasScheduled = day.scheduledTasks.length > 0
                             return (
-                              <motion.div
-                                key={task.id}
-                                layout
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, x: 24, scale: 0.93 }}
-                                transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+                              <button
+                                key={day.code}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedWeekDay(day.code)
+                                  setShowCompletedDayQuests(false)
+                                }}
                                 style={{
+                                  position: 'relative',
+                                  zIndex: 1,
+                                  padding: '6px 0',
+                                  background: 'transparent',
+                                  border: 0,
                                   display: 'flex',
+                                  flexDirection: 'column',
                                   alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: '8px',
-                                  padding: '7px 9px',
-                                  borderRadius: '10px',
-                                  opacity: isFutureDay ? 0.78 : 1,
-                                  background: isSkipped && !isDoneOnDay ? 'rgba(45, 18, 28, 0.85)' : 'rgba(24, 18, 42, 0.85)',
-                                  border: isSkipped && !isDoneOnDay
-                                    ? '1px solid rgba(239, 68, 68, 0.35)'
-                                    : isFutureDay
-                                      ? '1px solid rgba(148, 163, 184, 0.22)'
-                                      : '1px solid rgba(168, 85, 247, 0.22)',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                  <span
-                                    className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
-                                    onClick={() => {
-                                      if (!isFutureDay) {
-                                        handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
-                                      }
-                                    }}
-                                    role={isFutureDay ? undefined : 'button'}
-                                    tabIndex={isFutureDay ? undefined : 0}
-                                    style={{
-                                      width: '20px',
-                                      height: '20px',
-                                      borderRadius: '6px',
-                                      border: isFutureDay
-                                        ? '1px solid rgba(148, 163, 184, 0.3)'
-                                        : isDoneOnDay
-                                          ? '1px solid #38bdf8'
-                                          : isSkipped
-                                            ? '1px solid #ef4444'
-                                            : '1px solid rgba(168, 85, 247, 0.45)',
-                                      background: isFutureDay
-                                        ? 'rgba(15, 11, 26, 0.75)'
-                                        : isDoneOnDay
-                                          ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
-                                          : isSkipped
-                                            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(153, 27, 27, 0.4))'
-                                            : 'rgba(24, 18, 42, 0.7)',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      cursor: isFutureDay ? 'not-allowed' : 'pointer',
-                                      flexShrink: 0,
-                                      color: isFutureDay
-                                        ? '#9a8fb2'
-                                        : isDoneOnDay
-                                          ? '#67e8f9'
-                                          : isSkipped
-                                            ? '#f87171'
-                                            : 'transparent',
-                                      boxShadow: isDoneOnDay ? '0 0 10px rgba(56, 189, 248, 0.3)' : 'none',
-                                      transition: 'all 0.15s ease',
-                                    }}
-                                    title={
-                                      isFutureDay
-                                        ? 'Belum saatnya dikerjakan (Hanya Lihat)'
-                                        : isDoneOnDay
-                                          ? 'Batalkan selesai'
-                                          : 'Centang selesai (+XP)'
-                                    }
-                                    aria-label={
-                                      isFutureDay
-                                        ? 'Belum saatnya dikerjakan (Hanya Lihat)'
-                                        : isDoneOnDay
-                                          ? 'Batalkan selesai'
-                                          : 'Centang selesai (+XP)'
-                                    }
-                                  >
-                                    {isFutureDay ? (
-                                      <Lock size={10} color="#9a8fb2" />
-                                    ) : isDoneOnDay ? (
-                                      <Check size={13} strokeWidth={3} />
-                                    ) : isSkipped ? (
-                                      <FastForward size={11} color="#f87171" strokeWidth={2.5} />
-                                    ) : null}
-                                  </span>
-                                  <span style={{ width: '26px', height: '26px', borderRadius: '7px', background: 'rgba(168, 85, 247, 0.14)', border: '1px solid rgba(168, 85, 247, 0.28)', color: '#c084fc', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{renderCategoryIcon(task.category, 14)}</span>
-                                  <div style={{ minWidth: 0 }}>
-                                    <strong
+                                <span
+                                  style={{
+                                    fontSize: '8.5px',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    color: isSelected ? '#ffffff' : '#94a3b8',
+                                  }}
+                                >
+                                  {day.shortLabel}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    fontWeight: 800,
+                                    marginTop: '2px',
+                                    fontVariantNumeric: 'tabular-nums',
+                                    color: isSelected ? currentRankTier.primaryColor : '#e2e8f0',
+                                  }}
+                                >
+                                  {day.dateNum}
+                                </span>
+                                <span
+                                  style={{
+                                    width: '4px',
+                                    height: '4px',
+                                    borderRadius: '999px',
+                                    marginTop: '3px',
+                                    background: day.isDone
+                                      ? '#34d399'
+                                      : isSelected
+                                        ? currentRankTier.primaryColor
+                                        : hasScheduled
+                                          ? '#a855f7'
+                                          : '#475569',
+                                  }}
+                                />
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )
+                    })()}
+
+                    {/* Preview Quest pada Hari yang Dipilih */}
+                    {(() => {
+                      const isPastDay = Boolean(activeScheduleDayObj.isPast)
+                      const isFutureDay = Boolean(activeScheduleDayObj.isFuture)
+                      const isTaskDoneOnDay = (t: PersonalTask) =>
+                        Boolean(t.completedDates?.includes(activeScheduleDayObj.isoDate))
+                      const isTaskSkippedOnDay = (t: PersonalTask) => {
+                        if (isFutureDay || isTaskDoneOnDay(t)) return false
+                        if (isPastDay) {
+                          return !t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
+                        }
+                        const wasUnskipped = Boolean(t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`))
+                        return Boolean(
+                          t.skippedDates?.includes(activeScheduleDayObj.isoDate) ||
+                            (!wasUnskipped && isQuestTimeSkipped(t.targetTime, false, t.schedule))
+                        )
+                      }
+
+                      const isTaskUpcomingTimeOnDay = (t: PersonalTask) => {
+                        if (isPastDay || isFutureDay || isTaskDoneOnDay(t) || isTaskSkippedOnDay(t)) return false
+                        return isQuestTimeUpcoming(t.targetTime, false, t.schedule)
+                      }
+
+                      const totalDayTasks = activeScheduleDayObj.scheduledTasks.length
+                      const remainingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
+                        (t) => !isTaskDoneOnDay(t)
+                      )
+                      const completedDayCount = totalDayTasks - remainingDayTasks.length
+                      const skippedDayCount = remainingDayTasks.filter((t) => isTaskSkippedOnDay(t)).length
+                      const upcomingTimedDayCount = remainingDayTasks.filter((t) => isTaskUpcomingTimeOnDay(t)).length
+                      const activePendingDayTasks = remainingDayTasks.filter(
+                        (t) => !isTaskSkippedOnDay(t) && !isTaskUpcomingTimeOnDay(t)
+                      )
+                      const activeRemainingDayCount = activePendingDayTasks.length
+                      const hiddenDayTasks = activeScheduleDayObj.scheduledTasks.filter(
+                        (t) => !activePendingDayTasks.some((p) => p.id === t.id)
+                      )
+                      const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
+                      const hasExpandableDayQuests =
+                        completedDayCount > 0 || skippedDayCount > 0 || upcomingTimedDayCount > 0
+                      const primaryVisibleTasks = isFutureDay
+                        ? activeScheduleDayObj.scheduledTasks
+                        : activePendingDayTasks
+
+                      const headerBadgeText = allDoneForDay
+                        ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
+                        : totalDayTasks === 0
+                          ? 'Kosong'
+                          : isFutureDay
+                            ? `Hanya Lihat • ${totalDayTasks} Quest`
+                            : [
+                                activeRemainingDayCount > 0 ? `${activeRemainingDayCount} Aktif` : null,
+                                upcomingTimedDayCount > 0 ? `${upcomingTimedDayCount} Menunggu` : null,
+                                completedDayCount > 0 && activeRemainingDayCount === 0
+                                  ? `${completedDayCount} Selesai`
+                                  : null,
+                                skippedDayCount > 0 ? `${skippedDayCount} Skip` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' • ')
+
+                      return (
+                        <div
+                          style={{
+                            padding: '9px 10px',
+                            borderRadius: '12px',
+                            background: 'rgba(7, 5, 17, 0.85)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              marginBottom:
+                                primaryVisibleTasks.length > 0 || totalDayTasks === 0 ? '8px' : '6px',
+                              userSelect: 'none',
+                            }}
+                          >
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#e2e8f0' }}>
+                              {activeScheduleDayObj.fullName}
+                              {activeScheduleDayObj.isToday ? ' (Hari Ini)' : ''}
+                            </span>
+                            <span
+                              onClick={() => {
+                                if (hasExpandableDayQuests) {
+                                  setShowCompletedDayQuests((prev) => !prev)
+                                }
+                              }}
+                              style={{
+                                fontSize: '9.5px',
+                                fontWeight: 700,
+                                cursor: hasExpandableDayQuests ? 'pointer' : 'default',
+                                color: allDoneForDay
+                                  ? '#67e8f9'
+                                  : totalDayTasks === 0
+                                    ? '#94a3b8'
+                                    : currentRankTier.primaryColor,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                              }}
+                            >
+                              {isFutureDay && totalDayTasks > 0 && <Lock size={9} />}
+                              <span>{headerBadgeText}</span>
+                            </span>
+                          </div>
+
+                          {(() => {
+                            const renderDayQuestRow = (task: PersonalTask) => {
+                              const isGym = task.category.toLowerCase() === 'gym'
+                              const isDoneOnDay = isTaskDoneOnDay(task)
+                              const isSkipped = isTaskSkippedOnDay(task)
+                              const isUpcomingTime = isTaskUpcomingTimeOnDay(task)
+                              const isArrivedActive =
+                                activeScheduleDayObj.isToday &&
+                                !isDoneOnDay &&
+                                !isSkipped &&
+                                isQuestTimeArrived(task.targetTime, task.schedule)
+                              return (
+                                <motion.div
+                                  key={task.id}
+                                  layout
+                                  initial={{ opacity: 0, y: 8 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, x: 26, scale: 0.93 }}
+                                  transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '8px',
+                                    padding: '7px 9px',
+                                    borderRadius: '11px',
+                                    opacity: isFutureDay ? 0.8 : 1,
+                                    background: isSkipped && !isDoneOnDay ? 'rgba(69, 10, 26, 0.45)' : 'rgba(18, 14, 33, 0.92)',
+                                    border: isSkipped && !isDoneOnDay
+                                      ? '1px solid rgba(244, 63, 94, 0.35)'
+                                      : '1px solid rgba(255, 255, 255, 0.1)',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                    <span
+                                      className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
+                                      onClick={() => {
+                                        if (!isFutureDay) {
+                                          handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
+                                        }
+                                      }}
+                                      role={isFutureDay ? undefined : 'button'}
+                                      tabIndex={isFutureDay ? undefined : 0}
                                       style={{
-                                        display: 'flex',
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '6px',
+                                        border: isFutureDay
+                                          ? '1px solid rgba(148, 163, 184, 0.3)'
+                                          : isDoneOnDay
+                                            ? '1px solid #38bdf8'
+                                            : isSkipped
+                                              ? '1px solid #ef4444'
+                                              : '1px solid rgba(168, 85, 247, 0.5)',
+                                        background: isFutureDay
+                                          ? 'rgba(15, 11, 26, 0.75)'
+                                          : isDoneOnDay
+                                            ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
+                                            : isSkipped
+                                              ? 'rgba(239, 68, 68, 0.2)'
+                                              : 'rgba(255, 255, 255, 0.04)',
+                                        display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: '5px',
-                                        fontSize: '12px',
-                                        color: '#f3f1ff',
-                                        textDecoration: isDoneOnDay ? 'line-through' : 'none',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
+                                        justifyContent: 'center',
+                                        cursor: isFutureDay ? 'not-allowed' : 'pointer',
+                                        flexShrink: 0,
+                                        color: isFutureDay
+                                          ? '#9a8fb2'
+                                          : isDoneOnDay
+                                            ? '#67e8f9'
+                                            : isSkipped
+                                              ? '#f87171'
+                                              : 'transparent',
+                                        transition: 'all 0.15s ease',
+                                      }}
+                                      title={
+                                        isFutureDay
+                                          ? 'Belum saatnya dikerjakan (Hanya Lihat)'
+                                          : isDoneOnDay
+                                            ? 'Batalkan selesai'
+                                            : 'Centang selesai (+XP)'
+                                      }
+                                      aria-label={
+                                        isFutureDay
+                                          ? 'Belum saatnya dikerjakan (Hanya Lihat)'
+                                          : isDoneOnDay
+                                            ? 'Batalkan selesai'
+                                            : 'Centang selesai (+XP)'
+                                      }
+                                    >
+                                      {isFutureDay ? (
+                                        <Lock size={10} color="#9a8fb2" />
+                                      ) : isDoneOnDay ? (
+                                        <Check size={13} strokeWidth={3} />
+                                      ) : isSkipped ? (
+                                        <FastForward size={11} color="#f87171" strokeWidth={2.5} />
+                                      ) : null}
+                                    </span>
+                                    <span
+                                      style={{
+                                        width: '25px',
+                                        height: '25px',
+                                        borderRadius: '8px',
+                                        background: 'rgba(168, 85, 247, 0.14)',
+                                        border: '1px solid rgba(168, 85, 247, 0.3)',
+                                        color: '#d8b4fe',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0,
                                       }}
                                     >
-                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
-                                      {isArrivedActive && (
-                                        <span
-                                          style={{
-                                            fontSize: '8.5px',
-                                            color: '#e9d5ff',
-                                            background: 'rgba(124, 58, 237, 0.22)',
-                                            border: '1px solid rgba(167, 139, 250, 0.42)',
-                                            padding: '1px 5px',
-                                            borderRadius: '4px',
-                                            fontWeight: 800,
-                                            flexShrink: 0,
-                                          }}
-                                        >
-                                          TERBUKA
-                                        </span>
-                                      )}
-                                      {isUpcomingTime && (
-                                        <span
-                                          style={{
-                                            fontSize: '8.5px',
-                                            color: '#cbd5e1',
-                                            background: 'rgba(148, 163, 184, 0.14)',
-                                            border: '1px solid rgba(148, 163, 184, 0.3)',
-                                            padding: '1px 5px',
-                                            borderRadius: '4px',
-                                            fontWeight: 700,
-                                            flexShrink: 0,
-                                          }}
-                                        >
-                                          JAM {task.targetTime}
-                                        </span>
-                                      )}
-                                      {isSkipped && !isDoneOnDay && (
-                                        <span
-                                          style={{
-                                            fontSize: '8.5px',
-                                            color: '#ffffff',
-                                            background: '#ef4444',
-                                            padding: '1px 5px',
-                                            borderRadius: '4px',
-                                            fontWeight: 800,
-                                            flexShrink: 0,
-                                          }}
-                                        >
-                                          {isPastDay ? 'SKIP' : 'DILEWATI'}
-                                        </span>
-                                      )}
-                                    </strong>
-                                    <span style={{ fontSize: '9.5px', color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1', display: 'inline-flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                                      <span>
-                                        {task.category}
-                                        {isSkipped && !isDoneOnDay
-                                          ? isPastDay
-                                            ? ' • (Skip — bisa dibatalkan)'
-                                            : ' • (Dilewati)'
-                                          : isFutureDay
-                                            ? ` • +${task.xp} XP • Terjadwal`
-                                            : ` • +${task.xp} XP`}
-                                      </span>
-                                      {task.targetTime && (
-                                        <span style={{ color: '#7dd3fc', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                          • <Clock size={9} /> {task.targetTime}
-                                        </span>
-                                      )}
+                                      {renderCategoryIcon(task.category, 14)}
                                     </span>
-                                  </div>
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                  {isFutureDay ? (
-                                    isGym ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setWorkoutSubPage('overview')
-                                          setActiveWorkoutQuest({
-                                            type: 'personal',
-                                            id: task.id,
-                                            dateIso: activeScheduleDayObj.isoDate,
-                                            viewOnly: true,
-                                          })
-                                        }}
+                                    <div style={{ minWidth: 0 }}>
+                                      <strong
                                         style={{
-                                          padding: '4px 8px',
-                                          borderRadius: '7px',
-                                          background: 'rgba(124, 58, 237, 0.16)',
-                                          border: '1px solid rgba(168, 85, 247, 0.45)',
-                                          color: '#e9d5ff',
-                                          fontSize: '10px',
-                                          fontWeight: 700,
-                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '5px',
+                                          fontSize: '11.5px',
+                                          color: '#ffffff',
+                                          textDecoration: isDoneOnDay ? 'line-through' : 'none',
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                      >
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
+                                        {isArrivedActive && (
+                                          <span
+                                            style={{
+                                              fontSize: '8px',
+                                              color: '#e9d5ff',
+                                              background: 'rgba(124, 58, 237, 0.22)',
+                                              border: '1px solid rgba(167, 139, 250, 0.42)',
+                                              padding: '1px 4px',
+                                              borderRadius: '4px',
+                                              fontWeight: 800,
+                                              flexShrink: 0,
+                                            }}
+                                          >
+                                            TERBUKA
+                                          </span>
+                                        )}
+                                        {isUpcomingTime && (
+                                          <span
+                                            style={{
+                                              fontSize: '8px',
+                                              color: '#cbd5e1',
+                                              background: 'rgba(148, 163, 184, 0.14)',
+                                              border: '1px solid rgba(148, 163, 184, 0.3)',
+                                              padding: '1px 4px',
+                                              borderRadius: '4px',
+                                              fontWeight: 700,
+                                              flexShrink: 0,
+                                            }}
+                                          >
+                                            JAM {task.targetTime}
+                                          </span>
+                                        )}
+                                        {isSkipped && !isDoneOnDay && (
+                                          <span
+                                            style={{
+                                              fontSize: '7.5px',
+                                              color: '#ffffff',
+                                              background: '#f43f5e',
+                                              padding: '1px 4px',
+                                              borderRadius: '4px',
+                                              fontWeight: 900,
+                                              flexShrink: 0,
+                                            }}
+                                          >
+                                            {isPastDay ? 'SKIP' : 'DILEWATI'}
+                                          </span>
+                                        )}
+                                      </strong>
+                                      <span
+                                        style={{
+                                          fontSize: '9px',
+                                          color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1',
                                           display: 'inline-flex',
                                           alignItems: 'center',
                                           gap: '4px',
+                                          flexWrap: 'wrap',
                                         }}
-                                        title="Lihat daftar gerakan Gym (Mode Hanya Lihat)"
                                       >
-                                        <Eye size={10} color="#c084fc" />
-                                        <span>Lihat Gerakan</span>
-                                      </button>
-                                    ) : (
-                                      <span
-                                        style={{
-                                          padding: '4px 7px',
-                                          borderRadius: '7px',
-                                          background: 'rgba(148, 163, 184, 0.1)',
-                                          border: '1px solid rgba(148, 163, 184, 0.25)',
-                                          color: '#9a8fb2',
-                                          fontSize: '10px',
-                                          fontWeight: 700,
-                                          cursor: 'not-allowed',
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '3px',
-                                        }}
-                                        title="Quest besok-besoknya hanya bisa dilihat"
-                                      >
-                                        <Lock size={9} />
-                                        <span>Hanya Lihat</span>
-                                      </span>
-                                    )
-                                  ) : (
-                                    <>
-                                      {isDoneOnDay && (
-                                        <span
-                                          onClick={() => {
-                                            if (isGym) {
-                                              setWorkoutSubPage('overview')
-                                              setActiveWorkoutQuest({
-                                                type: 'personal',
-                                                id: task.id,
-                                                dateIso: activeScheduleDayObj.isoDate,
-                                              })
-                                            }
-                                          }}
-                                          style={{
-                                            padding: '4px 8px',
-                                            borderRadius: '7px',
-                                            background: 'rgba(56, 189, 248, 0.15)',
-                                            border: '1px solid rgba(56, 189, 248, 0.42)',
-                                            color: '#67e8f9',
-                                            fontSize: '10px',
-                                            fontWeight: 800,
-                                            cursor: isGym ? 'pointer' : 'default',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '3px',
-                                          }}
-                                          title={isGym ? 'Selesai • Klik untuk lihat detail workout' : 'Quest Selesai'}
-                                        >
-                                          <Check size={9} strokeWidth={3} />
-                                          <span>Selesai</span>
+                                        <span>
+                                          {task.category}
+                                          {isSkipped && !isDoneOnDay
+                                            ? isPastDay
+                                              ? ' • (Skip)'
+                                              : ' • (Dilewati)'
+                                            : ` • +${task.xp} XP`}
                                         </span>
-                                      )}
+                                        {task.targetTime && (
+                                          <span style={{ color: '#7dd3fc', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                            • <Clock size={9} /> {task.targetTime}
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
 
-                                      {isGym && !isDoneOnDay && !isSkipped && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                    {isFutureDay ? (
+                                      isGym ? (
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -12934,396 +13215,563 @@ export default function Page() {
                                               type: 'personal',
                                               id: task.id,
                                               dateIso: activeScheduleDayObj.isoDate,
+                                              viewOnly: true,
                                             })
                                           }}
                                           style={{
-                                            padding: '4px 8px',
-                                            borderRadius: '7px',
-                                            background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                            border: '1px solid rgba(168, 85, 247, 0.5)',
-                                            color: '#ffffff',
-                                            fontSize: '10px',
-                                            fontWeight: 800,
-                                            cursor: 'pointer',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '3px',
-                                          }}
-                                          title="Mulai Workout"
-                                        >
-                                          <Play size={9} fill="currentColor" />
-                                          <span>Start</span>
-                                        </button>
-                                      )}
-
-                                      {!isDoneOnDay && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)}
-                                          style={{
                                             padding: '4px 7px',
-                                            borderRadius: '7px',
-                                            background: isSkipped ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.12)',
-                                            border: isSkipped ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
-                                            color: isSkipped ? '#fca5a5' : '#d8b4fe',
-                                            fontSize: '10px',
+                                            borderRadius: '6px',
+                                            background: 'rgba(124, 58, 237, 0.16)',
+                                            border: '1px solid rgba(168, 85, 247, 0.45)',
+                                            color: '#e9d5ff',
+                                            fontSize: '9.5px',
                                             fontWeight: 700,
                                             cursor: 'pointer',
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             gap: '3px',
                                           }}
-                                          title={
-                                            isSkipped
-                                              ? 'Batalkan status Skip agar quest bisa dikerjakan'
-                                              : 'Lewati quest (0 XP)'
-                                          }
+                                          title="Lihat daftar gerakan Gym (Mode Hanya Lihat)"
                                         >
-                                          <FastForward size={9} />
-                                          <span>{isSkipped ? (isPastDay ? 'Batal Skip' : 'Dilewati') : 'Skip'}</span>
+                                          <Eye size={10} color="#c084fc" />
+                                          <span>Lihat</span>
                                         </button>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              </motion.div>
-                            )
-                          }
+                                      ) : (
+                                        <span
+                                          style={{
+                                            padding: '4px 6px',
+                                            borderRadius: '6px',
+                                            background: 'rgba(148, 163, 184, 0.1)',
+                                            border: '1px solid rgba(148, 163, 184, 0.25)',
+                                            color: '#9a8fb2',
+                                            fontSize: '9.5px',
+                                            fontWeight: 700,
+                                            cursor: 'not-allowed',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                          }}
+                                          title="Quest besok-besoknya hanya bisa dilihat"
+                                        >
+                                          <Lock size={9} />
+                                          <span>Lihat</span>
+                                        </span>
+                                      )
+                                    ) : (
+                                      <>
+                                        {isGym && !isDoneOnDay && !isSkipped && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setWorkoutSubPage('overview')
+                                              setActiveWorkoutQuest({
+                                                type: 'personal',
+                                                id: task.id,
+                                                dateIso: activeScheduleDayObj.isoDate,
+                                              })
+                                            }}
+                                            style={{
+                                              padding: '4px 8px',
+                                              borderRadius: '6px',
+                                              background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                              border: 'none',
+                                              color: '#ffffff',
+                                              fontSize: '9.5px',
+                                              fontWeight: 800,
+                                              cursor: 'pointer',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '3px',
+                                            }}
+                                            title="Mulai Workout"
+                                          >
+                                            <Play size={8} fill="currentColor" />
+                                            <span>Start</span>
+                                          </button>
+                                        )}
 
-                          return (
-                            <>
-                              {primaryVisibleTasks.length > 0 ? (
-                                <div
-                                  style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'minmax(0, 1fr)',
-                                    gap: '6px',
-                                    maxHeight: '320px',
-                                    overflowY: 'auto',
-                                    WebkitOverflowScrolling: 'touch',
-                                  }}
-                                >
-                                  <AnimatePresence mode="popLayout">
-                                    {primaryVisibleTasks.map((task) => renderDayQuestRow(task))}
-                                  </AnimatePresence>
-                                </div>
-                              ) : !isFutureDay && totalDayTasks > 0 ? (
-                                <div
-                                  style={{
-                                    padding: '10px 12px',
-                                    borderRadius: '10px',
-                                    textAlign: 'center',
-                                    background: allDoneForDay
-                                      ? 'rgba(56, 189, 248, 0.08)'
-                                      : 'rgba(24, 18, 42, 0.55)',
-                                    border: allDoneForDay
-                                      ? '1px solid rgba(56, 189, 248, 0.28)'
-                                      : '1px solid rgba(168, 85, 247, 0.2)',
-                                  }}
-                                >
+                                        {!isDoneOnDay && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)}
+                                            style={{
+                                              padding: '4px 7px',
+                                              borderRadius: '6px',
+                                              background: isSkipped ? 'rgba(244, 63, 94, 0.2)' : 'rgba(168, 85, 247, 0.12)',
+                                              border: isSkipped ? '1px solid rgba(251, 113, 133, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
+                                              color: isSkipped ? '#fecdd3' : '#e9d5ff',
+                                              fontSize: '9.5px',
+                                              fontWeight: 700,
+                                              cursor: 'pointer',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '3px',
+                                            }}
+                                            title={
+                                              isSkipped
+                                                ? 'Batalkan status Skip agar quest bisa dikerjakan'
+                                                : 'Lewati quest (0 XP)'
+                                            }
+                                          >
+                                            <span>{isSkipped ? 'Batal' : 'Skip'}</span>
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              )
+                            }
+
+                            return (
+                              <>
+                                {primaryVisibleTasks.length > 0 ? (
                                   <div
                                     style={{
-                                      fontSize: '11.5px',
-                                      fontWeight: 800,
-                                      color: allDoneForDay ? '#67e8f9' : '#f3f1ff',
+                                      display: 'grid',
+                                      gridTemplateColumns: 'minmax(0, 1fr)',
+                                      gap: '6px',
+                                      maxHeight: '320px',
+                                      overflowY: 'auto',
+                                      WebkitOverflowScrolling: 'touch',
                                     }}
                                   >
-                                    {allDoneForDay
-                                      ? 'Semua Quest Hari Ini Tuntas!'
-                                      : 'Semua Quest Aktif Sudah Tertangani'}
+                                    <AnimatePresence mode="popLayout">
+                                      {primaryVisibleTasks.map((task) => renderDayQuestRow(task))}
+                                    </AnimatePresence>
                                   </div>
-                                  <div style={{ fontSize: '9.5px', color: '#b8add1', marginTop: '2px' }}>
-                                    Quest selesai disembunyikan — buka daftar di bawah untuk melihat atau membatalkan.
-                                  </div>
-                                </div>
-                              ) : null}
-
-                              {!isFutureDay && hiddenDayTasks.length > 0 && (
-                                <div
-                                  style={{
-                                    marginTop: '8px',
-                                    paddingTop: '8px',
-                                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                                  }}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowCompletedDayQuests((prev) => !prev)}
+                                ) : totalDayTasks === 0 ? (
+                                  <div
                                     style={{
-                                      width: '100%',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'space-between',
-                                      background: 'transparent',
-                                      border: 'none',
-                                      padding: '2px 0',
-                                      cursor: 'pointer',
-                                      color: '#e2d9f3',
+                                      gap: '8px',
+                                      padding: '4px 2px',
                                     }}
                                   >
-                                    <span style={{ fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                      <CheckCircle2 size={12} style={{ color: '#67e8f9' }} />
-                                      <span>
-                                        {completedDayCount > 0
-                                          ? `${completedDayCount} Quest Selesai Disembunyikan`
-                                          : `${hiddenDayTasks.length} Quest Lainnya Disembunyikan`}
-                                      </span>
+                                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#94a3b8' }}>
+                                      Belum ada quest terjadwal
                                     </span>
-                                    <span
+                                    <button
+                                      type="button"
+                                      onClick={() => openAddPersonalModal()}
                                       style={{
-                                        fontSize: '9.5px',
-                                        fontWeight: 800,
-                                        color: currentRankTier.primaryColor,
-                                        padding: '2px 8px',
-                                        borderRadius: '999px',
-                                        background: 'rgba(255, 255, 255, 0.06)',
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: '3px',
+                                        gap: '4px',
+                                        padding: '4px 10px',
+                                        borderRadius: '999px',
+                                        border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.48)`,
+                                        background: `rgba(${currentRankTier.primaryRgb}, 0.16)`,
+                                        color: '#ffffff',
+                                        fontSize: '9.5px',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
                                       }}
                                     >
-                                      <span>{showCompletedDayQuests ? 'Sembunyikan' : 'Lihat'}</span>
-                                      {showCompletedDayQuests ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-                                    </span>
-                                  </button>
+                                      <Plus size={10} strokeWidth={2.8} />
+                                      <span>Tambah Quest</span>
+                                    </button>
+                                  </div>
+                                ) : null}
 
-                                  <AnimatePresence>
-                                    {showCompletedDayQuests && (
-                                      <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-                                        style={{ overflow: 'hidden' }}
-                                      >
-                                        <div
+                                {!isFutureDay && hiddenDayTasks.length > 0 && (
+                                  <div
+                                    style={{
+                                      marginTop: primaryVisibleTasks.length > 0 ? '8px' : '0',
+                                      paddingTop: primaryVisibleTasks.length > 0 ? '8px' : '0',
+                                      borderTop:
+                                        primaryVisibleTasks.length > 0
+                                          ? '1px solid rgba(255, 255, 255, 0.09)'
+                                          : 'none',
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowCompletedDayQuests((prev) => !prev)}
+                                      style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        padding: '2px 0',
+                                        cursor: 'pointer',
+                                        color: '#cbd5e1',
+                                        textAlign: 'left',
+                                      }}
+                                    >
+                                      <span style={{ fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                        <span
                                           style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: 'minmax(0, 1fr)',
-                                            gap: '6px',
-                                            paddingTop: '8px',
+                                            width: '14px',
+                                            height: '14px',
+                                            borderRadius: '999px',
+                                            background: 'rgba(52, 211, 153, 0.2)',
+                                            color: '#6ee7b7',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '8.5px',
+                                            fontWeight: 900,
                                           }}
                                         >
-                                          {hiddenDayTasks.map((task) => renderDayQuestRow(task))}
-                                        </div>
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-                                </div>
-                              )}
-                            </>
-                          )
-                        })()}
-                      </div>
-                    )
-                  })()}
-                </motion.section>
+                                          ✓
+                                        </span>
+                                        <span>
+                                          {completedDayCount > 0
+                                            ? `${completedDayCount} Quest Selesai Disembunyikan`
+                                            : `${hiddenDayTasks.length} Quest Lainnya Disembunyikan`}
+                                        </span>
+                                      </span>
+                                      <span
+                                        style={{
+                                          fontSize: '9.5px',
+                                          fontWeight: 800,
+                                          color: currentRankTier.primaryColor,
+                                          padding: '2px 8px',
+                                          borderRadius: '999px',
+                                          background: 'rgba(255, 255, 255, 0.06)',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '2px',
+                                        }}
+                                      >
+                                        <span>{showCompletedDayQuests ? 'Sembunyikan' : 'Lihat'}</span>
+                                        {showCompletedDayQuests ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                                      </span>
+                                    </button>
 
-                {/* 3. STATISTIK KATEGORI HUNTER (RADAR CHART MINIMALIS - GANTI HISTORY DI DASHBOARD) */}
-                <motion.section
-                  className="section-block"
+                                    <AnimatePresence>
+                                      {showCompletedDayQuests && (
+                                        <motion.div
+                                          initial={{ height: 0, opacity: 0 }}
+                                          animate={{ height: 'auto', opacity: 1 }}
+                                          exit={{ height: 0, opacity: 0 }}
+                                          transition={{ type: 'spring', stiffness: 280, damping: 26 }}
+                                          style={{ overflow: 'hidden' }}
+                                        >
+                                          <div
+                                            style={{
+                                              display: 'grid',
+                                              gridTemplateColumns: 'minmax(0, 1fr)',
+                                              gap: '5px',
+                                              paddingTop: '7px',
+                                            }}
+                                          >
+                                            {hiddenDayTasks.map((task) => {
+                                              if (isTaskDoneOnDay(task)) {
+                                                return (
+                                                  <div
+                                                    key={task.id}
+                                                    onClick={() =>
+                                                      handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
+                                                    }
+                                                    style={{
+                                                      cursor: 'pointer',
+                                                      borderRadius: '9px',
+                                                      padding: '6px 9px',
+                                                      background: 'rgba(52, 211, 153, 0.05)',
+                                                      border: '1px solid rgba(52, 211, 153, 0.22)',
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      justifyContent: 'space-between',
+                                                      gap: '8px',
+                                                    }}
+                                                    title="Klik untuk membatalkan selesai"
+                                                  >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                                      <span
+                                                        style={{
+                                                          width: '16px',
+                                                          height: '16px',
+                                                          borderRadius: '4px',
+                                                          background: 'rgba(52, 211, 153, 0.9)',
+                                                          color: '#04060e',
+                                                          display: 'inline-flex',
+                                                          alignItems: 'center',
+                                                          justifyContent: 'center',
+                                                          fontSize: '9.5px',
+                                                          fontWeight: 900,
+                                                          flexShrink: 0,
+                                                        }}
+                                                      >
+                                                        ✓
+                                                      </span>
+                                                      <span
+                                                        style={{
+                                                          fontSize: '10.5px',
+                                                          fontWeight: 600,
+                                                          textDecoration: 'line-through',
+                                                          color: '#94a3b8',
+                                                          whiteSpace: 'nowrap',
+                                                          overflow: 'hidden',
+                                                          textOverflow: 'ellipsis',
+                                                        }}
+                                                      >
+                                                        {task.title}
+                                                      </span>
+                                                    </div>
+                                                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#34d399', flexShrink: 0 }}>
+                                                      +{task.xp} XP
+                                                    </span>
+                                                  </div>
+                                                )
+                                              }
+                                              return renderDayQuestRow(task)
+                                            })}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                )}
+                              </>
+                            )
+                          })()}
+                        </div>
+                      )
+                    })()}
+                  </section>
+                </motion.div>
+
+                {/* 3. STATISTIK KATEGORI HUNTER (RADAR CHART MINIMALIS + GLASS CARD) */}
+                <motion.div
                   initial={{ opacity: 0, y: 18, scale: 0.97 }}
                   whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                  viewport={{ once: true, amount: 0.2 }}
+                  viewport={{ once: false, amount: 0.15 }}
                   transition={{ type: 'spring', stiffness: 240, damping: 24 }}
                 >
-                  <div className="section-title">
-                    <div>
-                      <span className="eyebrow">SYSTEM STATUS</span>
-                      <h2>Statistik Kategori</h2>
-                    </div>
-                    <button
-                      type="button"
-                      className="show-more-btn"
-                      onClick={() => setIsMasteryPageOpen(true)}
+                  <section data-scroll-card className="weekly-strip-card" style={{ marginBottom: '20px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '10px',
+                      }}
                     >
-                      <span>Mastery</span>
-                      <ChevronRight size={13} />
-                    </button>
-                  </div>
-
-                  {(() => {
-                    const SHORT_CAT_LABELS: Record<string, string> = {
-                      'Kerja / Karir': 'KARIR',
-                      'Gym': 'GYM',
-                      'Rutinitas & Sehat': 'RUTIN',
-                      'Belajar / Skill': 'SKILL',
-                      'Kreativitas & Hobi': 'HOBI',
-                      'Mindset & Ibadah': 'MIND',
-                      'Keuangan': 'FIN',
-                      'Istirahat & Reset': 'REST',
-                    }
-
-                    const displayCats = (topMasteryCategories.length > 0 ? topMasteryCategories : categoryMasteries).slice(0, 4)
-                    const radarSource = [
-                      ...topMasteryCategories,
-                      ...categoryMasteries.filter((c) => !topMasteryCategories.some((t) => t.name === c.name)),
-                    ].slice(0, 5)
-                    const maxCatXp = Math.max(50, ...radarSource.map((c) => c.xp))
-
-                    const cx = 80
-                    const cy = 80
-                    const maxR = 56
-                    const ringScales = [1, 0.67, 0.34]
-                    const getAxisPoint = (idx: number, ratio: number) => {
-                      const angle = -Math.PI / 2 + (idx * 2 * Math.PI) / 5
-                      return {
-                        x: +(cx + Math.cos(angle) * maxR * ratio).toFixed(1),
-                        y: +(cy + Math.sin(angle) * maxR * ratio).toFixed(1),
-                      }
-                    }
-
-                    const dataPoints = radarSource.map((c, idx) => {
-                      const ratio = c.xp > 0 ? Math.max(0.24, Math.min(1, c.xp / maxCatXp)) : 0.16
-                      return getAxisPoint(idx, ratio)
-                    })
-                    const polygonStr = dataPoints.map((p) => `${p.x},${p.y}`).join(' ')
-
-                    return (
-                      <div
+                      <div>
+                        <span
+                          style={{
+                            fontSize: '8.5px',
+                            fontWeight: 800,
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase',
+                            color: currentRankTier.primaryColor,
+                            display: 'block',
+                          }}
+                        >
+                          SYSTEM STATUS
+                        </span>
+                        <h2 style={{ fontSize: '13.5px', fontWeight: 800, margin: '1px 0 0', color: '#ffffff' }}>
+                          Statistik Kategori
+                        </h2>
+                      </div>
+                      <button
+                        type="button"
                         onClick={() => setIsMasteryPageOpen(true)}
                         style={{
-                          background: 'linear-gradient(155deg, rgba(22, 16, 38, 0.96), rgba(10, 7, 19, 0.99))',
-                          border: '1px solid rgba(139, 92, 246, 0.26)',
-                          borderRadius: '18px',
-                          padding: '14px',
-                          display: 'grid',
-                          gridTemplateColumns: '148px minmax(0, 1fr)',
-                          gap: '12px',
+                          display: 'inline-flex',
                           alignItems: 'center',
+                          gap: '2px',
+                          padding: '5px 10px',
+                          borderRadius: '11px',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          color: '#e2e8f0',
+                          fontSize: '10px',
+                          fontWeight: 700,
                           cursor: 'pointer',
                         }}
                       >
-                        <svg viewBox="0 0 160 160" style={{ width: '148px', height: '148px', display: 'block' }}>
-                          {ringScales.map((sc, rIdx) => (
-                            <polygon
-                              key={rIdx}
-                              points={[0, 1, 2, 3, 4]
-                                .map((i) => {
-                                  const pt = getAxisPoint(i, sc)
-                                  return `${pt.x},${pt.y}`
-                                })
-                                .join(' ')}
-                              fill="none"
-                              stroke="#261f3d"
-                              strokeWidth="1"
-                            />
-                          ))}
-                          {[0, 1, 2, 3, 4].map((i) => {
-                            const outer = getAxisPoint(i, 1)
-                            return (
-                              <line
-                                key={i}
-                                x1={cx}
-                                y1={cy}
-                                x2={outer.x}
-                                y2={outer.y}
-                                stroke="#241c38"
+                        <span>Mastery</span>
+                        <ChevronRight size={11} />
+                      </button>
+                    </div>
+
+                    {(() => {
+                      const SHORT_CAT_LABELS: Record<string, string> = {
+                        'Kerja / Karir': 'KARIR',
+                        'Gym': 'GYM',
+                        'Rutinitas & Sehat': 'RUTIN',
+                        'Belajar / Skill': 'SKILL',
+                        'Kreativitas & Hobi': 'HOBI',
+                        'Mindset & Ibadah': 'MIND',
+                        'Keuangan': 'FIN',
+                        'Istirahat & Reset': 'REST',
+                      }
+
+                      const displayCats = (topMasteryCategories.length > 0 ? topMasteryCategories : categoryMasteries).slice(0, 4)
+                      const radarSource = [
+                        ...topMasteryCategories,
+                        ...categoryMasteries.filter((c) => !topMasteryCategories.some((t) => t.name === c.name)),
+                      ].slice(0, 5)
+                      const maxCatXp = Math.max(50, ...radarSource.map((c) => c.xp))
+
+                      const cx = 80
+                      const cy = 80
+                      const maxR = 54
+                      const ringScales = [1, 0.67, 0.34]
+                      const getAxisPoint = (idx: number, ratio: number) => {
+                        const angle = -Math.PI / 2 + (idx * 2 * Math.PI) / 5
+                        return {
+                          x: +(cx + Math.cos(angle) * maxR * ratio).toFixed(1),
+                          y: +(cy + Math.sin(angle) * maxR * ratio).toFixed(1),
+                        }
+                      }
+
+                      const dataPoints = radarSource.map((c, idx) => {
+                        const ratio = c.xp > 0 ? Math.max(0.24, Math.min(1, c.xp / maxCatXp)) : 0.16
+                        return getAxisPoint(idx, ratio)
+                      })
+                      const polygonStr = dataPoints.map((p) => `${p.x},${p.y}`).join(' ')
+
+                      return (
+                        <div
+                          onClick={() => setIsMasteryPageOpen(true)}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '132px minmax(0, 1fr)',
+                            gap: '10px',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <svg viewBox="0 0 160 156" style={{ width: '132px', height: '128px', display: 'block', overflow: 'visible' }}>
+                            {ringScales.map((sc, rIdx) => (
+                              <polygon
+                                key={rIdx}
+                                points={[0, 1, 2, 3, 4]
+                                  .map((i) => {
+                                    const pt = getAxisPoint(i, sc)
+                                    return `${pt.x},${pt.y}`
+                                  })
+                                  .join(' ')}
+                                fill="none"
+                                stroke="rgba(255, 255, 255, 0.12)"
                                 strokeWidth="1"
                               />
-                            )
-                          })}
-                          <polygon
-                            points={polygonStr}
-                            fill="rgba(168, 85, 247, 0.34)"
-                            stroke="#67e8f9"
-                            strokeWidth="2"
-                          />
-                          {dataPoints.map((pt, idx) => (
-                            <circle
-                              key={idx}
-                              cx={pt.x}
-                              cy={pt.y}
-                              r="3"
-                              fill={idx === 0 ? '#67e8f9' : '#c084fc'}
+                            ))}
+                            {[0, 1, 2, 3, 4].map((i) => {
+                              const outer = getAxisPoint(i, 1)
+                              return (
+                                <line
+                                  key={i}
+                                  x1={cx}
+                                  y1={cy}
+                                  x2={outer.x}
+                                  y2={outer.y}
+                                  stroke="rgba(255, 255, 255, 0.08)"
+                                  strokeWidth="1"
+                                />
+                              )
+                            })}
+                            <polygon
+                              points={polygonStr}
+                              fill={`rgba(${currentRankTier.primaryRgb}, 0.30)`}
+                              stroke={currentRankTier.primaryColor}
+                              strokeWidth="2"
                             />
-                          ))}
-                          {radarSource.map((cat, idx) => {
-                            const lblPos = getAxisPoint(idx, 1.24)
-                            const shortLbl =
-                              SHORT_CAT_LABELS[cat.name] || cat.name.slice(0, 5).toUpperCase()
-                            return (
-                              <text
-                                key={cat.name}
-                                x={lblPos.x}
-                                y={lblPos.y + 3}
-                                textAnchor="middle"
-                                fill={idx === 0 && cat.xp > 0 ? '#67e8f9' : '#b8add1'}
-                                fontSize="8"
-                                fontWeight={idx === 0 ? '800' : '700'}
-                              >
-                                {shortLbl}
-                              </text>
-                            )
-                          })}
-                        </svg>
+                            {dataPoints.map((pt, idx) => (
+                              <circle
+                                key={idx}
+                                cx={pt.x}
+                                cy={pt.y}
+                                r="3"
+                                fill={idx === 0 ? currentRankTier.highlightColor : currentRankTier.primaryColor}
+                              />
+                            ))}
+                            {radarSource.map((cat, idx) => {
+                              const lblPos = getAxisPoint(idx, 1.24)
+                              const shortLbl =
+                                SHORT_CAT_LABELS[cat.name] || cat.name.slice(0, 5).toUpperCase()
+                              return (
+                                <text
+                                  key={cat.name}
+                                  x={lblPos.x}
+                                  y={lblPos.y + 3}
+                                  textAnchor="middle"
+                                  fill={idx === 0 && cat.xp > 0 ? currentRankTier.primaryColor : '#cbd5e1'}
+                                  fontSize="8.5"
+                                  fontWeight="800"
+                                >
+                                  {shortLbl}
+                                </text>
+                              )
+                            })}
+                          </svg>
 
-                        <div style={{ display: 'grid', gap: '9px', minWidth: 0 }}>
-                          {displayCats.map((cat, idx) => {
-                            const pct = Math.max(
-                              cat.xp > 0 ? 12 : 4,
-                              Math.min(100, Math.round((cat.xp / maxCatXp) * 100))
-                            )
-                            return (
-                              <div key={cat.name} style={{ minWidth: 0 }}>
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    gap: '6px',
-                                    fontSize: '10.5px',
-                                    fontWeight: 700,
-                                    marginBottom: '4px',
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      color: '#f5f2ff',
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                    }}
-                                  >
-                                    {cat.name}
-                                  </span>
-                                  <span
-                                    style={{
-                                      color: idx === 0 && cat.xp > 0 ? '#67e8f9' : '#c084fc',
-                                      flexShrink: 0,
-                                    }}
-                                  >
-                                    {cat.xp} XP
-                                  </span>
-                                </div>
-                                <div
-                                  style={{
-                                    height: '5px',
-                                    borderRadius: '999px',
-                                    background: '#140f24',
-                                    overflow: 'hidden',
-                                  }}
-                                >
+                          <div style={{ display: 'grid', gap: '8px', minWidth: 0 }}>
+                            {displayCats.map((cat, idx) => {
+                              const pct = Math.max(
+                                cat.xp > 0 ? 12 : 4,
+                                Math.min(100, Math.round((cat.xp / maxCatXp) * 100))
+                              )
+                              return (
+                                <div key={cat.name} style={{ minWidth: 0 }}>
                                   <div
                                     style={{
-                                      width: `${pct}%`,
-                                      height: '100%',
-                                      borderRadius: '999px',
-                                      background:
-                                        idx === 0
-                                          ? 'linear-gradient(90deg, #7c3aed, #38bdf8)'
-                                          : '#a855f7',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      gap: '6px',
+                                      fontSize: '9.5px',
+                                      fontWeight: 700,
+                                      marginBottom: '3px',
                                     }}
-                                  />
+                                  >
+                                    <span
+                                      style={{
+                                        color: '#f1f5f9',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                      }}
+                                    >
+                                      {cat.name}
+                                    </span>
+                                    <span
+                                      style={{
+                                        color: idx === 0 && cat.xp > 0 ? currentRankTier.primaryColor : '#c084fc',
+                                        flexShrink: 0,
+                                        fontVariantNumeric: 'tabular-nums',
+                                      }}
+                                    >
+                                      {cat.xp} XP
+                                    </span>
+                                  </div>
+                                  <div
+                                    style={{
+                                      height: '5px',
+                                      borderRadius: '999px',
+                                      background: 'rgba(255, 255, 255, 0.1)',
+                                      overflow: 'hidden',
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        width: `${pct}%`,
+                                        height: '100%',
+                                        borderRadius: '999px',
+                                        background:
+                                          idx === 0
+                                            ? `linear-gradient(90deg, ${currentRankTier.secondaryColor}, ${currentRankTier.primaryColor})`
+                                            : '#a855f7',
+                                      }}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                            )
-                          })}
+                              )
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })()}
-                </motion.section>
+                      )
+                    })()}
+                  </section>
+                </motion.div>
               </>
             )}
           </>
@@ -16870,87 +17318,71 @@ export default function Page() {
       </>
     )}
 
-    {/* BOTTOM NAVIGATION (5 MENU + SMART ANIMATE + CENTER ADD QUEST) */}
-    {!activeWorkoutQuest && (() => {
-      const activeSlotIndex =
-        activeTab === 'home'
-          ? 0
-          : activeTab === 'calendar'
-            ? 1
-            : activeTab === 'clan'
-              ? 3
-              : activeTab === 'rank'
-                ? 4
-                : -1
-      const switchTab = (tabKey: typeof activeTab) => {
-        setIsHistoryPageOpen(false)
-        setIsMasteryPageOpen(false)
-        setIsRankSystemOpen(false)
-        setIsPersonalModalOpen(false)
-        setActiveTab(tabKey)
-      }
-      return (
-        <nav className="bottom-nav" aria-label="Navigasi utama">
-          <div
-            className="nav-active-pill"
-            aria-hidden="true"
-            style={{
-              transform:
-                activeSlotIndex >= 0
-                  ? `translateX(${activeSlotIndex * 100}%)`
-                  : 'translateX(0%) scale(0.86)',
-              opacity: activeSlotIndex >= 0 ? 1 : 0,
-            }}
-          />
-          <button
-            type="button"
-            className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
-            onClick={() => switchTab('home')}
-          >
-            <Home size={18} />
-            <span>Home</span>
-          </button>
-          <button
-            type="button"
-            className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`}
-            onClick={() => switchTab('calendar')}
-          >
-            <CalendarDays size={18} />
-            <span>My Quest</span>
-          </button>
-          <button
-            type="button"
-            className={`nav-add-slot ${isPersonalModalOpen ? 'open' : ''}`}
-            aria-label="Tambah quest baru"
-            title="Tambah Quest Baru"
-            onClick={() => openAddPersonalModal()}
-          >
-            <div className="nav-add-orb" aria-hidden="true">
-              <span className="nav-portal-halo" />
-              <span className="nav-portal-rune" />
-              <Plus size={21} strokeWidth={2.5} />
-            </div>
-            <span>Tambah</span>
-          </button>
-          <button
-            type="button"
-            className={`nav-item ${activeTab === 'clan' ? 'active' : ''}`}
-            onClick={() => switchTab('clan')}
-          >
-            <Users size={18} />
-            <span>Clan</span>
-          </button>
-          <button
-            type="button"
-            className={`nav-item ${activeTab === 'rank' ? 'active' : ''}`}
-            onClick={() => switchTab('rank')}
-          >
-            <Trophy size={18} />
-            <span>Rank</span>
-          </button>
-        </nav>
-      )
-    })()}
+        {/* BOTTOM NAVIGATION (DOCKED 5-SLOT PORTAL RING FOOTER PERSIS PREVIEW) */}
+        {!activeWorkoutQuest && (() => {
+          const switchTab = (tabKey: typeof activeTab) => {
+            setIsHistoryPageOpen(false)
+            setIsMasteryPageOpen(false)
+            setIsRankSystemOpen(false)
+            setIsPersonalModalOpen(false)
+            setActiveTab(tabKey)
+          }
+          return (
+            <nav className="bottom-nav" aria-label="Navigasi utama">
+              <button
+                type="button"
+                className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
+                onClick={() => switchTab('home')}
+              >
+                {activeTab === 'home' && <span className="nav-top-indicator" aria-hidden="true" />}
+                <Home size={18} strokeWidth={1.9} />
+                <span>Home</span>
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`}
+                onClick={() => switchTab('calendar')}
+              >
+                {activeTab === 'calendar' && <span className="nav-top-indicator" aria-hidden="true" />}
+                <CalendarDays size={18} strokeWidth={1.9} />
+                <span>My Quest</span>
+              </button>
+              <button
+                type="button"
+                className={`nav-add-slot ${isPersonalModalOpen ? 'open' : ''}`}
+                aria-label="Tambah quest baru"
+                title="Tambah Quest Baru"
+                onClick={() => openAddPersonalModal()}
+              >
+                <div className="nav-add-orb" aria-hidden="true">
+                  <span className="nav-add-ring-outer" />
+                  <span className="nav-add-ring-inner" />
+                  <span className="nav-add-core">
+                    <Plus size={20} strokeWidth={2.6} />
+                  </span>
+                </div>
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeTab === 'clan' ? 'active' : ''}`}
+                onClick={() => switchTab('clan')}
+              >
+                {activeTab === 'clan' && <span className="nav-top-indicator" aria-hidden="true" />}
+                <Users size={18} strokeWidth={1.9} />
+                <span>Clan</span>
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeTab === 'rank' ? 'active' : ''}`}
+                onClick={() => switchTab('rank')}
+              >
+                {activeTab === 'rank' && <span className="nav-top-indicator" aria-hidden="true" />}
+                <Trophy size={18} strokeWidth={1.9} />
+                <span>Rank</span>
+              </button>
+            </nav>
+          )
+        })()}
   </div>
 
 
