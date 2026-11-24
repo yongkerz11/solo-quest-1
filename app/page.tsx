@@ -4192,9 +4192,9 @@ export default function Page() {
     }
   }, [])
 
-  // Pause Lenis & lock background scroll when Top Transaction Drawer / Sheet / Nav Menu is open
+  // Pause Lenis & lock background scroll when Top Transaction Drawer / Sheet / Nav Menu / Settings Modal is open
   useEffect(() => {
-    const shouldLock = Boolean(activeFinanceSheet || isNavAddMenuOpen)
+    const shouldLock = Boolean(activeFinanceSheet || isNavAddMenuOpen || isPreferencesModalOpen)
     if (shouldLock) {
       lenisRef.current?.stop()
       document.documentElement.style.overflow = 'hidden'
@@ -4209,7 +4209,7 @@ export default function Page() {
       document.documentElement.style.overflow = ''
       document.body.style.overflow = ''
     }
-  }, [activeFinanceSheet, isNavAddMenuOpen])
+  }, [activeFinanceSheet, isNavAddMenuOpen, isPreferencesModalOpen])
 
   // Cleanup live flip interval & camera stream on unmount or leave photos subpage
   useEffect(() => {
@@ -9637,30 +9637,6 @@ export default function Page() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={() => {
-                setPrefUsername(currentUser.username)
-                setIsPreferencesModalOpen(true)
-              }}
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '9px',
-                width: '30px',
-                height: '30px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#cbd5e1',
-                cursor: 'pointer',
-              }}
-              title="Pengaturan Hunter & Gaya Tombol"
-              aria-label="Pengaturan"
-            >
-              <Settings size={14} />
-            </button>
-
             {isFinanceViewOnly ? (
               <span
                 style={{
@@ -21792,32 +21768,57 @@ export default function Page() {
           MODAL 6: SETTINGS & HUNTER PREFERENCES (PENGATURAN HUNTER)
          ================================================================ */}
       {isPreferencesModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsPreferencesModalOpen(false)}>
+        <div
+          className="modal-overlay"
+          data-lenis-prevent
+          onClick={() => setIsPreferencesModalOpen(false)}
+          style={{
+            background: 'rgba(2, 5, 13, 0.82)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            padding: '16px 12px',
+          }}
+        >
           <div
             className="modal-content"
-            style={{ maxWidth: '400px' }}
+            data-lenis-prevent
+            onWheel={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '410px',
+              width: '100%',
+              maxHeight: '86vh',
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
+              background:
+                'linear-gradient(168deg, rgba(16, 25, 46, 0.96) 0%, rgba(8, 13, 26, 0.98) 60%, rgba(5, 9, 19, 0.99) 100%)',
+              border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.34)`,
+              borderRadius: '22px',
+              boxShadow: `0 26px 65px -10px rgba(0, 0, 0, 0.92), 0 0 28px -12px ${currentRankTier.glowColor}, inset 0 1px 0 rgba(255, 255, 255, 0.12)`,
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div
                   style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: 'rgba(168, 85, 247, 0.15)',
-                    border: '1px solid #7c3aed',
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '10px',
+                    background: `rgba(${currentRankTier.primaryRgb}, 0.15)`,
+                    border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.45)`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    boxShadow: `0 0 14px -4px ${currentRankTier.glowColor}`,
                   }}
                 >
-                  <Sliders size={18} color="#c084fc" />
+                  <Sliders size={17} color={currentRankTier.primaryColor} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0 }}>PENGATURAN HUNTER</h3>
-                  <p style={{ margin: 0, fontSize: '11px', color: '#8e84a2' }}>
+                  <h3 style={{ margin: 0, color: '#ffffff' }}>PENGATURAN HUNTER</h3>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>
                     Konfigurasi profil dan preferensi sistem
                   </p>
                 </div>
@@ -21827,18 +21828,29 @@ export default function Page() {
                 className="modal-close"
                 onClick={() => setIsPreferencesModalOpen(false)}
                 aria-label="Tutup modal"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.10)',
+                  borderRadius: '999px',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#cbd5e1',
+                }}
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleSavePreferences}>
-              {/* Profile Card Info */}
+              {/* Profile Card Info (Synced to Rank Tier) */}
               <div
                 style={{
-                  background: '#0d091a',
-                  border: '1px solid #342452',
-                  borderRadius: '12px',
+                  background: 'rgba(5, 9, 20, 0.78)',
+                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.24)`,
+                  borderRadius: '14px',
                   padding: '12px',
                   marginBottom: '14px',
                   display: 'flex',
@@ -21850,33 +21862,35 @@ export default function Page() {
                   style={{
                     width: '42px',
                     height: '42px',
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #7c3aed, #2563eb)',
+                    borderRadius: '11px',
+                    background: `linear-gradient(135deg, ${currentRankTier.secondaryColor}, ${currentRankTier.primaryColor})`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#fff',
-                    fontWeight: 800,
+                    fontWeight: 900,
                     fontSize: '16px',
-                    boxShadow: '0 0 15px rgba(124, 58, 237, 0.5)',
+                    boxShadow: `0 0 16px -2px ${currentRankTier.glowColor}`,
                   }}
                 >
                   {currentUser.username.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#f3f1ff' }}>
+                  <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#f8fafc' }}>
                     {currentUser.username}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#a79abf' }}>
+                  <div style={{ fontSize: '11px', color: currentRankTier.highlightColor, fontWeight: 700 }}>
                     Rank {currentRank} • Level {currentLevel} • {effectiveXp.toLocaleString('id-ID')} XP
                   </div>
-                  <div style={{ fontSize: '10px', color: '#6e6284', marginTop: '2px' }}>
+                  <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>
                     {currentUser.email}
                   </div>
                 </div>
               </div>
 
-              <label className="modal-label">NAMA HUNTER</label>
+              <label className="modal-label" style={{ color: currentRankTier.primaryColor }}>
+                NAMA HUNTER
+              </label>
               <input
                 type="text"
                 className="modal-input"
@@ -21884,15 +21898,22 @@ export default function Page() {
                 value={prefUsername}
                 onChange={(e) => setPrefUsername(e.target.value)}
                 required
+                style={{
+                  background: 'rgba(5, 9, 20, 0.82)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  color: '#ffffff',
+                }}
               />
 
-              <label className="modal-label">SISTEM & NOTIFIKASI</label>
+              <label className="modal-label" style={{ color: currentRankTier.primaryColor }}>
+                SISTEM &amp; NOTIFIKASI
+              </label>
               <div
                 style={{
-                  background: '#0d091a',
-                  border: '1px solid #342452',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
+                  background: 'rgba(5, 9, 20, 0.78)',
+                  border: '1px solid rgba(255, 255, 255, 0.10)',
+                  borderRadius: '14px',
+                  padding: '12px',
                   marginBottom: '16px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -21906,7 +21927,8 @@ export default function Page() {
                     justifyContent: 'space-between',
                     cursor: 'pointer',
                     fontSize: '12px',
-                    color: '#d1c4e9',
+                    color: '#e2e8f0',
+                    fontWeight: 600,
                   }}
                 >
                   <span>Pengingat Quest Harian</span>
@@ -21922,10 +21944,10 @@ export default function Page() {
                         void disableBackgroundPush()
                       }
                     }}
-                    style={{ accentColor: '#9333ea', cursor: 'pointer' }}
+                    style={{ accentColor: currentRankTier.primaryColor, cursor: 'pointer' }}
                   />
                 </label>
-                <div style={{ height: '1px', background: '#24193d' }} />
+                <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
                 <label
                   style={{
                     display: 'flex',
@@ -21933,7 +21955,8 @@ export default function Page() {
                     justifyContent: 'space-between',
                     cursor: 'pointer',
                     fontSize: '12px',
-                    color: '#d1c4e9',
+                    color: '#e2e8f0',
+                    fontWeight: 600,
                   }}
                 >
                   <span>Efek Suara Awakening &amp; Quest</span>
@@ -21941,24 +21964,24 @@ export default function Page() {
                     type="checkbox"
                     checked={prefSound}
                     onChange={(e) => setPrefSound(e.target.checked)}
-                    style={{ accentColor: '#9333ea', cursor: 'pointer' }}
+                    style={{ accentColor: currentRankTier.primaryColor, cursor: 'pointer' }}
                   />
                 </label>
-                <div style={{ height: '1px', background: '#24193d' }} />
+                <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
                 <div
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '8px',
-                    background: 'rgba(18, 13, 34, 0.9)',
+                    background: 'rgba(11, 18, 34, 0.85)',
                     border: `1px solid ${
                       pushStatus === 'active'
-                        ? 'rgba(34, 197, 94, 0.35)'
+                        ? 'rgba(34, 197, 94, 0.38)'
                         : pushStatus === 'denied' || pushStatus === 'needs-pwa'
-                          ? 'rgba(245, 158, 11, 0.35)'
-                          : 'rgba(139, 92, 246, 0.25)'
+                          ? 'rgba(245, 158, 11, 0.38)'
+                          : `rgba(${currentRankTier.primaryRgb}, 0.28)`
                     }`,
-                    borderRadius: '8px',
+                    borderRadius: '11px',
                     padding: '10px',
                   }}
                 >
@@ -21970,7 +21993,7 @@ export default function Page() {
                       gap: '8px',
                     }}
                   >
-                    <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#e9d5ff' }}>
+                    <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#f8fafc' }}>
                       Notifikasi Saat App Ditutup
                     </span>
                     <span
@@ -21984,19 +22007,19 @@ export default function Page() {
                             ? 'rgba(34, 197, 94, 0.16)'
                             : pushStatus === 'denied' || pushStatus === 'needs-pwa'
                               ? 'rgba(245, 158, 11, 0.16)'
-                              : 'rgba(139, 92, 246, 0.16)',
+                              : `rgba(${currentRankTier.primaryRgb}, 0.16)`,
                         color:
                           pushStatus === 'active'
                             ? '#86efac'
                             : pushStatus === 'denied' || pushStatus === 'needs-pwa'
                               ? '#fcd34d'
-                              : '#c4b5fd',
+                              : currentRankTier.highlightColor,
                         border: `1px solid ${
                           pushStatus === 'active'
                             ? 'rgba(34, 197, 94, 0.35)'
                             : pushStatus === 'denied' || pushStatus === 'needs-pwa'
                               ? 'rgba(245, 158, 11, 0.35)'
-                              : 'rgba(139, 92, 246, 0.32)'
+                              : `rgba(${currentRankTier.primaryRgb}, 0.38)`
                         }`,
                       }}
                     >
@@ -22013,7 +22036,7 @@ export default function Page() {
                                 : 'Belum Aktif'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#a594c7', lineHeight: 1.45 }}>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.45 }}>
                     {pushStatusNote
                       ? pushStatusNote
                       : pushStatus === 'active'
@@ -22028,17 +22051,17 @@ export default function Page() {
                       style={{
                         width: '100%',
                         padding: '8px 10px',
-                        borderRadius: '8px',
+                        borderRadius: '9px',
                         background:
                           pushStatus === 'active'
                             ? 'rgba(34, 197, 94, 0.15)'
-                            : 'linear-gradient(135deg, rgba(124, 58, 237, 0.34), rgba(168, 85, 247, 0.24))',
+                            : `rgba(${currentRankTier.primaryRgb}, 0.18)`,
                         border: `1px solid ${
                           pushStatus === 'active'
                             ? 'rgba(34, 197, 94, 0.42)'
-                            : 'rgba(167, 139, 250, 0.5)'
+                            : `rgba(${currentRankTier.primaryRgb}, 0.48)`
                         }`,
-                        color: pushStatus === 'active' ? '#bbf7d0' : '#f3e8ff',
+                        color: pushStatus === 'active' ? '#bbf7d0' : currentRankTier.highlightColor,
                         fontSize: '11.5px',
                         fontWeight: 700,
                         display: 'flex',
@@ -22049,7 +22072,10 @@ export default function Page() {
                         opacity: isSubscribingPush ? 0.7 : 1,
                       }}
                     >
-                      <CheckCircle2 size={13} color={pushStatus === 'active' ? '#4ade80' : '#c4b5fd'} />
+                      <CheckCircle2
+                        size={13}
+                        color={pushStatus === 'active' ? '#4ade80' : currentRankTier.primaryColor}
+                      />
                       <span>
                         {isSubscribingPush
                           ? 'Menghubungkan Perangkat...'
@@ -22067,10 +22093,10 @@ export default function Page() {
                           style={{
                             width: '100%',
                             padding: '7px 10px',
-                            borderRadius: '8px',
-                            background: 'rgba(139, 92, 246, 0.16)',
-                            border: '1px solid rgba(139, 92, 246, 0.42)',
-                            color: '#e9d5ff',
+                            borderRadius: '9px',
+                            background: `rgba(${currentRankTier.primaryRgb}, 0.15)`,
+                            border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.4)`,
+                            color: currentRankTier.highlightColor,
                             fontSize: '11px',
                             fontWeight: 700,
                             display: 'flex',
@@ -22081,7 +22107,7 @@ export default function Page() {
                             opacity: isSendingTestPush ? 0.7 : 1,
                           }}
                         >
-                          <Bell size={12} color="#c4b5fd" />
+                          <Bell size={12} color={currentRankTier.primaryColor} />
                           <span>
                             {isSendingTestPush
                               ? 'Mengirim Test Push...'
@@ -22095,10 +22121,10 @@ export default function Page() {
                           style={{
                             width: '100%',
                             padding: '7px 10px',
-                            borderRadius: '8px',
-                            background: 'rgba(56, 189, 248, 0.12)',
-                            border: '1px solid rgba(56, 189, 248, 0.35)',
-                            color: '#bae6fd',
+                            borderRadius: '9px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.14)',
+                            color: '#e2e8f0',
                             fontSize: '11px',
                             fontWeight: 700,
                             display: 'flex',
@@ -22109,17 +22135,17 @@ export default function Page() {
                             opacity: isSendingTestPush ? 0.7 : 1,
                           }}
                         >
-                          <Clock size={12} color="#7dd3fc" />
+                          <Clock size={12} color={currentRankTier.primaryColor} />
                           <span>Simulasi Test Tutup App (5 Detik)</span>
                         </button>
-                        <div style={{ fontSize: '10.5px', color: '#8f7eb5', lineHeight: 1.4 }}>
-                          Tombol biru hanya simulasi 5 detik. Untuk quest asli, server otomatis menjadwalkan pengingat sesuai jam quest dan tetap mengirim notif walau aplikasi &amp; seluruh tab ditutup total.
+                        <div style={{ fontSize: '10.5px', color: '#94a3b8', lineHeight: 1.4 }}>
+                          Tombol simulasi 5 detik untuk uji cepat. Untuk quest asli, server otomatis menjadwalkan pengingat sesuai jam quest dan tetap mengirim notif walau aplikasi &amp; seluruh tab ditutup total.
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
-                <div style={{ height: '1px', background: '#24193d' }} />
+                <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
                 <button
                   type="button"
                   onClick={() => {
@@ -22149,10 +22175,10 @@ export default function Page() {
                   style={{
                     width: '100%',
                     padding: '8px 10px',
-                    borderRadius: '8px',
-                    background: 'rgba(124, 58, 237, 0.16)',
-                    border: '1px solid rgba(139, 92, 246, 0.34)',
-                    color: '#ddd6fe',
+                    borderRadius: '9px',
+                    background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                    border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.36)`,
+                    color: currentRankTier.highlightColor,
                     fontSize: '11.5px',
                     fontWeight: 700,
                     display: 'flex',
@@ -22162,30 +22188,32 @@ export default function Page() {
                     cursor: 'pointer',
                   }}
                 >
-                  <Bell size={13} color="#a78bfa" />
+                  <Bell size={13} color={currentRankTier.primaryColor} />
                   <span>Test Animasi &amp; Suara Pop-Up Quest</span>
                 </button>
               </div>
 
-              <label className="modal-label">GAYA TOMBOL FINANCE VAULT</label>
+              <label className="modal-label" style={{ color: currentRankTier.primaryColor }}>
+                GAYA TOMBOL FINANCE VAULT
+              </label>
               <div
                 style={{
-                  background: '#0d091a',
-                  border: '1px solid #342452',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
+                  background: 'rgba(5, 9, 20, 0.78)',
+                  border: '1px solid rgba(255, 255, 255, 0.10)',
+                  borderRadius: '14px',
+                  padding: '12px',
                   marginBottom: '16px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
                 }}
               >
-                <div style={{ fontSize: '11px', color: '#a79abf', marginBottom: '2px' }}>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>
                   Pilih gaya tombol morphing di Finance Vault:
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
                   {[
-                    { id: 'portal', label: '1. Portal Orb (Aktif)' },
+                    { id: 'portal', label: '1. Portal Orb' },
                     { id: 'split', label: '2. Split Liquid Pill' },
                     { id: 'mecha', label: '3. Mecha Wing' },
                     { id: 'island', label: '4. Dynamic Island' },
@@ -22198,15 +22226,20 @@ export default function Page() {
                         type="button"
                         onClick={() => updateFinanceFabStyle(st.id as any)}
                         style={{
-                          padding: '7px 9px',
-                          borderRadius: '8px',
-                          border: isSelected ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
-                          background: isSelected ? 'rgba(168, 85, 247, 0.22)' : 'rgba(255,255,255,0.03)',
-                          color: isSelected ? '#f3e8ff' : '#94a3b8',
+                          padding: '8px 9px',
+                          borderRadius: '10px',
+                          border: isSelected
+                            ? `1px solid ${currentRankTier.primaryColor}`
+                            : '1px solid rgba(255,255,255,0.1)',
+                          background: isSelected
+                            ? `rgba(${currentRankTier.primaryRgb}, 0.2)`
+                            : 'rgba(255,255,255,0.03)',
+                          color: isSelected ? currentRankTier.highlightColor : '#cbd5e1',
                           fontSize: '11px',
                           fontWeight: 700,
                           cursor: 'pointer',
                           textAlign: 'center',
+                          boxShadow: isSelected ? `0 0 14px -6px ${currentRankTier.glowColor}` : 'none',
                           transition: 'all 0.15s ease',
                         }}
                       >
@@ -22222,10 +22255,25 @@ export default function Page() {
                   type="button"
                   className="btn-secondary"
                   onClick={() => setIsPreferencesModalOpen(false)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#e2e8f0',
+                  }}
                 >
                   Batal
                 </button>
-                <button type="submit" className="btn-primary">
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{
+                    background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
+                    color: '#030712',
+                    fontWeight: 900,
+                    border: 'none',
+                    boxShadow: `0 10px 24px -6px ${currentRankTier.glowColor}`,
+                  }}
+                >
                   Simpan Pengaturan
                 </button>
               </div>
