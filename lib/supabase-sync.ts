@@ -36,6 +36,7 @@ export interface PersonalTask {
   targetTime?: string
   completedDates?: string[]
   skippedDates?: string[]
+  isSealed?: boolean
   workoutExercises?: WorkoutExercise[]
 }
 
@@ -45,7 +46,8 @@ function encodeScheduleForCloud(task: PersonalTask): string[] {
       typeof s === 'string' &&
       !s.startsWith('time:') &&
       !s.startsWith('skip:') &&
-      !s.startsWith('unskip:')
+      !s.startsWith('unskip:') &&
+      !s.startsWith('sealed:')
   )
   const skipTags = (task.skippedDates || []).map((d) =>
     d.startsWith('unskip:') ? d : `skip:${d}`
@@ -53,6 +55,7 @@ function encodeScheduleForCloud(task: PersonalTask): string[] {
   return [
     ...cleanSchedule,
     ...(task.targetTime ? [`time:${task.targetTime}`] : []),
+    ...(task.isSealed ? ['sealed:true'] : []),
     ...skipTags,
   ]
 }
@@ -108,12 +111,14 @@ export async function fetchCloudQuests(
         (s: string) => typeof s === 'string' && (s.startsWith('skip:') || s.startsWith('unskip:'))
       )
       const skippedDatesFromSchedule = skipTags.map((s: string) => s.replace(/^skip:/, ''))
+      const isSealed = rawSchedule.includes('sealed:true')
       const cleanSchedule = rawSchedule.filter(
         (s: string) =>
           typeof s === 'string' &&
           !s.startsWith('time:') &&
           !s.startsWith('skip:') &&
-          !s.startsWith('unskip:')
+          !s.startsWith('unskip:') &&
+          !s.startsWith('sealed:')
       )
 
       return {
@@ -128,6 +133,7 @@ export async function fetchCloudQuests(
         targetTime: row.target_time || targetTimeFromSchedule || undefined,
         completedDates: Array.isArray(row.completed_dates) ? row.completed_dates : [],
         skippedDates: skippedDatesFromSchedule,
+        isSealed,
         workoutExercises: Array.isArray(row.workout_exercises) ? row.workout_exercises : [],
       }
     })

@@ -106,6 +106,7 @@ export async function scheduleUpcomingQuestWorkflows(options?: {
     for (const dayInfo of candidateDays) {
       for (const q of userQuests) {
         const rawSchedule = Array.isArray(q.schedule) ? q.schedule : []
+        if (rawSchedule.includes('sealed:true')) continue
         const timeTag = rawSchedule.find((s) => typeof s === 'string' && s.startsWith('time:'))
         const targetTime = timeTag ? timeTag.replace('time:', '') : undefined
         if (!targetTime || parseHHMM(targetTime) === null) continue
@@ -115,7 +116,8 @@ export async function scheduleUpcomingQuestWorkflows(options?: {
             typeof s === 'string' &&
             !s.startsWith('time:') &&
             !s.startsWith('skip:') &&
-            !s.startsWith('unskip:')
+            !s.startsWith('unskip:') &&
+            !s.startsWith('sealed:')
         )
         const isScheduledDay =
           daySchedule.length === 0 ||

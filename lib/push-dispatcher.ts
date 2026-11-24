@@ -379,6 +379,7 @@ export async function dispatchDueQuestNotifications(): Promise<{
     for (const q of userQuests) {
       if (subExpired) break
       const rawSchedule = Array.isArray(q.schedule) ? q.schedule : []
+      if (rawSchedule.includes('sealed:true')) continue
       const timeTag = rawSchedule.find((s) => typeof s === 'string' && s.startsWith('time:'))
       const targetTime = timeTag ? timeTag.replace('time:', '') : undefined
       const targetMinutes = parseHHMM(targetTime)
@@ -393,7 +394,8 @@ export async function dispatchDueQuestNotifications(): Promise<{
           typeof s === 'string' &&
           !s.startsWith('time:') &&
           !s.startsWith('skip:') &&
-          !s.startsWith('unskip:')
+          !s.startsWith('unskip:') &&
+          !s.startsWith('sealed:')
       )
       const isToday =
         daySchedule.length === 0 ||

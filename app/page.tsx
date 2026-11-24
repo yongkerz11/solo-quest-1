@@ -131,6 +131,7 @@ interface PersonalTask {
   targetTime?: string
   completedDates?: string[]
   skippedDates?: string[]
+  isSealed?: boolean
   workoutExercises?: WorkoutExercise[]
 }
 
@@ -843,6 +844,7 @@ function QuestCard({
   onOpenWorkout,
   onToggle,
   onSkip,
+  onSeal,
   onInfo,
   onEdit,
   onDelete,
@@ -870,6 +872,7 @@ function QuestCard({
   onOpenWorkout?: () => void
   onToggle: () => void
   onSkip?: () => void
+  onSeal?: () => void
   onInfo?: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -894,7 +897,7 @@ function QuestCard({
     setIsMenuOpen(true)
   }
 
-  const hasMenuOptions = Boolean(onInfo || onSkip || (isGym && onOpenWorkout) || (canManage && (onEdit || onDelete)))
+  const hasMenuOptions = Boolean(onInfo || onSkip || onSeal || (isGym && onOpenWorkout) || (canManage && (onEdit || onDelete)))
 
   const handleClearHold = () => {
     if (timerRef.current) {
@@ -2120,6 +2123,38 @@ function QuestCard({
               </button>
             )}
 
+            {/* Opsi Seal Quest (Segel sementara tanpa hapus XP & riwayat) */}
+            {canManage && onSeal && (
+              <button
+                type="button"
+                onClick={() => {
+                  closeMenu()
+                  onSeal()
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 10px',
+                  borderRadius: '8px',
+                  background: 'transparent',
+                  border: 0,
+                  color: '#ddd6fe',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#251745')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <Lock size={14} color="#a78bfa" />
+                <span>Seal Quest (Segel)</span>
+              </button>
+            )}
+
             {/* Opsi 2: Edit Quest */}
             {canManage && onEdit && (
               <button
@@ -2228,6 +2263,7 @@ export default function Page() {
   const [expandedHistoryIds, setExpandedHistoryIds] = useState<string[]>([])
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
   const [showCompletedDayQuests, setShowCompletedDayQuests] = useState<boolean>(false)
+  const [showSealedQuests, setShowSealedQuests] = useState<boolean>(false)
 
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
@@ -3397,8 +3433,10 @@ export default function Page() {
       (currentUser.username && (t.userId === currentUser.username || t.id.includes(currentUser.username))) ||
       (!t.userId && currentUser.username === 'yongzz')
   )
-  const todayPersonalTasks = userPersonalTasks.filter((t) => isQuestForToday(t.schedule))
-  const upcomingPersonalTasks = userPersonalTasks.filter((t) => !isQuestForToday(t.schedule))
+  const sealedPersonalTasks = userPersonalTasks.filter((t) => Boolean(t.isSealed))
+  const activeSchedulePersonalTasks = userPersonalTasks.filter((t) => !t.isSealed)
+  const todayPersonalTasks = activeSchedulePersonalTasks.filter((t) => isQuestForToday(t.schedule))
+  const upcomingPersonalTasks = activeSchedulePersonalTasks.filter((t) => !isQuestForToday(t.schedule))
   // Sumber kebenaran penyelesaian HARI INI adalah completedDates.includes(todayIsoStr), BUKAN boolean t.done yang bisa tertinggal dari kemarin
   const completedPersonalCount = userPersonalTasks.filter((t) => Boolean(t.completedDates?.includes(todayIsoStr))).length
   const completedTodayPersonalCount = todayPersonalTasks.filter((t) => Boolean(t.completedDates?.includes(todayIsoStr))).length
@@ -3675,6 +3713,7 @@ export default function Page() {
       const isFuture = isoDate > todayIso
 
       const scheduledTasks = userPersonalTasks.filter((t) => {
+        if (t.isSealed) return false
         if (!t.schedule || t.schedule.length === 0 || t.schedule.includes('Everyday')) return true
         return t.schedule.includes(item.code)
       })
@@ -5594,6 +5633,274 @@ export default function Page() {
     setPersonalTasks((curr) => curr.filter((t) => t.id !== taskId))
     deleteCloudQuest(taskId)
     showToast('Quest pribadi dihapus.')
+  }
+
+  const handleToggleSealPersonal = (taskId: string) => {
+    const target = personalTasks.find((t) => t.id === taskId)
+    if (!target) return
+    const nextSealed = !Boolean(target.isSealed)
+    const updatedTask: PersonalTask = { ...target, isSealed: nextSealed }
+    setPersonalTasks((curr) => curr.map((t) => (t.id === taskId ? updatedTask : t)))
+    if (nextSealed && arrivedQuestAlert?.id === taskId) {
+      setArrivedQuestAlert(null)
+    }
+    void saveCloudQuest(updatedTask, currentUser.username).then(() => {
+      if (!nextSealed && updatedTask.targetTime) {
+        void fetch('/api/push/schedule', {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            username: currentUser.username,
+          }),
+        }).catch(() => {})
+      }
+    })
+    showToast(
+      nextSealed
+        ? `"${target.title}" disegel ke Sealed Quests (XP & riwayat tetap aman).`
+        : `"${target.title}" dibangkitkan (Awaken) ke jadwal aktif!`
+    )
+  }
+
+  const renderSealedQuestsDrawer = (compact = false) => {
+    if (sealedPersonalTasks.length === 0) return null
+    return (
+      <div
+        style={{
+          marginTop: compact ? '8px' : '12px',
+          borderRadius: '12px',
+          background: 'rgba(8, 10, 20, 0.85)',
+          border: '1px solid rgba(139, 92, 246, 0.24)',
+          overflow: 'visible',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setShowSealedQuests((prev) => !prev)}
+          style={{
+            width: '100%',
+            padding: compact ? '8px 10px' : '10px 14px',
+            background: 'transparent',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            color: '#d8b4fe',
+            fontSize: compact ? '10px' : '11.5px',
+            fontWeight: 800,
+            letterSpacing: '0.02em',
+          }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+            <span
+              style={{
+                width: compact ? '18px' : '22px',
+                height: compact ? '18px' : '22px',
+                borderRadius: '6px',
+                background: 'rgba(139, 92, 246, 0.16)',
+                border: '1px solid rgba(168, 85, 247, 0.35)',
+                color: '#c084fc',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Lock size={compact ? 10 : 12} />
+            </span>
+            <span>SEALED QUESTS • {sealedPersonalTasks.length} Disegel</span>
+          </span>
+          <span
+            style={{
+              fontSize: '9.5px',
+              fontWeight: 800,
+              color: currentRankTier.primaryColor,
+              padding: '2px 8px',
+              borderRadius: '999px',
+              background: 'rgba(255, 255, 255, 0.06)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+            }}
+          >
+            <span>{showSealedQuests ? 'Tutup' : 'Lihat'}</span>
+            {showSealedQuests ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+          </span>
+        </button>
+
+        {showSealedQuests && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr)',
+              gap: '6px',
+              padding: compact ? '0 8px 8px' : '0 10px 10px',
+              borderTop: '1px solid rgba(139, 92, 246, 0.16)',
+              paddingTop: '8px',
+            }}
+          >
+            {sealedPersonalTasks.map((task) => {
+              const scheduleLabel =
+                task.schedule && task.schedule.length > 0
+                  ? task.schedule.includes('Everyday')
+                    ? 'Everyday'
+                    : task.schedule.join(', ')
+                  : 'Everyday'
+              return (
+                <div
+                  key={task.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    borderRadius: '10px',
+                    background: 'rgba(18, 14, 33, 0.88)',
+                    border: '1px solid rgba(139, 92, 246, 0.22)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                    <span
+                      style={{
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '7px',
+                        background: 'rgba(139, 92, 246, 0.14)',
+                        border: '1px solid rgba(168, 85, 247, 0.28)',
+                        color: '#c084fc',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        opacity: 0.85,
+                      }}
+                    >
+                      {renderCategoryIcon(task.category, 14)}
+                    </span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
+                        <strong
+                          style={{
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            color: '#e2d9f3',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {task.title}
+                        </strong>
+                        <span
+                          style={{
+                            fontSize: '8px',
+                            fontWeight: 800,
+                            letterSpacing: '0.06em',
+                            color: '#c4b5fd',
+                            background: 'rgba(124, 58, 237, 0.22)',
+                            border: '1px solid rgba(168, 85, 247, 0.4)',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            flexShrink: 0,
+                          }}
+                        >
+                          SEALED
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '9.5px',
+                          color: '#b8add1',
+                          marginTop: '1px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {task.category} • +{task.xp} XP • {scheduleLabel}
+                        {task.targetTime ? ` • ${task.targetTime}` : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSealPersonal(task.id)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '5px 9px',
+                        borderRadius: '7px',
+                        background: `linear-gradient(135deg, ${currentRankTier.secondaryColor}, ${currentRankTier.primaryColor})`,
+                        border: 'none',
+                        color: '#ffffff',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        boxShadow: `0 2px 10px ${currentRankTier.glowColor}`,
+                      }}
+                      title="Bangkitkan kembali ke jadwal aktif"
+                    >
+                      <Sparkles size={10} />
+                      <span>Awaken</span>
+                    </button>
+
+                    {!compact && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openEditPersonalModal(task)}
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '7px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            color: '#c084fc',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                          title="Edit Quest"
+                        >
+                          <Pencil size={11} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePersonal(task.id)}
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '7px',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.28)',
+                            color: '#fca5a5',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                          title="Hapus Quest Permanen"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
   }
 
   const handleDeleteHistoryItem = (questId: string, dateLabel: string, isoDate?: string) => {
@@ -13292,30 +13599,53 @@ export default function Page() {
                                         )}
 
                                         {!isDoneOnDay && (
-                                          <button
-                                            type="button"
-                                            onClick={() => handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)}
-                                            style={{
-                                              padding: '4px 7px',
-                                              borderRadius: '6px',
-                                              background: isSkipped ? 'rgba(244, 63, 94, 0.2)' : 'rgba(168, 85, 247, 0.12)',
-                                              border: isSkipped ? '1px solid rgba(251, 113, 133, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
-                                              color: isSkipped ? '#fecdd3' : '#e9d5ff',
-                                              fontSize: '9.5px',
-                                              fontWeight: 700,
-                                              cursor: 'pointer',
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '3px',
-                                            }}
-                                            title={
-                                              isSkipped
-                                                ? 'Batalkan status Skip agar quest bisa dikerjakan'
-                                                : 'Lewati quest (0 XP)'
-                                            }
-                                          >
-                                            <span>{isSkipped ? 'Batal' : 'Skip'}</span>
-                                          </button>
+                                          <>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)}
+                                              style={{
+                                                padding: '4px 7px',
+                                                borderRadius: '6px',
+                                                background: isSkipped ? 'rgba(244, 63, 94, 0.2)' : 'rgba(168, 85, 247, 0.12)',
+                                                border: isSkipped ? '1px solid rgba(251, 113, 133, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
+                                                color: isSkipped ? '#fecdd3' : '#e9d5ff',
+                                                fontSize: '9.5px',
+                                                fontWeight: 700,
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '3px',
+                                              }}
+                                              title={
+                                                isSkipped
+                                                  ? 'Batalkan status Skip agar quest bisa dikerjakan'
+                                                  : 'Lewati quest (0 XP)'
+                                              }
+                                            >
+                                              <span>{isSkipped ? 'Batal' : 'Skip'}</span>
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleToggleSealPersonal(task.id)}
+                                              style={{
+                                                padding: '4px 6px',
+                                                borderRadius: '6px',
+                                                background: 'rgba(255, 255, 255, 0.04)',
+                                                border: '1px solid rgba(168, 85, 247, 0.26)',
+                                                color: '#c4b5fd',
+                                                fontSize: '9.5px',
+                                                fontWeight: 700,
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                              }}
+                                              title="Seal Quest (Segel sementara tanpa hapus XP/riwayat)"
+                                              aria-label={`Seal ${task.title}`}
+                                            >
+                                              <Lock size={9} />
+                                            </button>
+                                          </>
                                         )}
                                       </>
                                     )}
@@ -13535,6 +13865,7 @@ export default function Page() {
                         </div>
                       )
                     })()}
+                    {renderSealedQuestsDrawer(true)}
                   </section>
                 </motion.div>
 
@@ -14315,6 +14646,7 @@ export default function Page() {
                         }}
                         onToggle={() => handleTogglePersonal(task.id)}
                         onSkip={() => handleSkipPersonal(task.id)}
+                        onSeal={() => handleToggleSealPersonal(task.id)}
                         onEdit={() => openEditPersonalModal(task)}
                         onDelete={() => handleDeletePersonal(task.id)}
                       />
@@ -14409,6 +14741,7 @@ export default function Page() {
                             )}
                           </div>
                         )}
+                        {renderSealedQuestsDrawer(false)}
                       </>
                     )
                   })()}
