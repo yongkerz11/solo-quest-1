@@ -2531,7 +2531,7 @@ export default function Page() {
   const [financeHistoryFilter, setFinanceHistoryFilter] = useState<'all' | 'income' | 'expense' | 'saving'>('all')
   const [financeParticles, setFinanceParticles] = useState<Array<{ id: string; text: string }>>([])
   const [financeLogType, setFinanceLogType] = useState<'saving' | 'expense' | 'income'>('saving')
-  const [financeAmountInput, setFinanceAmountInput] = useState<string>('50.000')
+  const [financeAmountInput, setFinanceAmountInput] = useState<string>('')
   const [isFinanceFabOpen, setIsFinanceFabOpen] = useState<boolean>(false)
   const [financeFabStyle, setFinanceFabStyle] = useState<'split' | 'portal' | 'mecha' | 'island' | 'arc'>(() => {
     if (typeof window !== 'undefined') {
@@ -5852,6 +5852,7 @@ export default function Page() {
       logs: [newLog, ...financeVault.logs].slice(0, 120),
     })
 
+    setFinanceAmountInput('')
     setFinanceNoteInput('')
     setActiveFinanceSheet(null)
     spawnFinanceParticle(`${financeLogType === 'expense' ? '-' : '+'}${formatRupiah(parsedAmount)}`)
@@ -8460,8 +8461,11 @@ export default function Page() {
                   <input
                     type="text"
                     inputMode="numeric"
-                    value={formatDigitsWithDots(financeAmountInput)}
-                    onChange={(e) => setFinanceAmountInput(formatDigitsWithDots(e.target.value))}
+                    value={financeAmountInput ? formatDigitsWithDots(financeAmountInput) : ''}
+                    onChange={(e) => {
+                      const digitsOnly = e.target.value.replace(/\D/g, '')
+                      setFinanceAmountInput(digitsOnly ? formatDigitsWithDots(digitsOnly) : '')
+                    }}
                     placeholder="50.000"
                     style={{
                       flex: 1,
@@ -21072,51 +21076,52 @@ export default function Page() {
             setActiveTab(tabKey)
           }
           return (
-            <nav className="bottom-nav" aria-label="Navigasi utama">
-              <button
-                type="button"
-                className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
-                onClick={() => switchTab('home')}
-              >
-                {activeTab === 'home' && <span className="nav-top-indicator" aria-hidden="true" />}
-                <Home size={18} strokeWidth={1.9} />
-                <span>Home</span>
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`}
-                onClick={() => switchTab('calendar')}
-              >
-                {activeTab === 'calendar' && <span className="nav-top-indicator" aria-hidden="true" />}
-                <CalendarDays size={18} strokeWidth={1.9} />
-                <span>My Quest</span>
-              </button>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <AnimatePresence>
-                  {isNavAddMenuOpen && (
-                    <>
-                      {/* Full-screen smoked backdrop to dismiss */}
-                      <motion.div
-                        key="nav-add-backdrop"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setIsNavAddMenuOpen(false)
-                        }}
-                        style={{
-                          position: 'fixed',
-                          inset: 0,
-                          background: 'rgba(2, 5, 14, 0.76)',
-                          backdropFilter: 'blur(4px)',
-                          WebkitBackdropFilter: 'blur(4px)',
-                          zIndex: 60,
-                        }}
-                      />
+            <>
+              {/* Full-screen smoked backdrop OUTSIDE .bottom-nav so it blurs the page, NOT the footer! */}
+              <AnimatePresence>
+                {isNavAddMenuOpen && (
+                  <motion.div
+                    key="nav-add-backdrop"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={() => setIsNavAddMenuOpen(false)}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      background: 'rgba(2, 5, 14, 0.72)',
+                      backdropFilter: 'blur(4px)',
+                      WebkitBackdropFilter: 'blur(4px)',
+                      zIndex: 48,
+                    }}
+                  />
+                )}
+              </AnimatePresence>
 
-                      {/* #4 MONO STACK — Dead-Center Smoked Glass Vertical Stack */}
+              <nav className="bottom-nav" aria-label="Navigasi utama">
+                <button
+                  type="button"
+                  className={`nav-item ${activeTab === 'home' ? 'active' : ''}`}
+                  onClick={() => switchTab('home')}
+                >
+                  {activeTab === 'home' && <span className="nav-top-indicator" aria-hidden="true" />}
+                  <Home size={18} strokeWidth={1.9} />
+                  <span>Home</span>
+                </button>
+                <button
+                  type="button"
+                  className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`}
+                  onClick={() => switchTab('calendar')}
+                >
+                  {activeTab === 'calendar' && <span className="nav-top-indicator" aria-hidden="true" />}
+                  <CalendarDays size={18} strokeWidth={1.9} />
+                  <span>My Quest</span>
+                </button>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AnimatePresence>
+                    {isNavAddMenuOpen && (
+                      /* #4 MONO STACK — Dead-Center Smoked Glass Vertical Stack */
                       <motion.div
                         key="nav-add-options"
                         initial={{ x: '-50%', opacity: 0 }}
@@ -21215,7 +21220,6 @@ export default function Page() {
                           <span>+ Quest Baru</span>
                         </motion.button>
                       </motion.div>
-                    </>
                   )}
                 </AnimatePresence>
 
@@ -21254,6 +21258,7 @@ export default function Page() {
                 <span>Rank</span>
               </button>
             </nav>
+            </>
           )
         })()}
   </div>
