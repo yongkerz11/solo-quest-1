@@ -5858,7 +5858,7 @@ export default function Page() {
     spawnFinanceParticle(`${financeLogType === 'expense' ? '-' : '+'}${formatRupiah(parsedAmount)}`)
 
     let completedNow = false
-    if (questId) {
+    if (financeLogType === 'saving' && questId) {
       const q = personalTasks.find((t) => t.id === questId)
       if (q && !q.completedDates?.includes(dateIso) && dateIso <= getLocalIsoDate()) {
         handleTogglePersonal(questId, dateIso)
@@ -8738,7 +8738,10 @@ export default function Page() {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => {
                     setIsTxSubDropdownOpen(false)
-                    handleAddFinanceLog(financeQuestForLog?.id, targetDateIso)
+                    handleAddFinanceLog(
+                      financeLogType === 'saving' ? financeQuestForLog?.id : undefined,
+                      targetDateIso
+                    )
                   }}
                   style={{
                     flexShrink: 0,
@@ -8755,7 +8758,7 @@ export default function Page() {
                   }}
                 >
                   Simpan
-                  {financeQuestForLog && !isQuestDoneOnDate && isTodayOrPast
+                  {financeLogType === 'saving' && financeQuestForLog && !isQuestDoneOnDate && isTodayOrPast
                     ? ` +${financeQuestForLog.xp || 15} XP`
                     : ''}
                 </motion.button>
