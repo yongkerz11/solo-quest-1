@@ -2545,6 +2545,7 @@ export default function Page() {
     return 'portal'
   })
   const [isNavAddMenuOpen, setIsNavAddMenuOpen] = useState<boolean>(false)
+  const [isTxSubDropdownOpen, setIsTxSubDropdownOpen] = useState<boolean>(false)
 
   const updateFinanceFabStyle = (style: 'split' | 'portal' | 'mecha' | 'island' | 'arc') => {
     setFinanceFabStyle(style)
@@ -8187,8 +8188,7 @@ export default function Page() {
   }
 
   const renderTransactionTopDrawer = () => {
-    if (activeFinanceSheet !== 'log') return null
-
+    const isOpen = activeFinanceSheet === 'log'
     const targetDateIso = activeFinanceQuest?.dateIso || getLocalIsoDate()
     const financeQuestForLog =
       currentFinanceQuest ||
@@ -8206,281 +8206,559 @@ export default function Page() {
     const parsedQuickAmount = parseFormattedDigits(financeAmountInput)
     const isTodayOrPast = targetDateIso <= getLocalIsoDate()
 
+    // Live projected remaining wallet balance for Schedule Glass badge
+    const activeMonthPrefix = targetDateIso.slice(0, 7)
+    const monthLogs = financeVault.logs.filter((l) => l.dateIso.startsWith(activeMonthPrefix))
+    const monthlyExtraIncome = monthLogs
+      .filter((l) => l.type === 'income')
+      .reduce((acc, l) => acc + l.amount, 0)
+    const monthlyExpenseTotal = monthLogs
+      .filter((l) => l.type === 'expense')
+      .reduce((acc, l) => acc + l.amount, 0)
+    const monthlySavedTotal = monthLogs
+      .filter((l) => l.type === 'saving')
+      .reduce((acc, l) => acc + l.amount, 0)
+    const currentDompet = Math.max(
+      0,
+      financeVault.monthlyIncome + monthlyExtraIncome - monthlyExpenseTotal - monthlySavedTotal
+    )
+    const projectedDompet =
+      financeLogType === 'income'
+        ? currentDompet + parsedQuickAmount
+        : Math.max(0, currentDompet - parsedQuickAmount)
+
+    const modeTokens = {
+      expense: {
+        label: 'Keluar',
+        color: '#fbbf24',
+        rgb: '251, 191, 36',
+        pillBg: 'rgba(245, 158, 11, 0.22)',
+        border: 'rgba(251, 191, 36, 0.58)',
+        text: '#fef3c7',
+        cta: 'linear-gradient(135deg, #f59e0b, #fde68a)',
+      },
+      income: {
+        label: 'Masuk',
+        color: '#38bdf8',
+        rgb: '56, 189, 248',
+        pillBg: 'rgba(56, 189, 248, 0.22)',
+        border: 'rgba(56, 189, 248, 0.58)',
+        text: '#e0f2fe',
+        cta: 'linear-gradient(135deg, #0ea5e9, #bae6fd)',
+      },
+      saving: {
+        label: 'Nabung',
+        color: '#34d399',
+        rgb: '52, 211, 153',
+        pillBg: 'rgba(16, 185, 129, 0.22)',
+        border: 'rgba(52, 211, 153, 0.58)',
+        text: '#d1fae5',
+        cta: 'linear-gradient(135deg, #10b981, #a7f3d0)',
+      },
+    } as const
+
+    const activeMode = modeTokens[financeLogType]
+    const selectedGoal =
+      financeVault.goals.find((g) => g.id === financeSelectedGoalId) || financeVault.goals[0] || null
+    const selectedBucket =
+      financeVault.buckets.find((b) => b.id === financeSelectedBucketId) || financeVault.buckets[0] || null
+    const showDropdown =
+      (financeLogType === 'saving' && financeVault.goals.length > 0) ||
+      (financeLogType === 'expense' && financeVault.buckets.length > 0)
+
+    const closeTopDrawer = () => {
+      setIsTxSubDropdownOpen(false)
+      setActiveFinanceSheet(null)
+    }
+
     return (
       <AnimatePresence>
-        <motion.div
-          key="finance-top-drawer-backdrop"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setActiveFinanceSheet(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.72)',
-            backdropFilter: 'blur(5px)',
-            WebkitBackdropFilter: 'blur(5px)',
-            zIndex: 88,
-          }}
-        />
-        <motion.div
-          key="finance-top-drawer-content"
-          initial={{ y: '-100%', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '-100%', opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: '50%',
-            x: '-50%',
-            width: '100%',
-            maxWidth: '480px',
-            maxHeight: '88vh',
-            overflowY: 'auto',
-            borderBottomLeftRadius: '24px',
-            borderBottomRightRadius: '24px',
-            borderBottom: '1px solid rgba(56, 189, 248, 0.28)',
-            borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-            borderTop: 'none',
-            background: '#090e1c',
-            padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px 20px',
-            zIndex: 90,
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.12)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}
-        >
-          {/* Header matching Image 3 */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <strong style={{ fontSize: '15px', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.01em' }}>
-              Catat Pemasukan / Pengeluaran
-            </strong>
-            <button
-              type="button"
-              onClick={() => setActiveFinanceSheet(null)}
+        {isOpen && (
+          <>
+            {/* Deep Smoked Backdrop */}
+            <motion.div
+              key="finance-top-drawer-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22 }}
+              onClick={closeTopDrawer}
               style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                padding: '4px 6px',
-              }}
-            >
-              Tutup
-            </button>
-          </div>
-
-          {/* 3 Tab Segment matching Image 3 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-            <button
-              type="button"
-              onClick={() => setFinanceLogType('expense')}
-              style={{
-                padding: '9px 6px',
-                borderRadius: '12px',
-                fontSize: '11px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                background: financeLogType === 'expense' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(255, 255, 255, 0.04)',
-                border: financeLogType === 'expense' ? '1.5px solid #fbbf24' : '1px solid rgba(255, 255, 255, 0.1)',
-                color: financeLogType === 'expense' ? '#fde68a' : '#cbd5e1',
-                transition: 'all 0.18s ease',
-              }}
-            >
-              - Keluar
-            </button>
-            <button
-              type="button"
-              onClick={() => setFinanceLogType('income')}
-              style={{
-                padding: '9px 6px',
-                borderRadius: '12px',
-                fontSize: '11px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                background: financeLogType === 'income' ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.04)',
-                border: financeLogType === 'income' ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
-                color: financeLogType === 'income' ? '#bae6fd' : '#cbd5e1',
-                transition: 'all 0.18s ease',
-              }}
-            >
-              + Pemasukan
-            </button>
-            <button
-              type="button"
-              onClick={() => setFinanceLogType('saving')}
-              style={{
-                padding: '9px 6px',
-                borderRadius: '12px',
-                fontSize: '11px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                background: financeLogType === 'saving' ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.04)',
-                border: financeLogType === 'saving' ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.1)',
-                color: financeLogType === 'saving' ? '#a7f3d0' : '#cbd5e1',
-                transition: 'all 0.18s ease',
-              }}
-            >
-              + Nabung
-            </button>
-          </div>
-
-          {/* Large Nominal Box matching Image 3 */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '8px 14px',
-              borderRadius: '14px',
-              background: '#04060e',
-              border: '1px solid rgba(255,255,255,0.15)',
-            }}
-          >
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#38bdf8' }}>Rp</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={formatDigitsWithDots(financeAmountInput)}
-              onChange={(e) => setFinanceAmountInput(formatDigitsWithDots(e.target.value))}
-              placeholder="50.000"
-              style={{
-                flex: 1,
-                minWidth: 0,
-                padding: '8px 0',
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                color: '#ffffff',
-                fontSize: '22px',
-                fontWeight: 900,
-                letterSpacing: '-0.02em',
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(2, 5, 13, 0.82)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                zIndex: 88,
               }}
             />
-          </div>
 
-          {/* Quick Amount Chips matching Image 3 */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {[20000, 50000, 100000, 250000, 500000].map((v) => {
-              const isSelected = parsedQuickAmount === v
-              return (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setFinanceAmountInput(formatDigitsWithDots(v))}
+            {/* #O SCHEDULE GLASS TOP SLIDE-DOWN DRAWER */}
+            <motion.div
+              key="finance-top-drawer-content"
+              initial={{ y: '-100%', x: '-50%', opacity: 0 }}
+              animate={{ y: 0, x: '-50%', opacity: 1 }}
+              exit={{ y: '-100%', x: '-50%', opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: '50%',
+                x: '-50%',
+                width: '100%',
+                maxWidth: '480px',
+                maxHeight: '88vh',
+                overflowY: 'auto',
+                borderBottomLeftRadius: '28px',
+                borderBottomRightRadius: '28px',
+                borderBottom: `1px solid rgba(${currentRankTier.primaryRgb}, 0.34)`,
+                borderLeft: '1px solid rgba(255, 255, 255, 0.09)',
+                borderRight: '1px solid rgba(255, 255, 255, 0.09)',
+                borderTop: 'none',
+                background:
+                  'linear-gradient(168deg, rgba(16, 25, 46, 0.94) 0%, rgba(8, 13, 26, 0.97) 58%, rgba(5, 9, 19, 0.98) 100%)',
+                backdropFilter: 'blur(24px) saturate(135%)',
+                WebkitBackdropFilter: 'blur(24px) saturate(135%)',
+                padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px 18px',
+                zIndex: 90,
+                boxShadow:
+                  '0 26px 65px -10px rgba(0, 0, 0, 0.92), inset 0 1px 0 rgba(255, 255, 255, 0.13)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              {/* Top Row matching Dashboard WEEKLY SCHEDULE */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <div>
+                  <div
+                    style={{
+                      fontSize: '9px',
+                      fontWeight: 800,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: currentRankTier.primaryColor,
+                    }}
+                  >
+                    QUICK LOG
+                  </div>
+                  <strong style={{ fontSize: '15px', fontWeight: 900, color: '#ffffff', lineHeight: 1.2 }}>
+                    Transaksi Cepat
+                  </strong>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '999px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.10)',
+                      color: '#e2e8f0',
+                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Sisa{' '}
+                    <span style={{ color: currentRankTier.highlightColor, fontWeight: 800 }}>
+                      {formatRupiah(projectedDompet)}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Tutup drawer transaksi"
+                    onClick={closeTopDrawer}
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '999px',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.11)',
+                      color: '#e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <X size={14} strokeWidth={2.4} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 3 Schedule-Tile Mode Cards (Matching Dashboard Day Tiles with Glowing Dot!) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {(['expense', 'income', 'saving'] as const).map((modeKey) => {
+                  const isActive = financeLogType === modeKey
+                  const mk = modeTokens[modeKey]
+                  return (
+                    <motion.button
+                      key={modeKey}
+                      type="button"
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => {
+                        setFinanceLogType(modeKey)
+                        setIsTxSubDropdownOpen(false)
+                      }}
+                      style={{
+                        borderRadius: '16px',
+                        padding: '9px 8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '5px',
+                        cursor: 'pointer',
+                        background: isActive ? mk.pillBg : 'rgba(255, 255, 255, 0.035)',
+                        border: isActive ? `1px solid ${mk.border}` : '1px solid rgba(255, 255, 255, 0.08)',
+                        boxShadow: isActive ? `0 0 18px -6px rgba(${mk.rgb}, 0.62)` : 'none',
+                        transition: 'background 0.18s ease, border-color 0.18s ease',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '11.5px',
+                          fontWeight: 900,
+                          color: isActive ? '#ffffff' : '#cbd5e1',
+                        }}
+                      >
+                        {mk.label}
+                      </span>
+                      <span
+                        style={{
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '999px',
+                          background: mk.color,
+                          opacity: isActive ? 1 : 0.35,
+                          boxShadow: isActive ? `0 0 8px ${mk.color}` : 'none',
+                        }}
+                      />
+                    </motion.button>
+                  )
+                })}
+              </div>
+
+              {/* Unified Smoked Input Card: Nominal + Real Dropdown + Quick Presets */}
+              <div
+                style={{
+                  borderRadius: '18px',
+                  background: 'rgba(5, 9, 20, 0.80)',
+                  border: '1px solid rgba(255, 255, 255, 0.10)',
+                  boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.45)',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                {/* Nominal Row */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 900, color: activeMode.color }}>Rp</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formatDigitsWithDots(financeAmountInput)}
+                    onChange={(e) => setFinanceAmountInput(formatDigitsWithDots(e.target.value))}
+                    placeholder="50.000"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      color: '#ffffff',
+                      fontSize: '25px',
+                      fontWeight: 900,
+                      letterSpacing: '-0.02em',
+                      fontVariantNumeric: 'tabular-nums',
+                      lineHeight: 1.1,
+                    }}
+                  />
+                </div>
+
+                {/* Real Smoked-Glass Dropdown Selector for Tujuan Nabung / Pos Pengeluaran */}
+                {showDropdown && (
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsTxSubDropdownOpen((prev) => !prev)}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        padding: '8px 11px',
+                        borderRadius: '12px',
+                        background: activeMode.pillBg,
+                        border: `1px solid ${activeMode.border}`,
+                        color: activeMode.text,
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          minWidth: 0,
+                        }}
+                      >
+                        <span style={{ opacity: 0.78, fontWeight: 700, flexShrink: 0 }}>
+                          {financeLogType === 'saving' ? 'Tujuan:' : 'Pos:'}
+                        </span>
+                        <span
+                          style={{
+                            color: '#ffffff',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {financeLogType === 'saving'
+                            ? selectedGoal?.title || 'Pilih tujuan tabungan'
+                            : selectedBucket?.name || 'Pilih pos pengeluaran'}
+                        </span>
+                      </div>
+                      <motion.span
+                        animate={{ rotate: isTxSubDropdownOpen ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                        style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+                      >
+                        <ChevronDown size={14} strokeWidth={2.5} />
+                      </motion.span>
+                    </button>
+
+                    <AnimatePresence>
+                      {isTxSubDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                          transition={{ duration: 0.18 }}
+                          style={{
+                            marginTop: '6px',
+                            borderRadius: '14px',
+                            background: 'rgba(10, 16, 32, 0.98)',
+                            border: '1px solid rgba(255, 255, 255, 0.14)',
+                            boxShadow: '0 14px 36px rgba(0, 0, 0, 0.75)',
+                            padding: '5px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '3px',
+                            maxHeight: '165px',
+                            overflowY: 'auto',
+                          }}
+                        >
+                          {financeLogType === 'saving'
+                            ? financeVault.goals.map((g) => {
+                                const isSel = (selectedGoal?.id || '') === g.id
+                                const pct = Math.min(
+                                  100,
+                                  Math.round((g.savedAmount / Math.max(1, g.targetAmount)) * 100)
+                                )
+                                return (
+                                  <button
+                                    key={g.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setFinanceSelectedGoalId(g.id)
+                                      setIsTxSubDropdownOpen(false)
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      gap: '8px',
+                                      padding: '8px 10px',
+                                      borderRadius: '10px',
+                                      border: isSel
+                                        ? `1px solid ${activeMode.border}`
+                                        : '1px solid transparent',
+                                      background: isSel ? activeMode.pillBg : 'transparent',
+                                      color: '#ffffff',
+                                      textAlign: 'left',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                      <div
+                                        style={{
+                                          fontSize: '11.5px',
+                                          fontWeight: 800,
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                      >
+                                        {g.title}
+                                      </div>
+                                      <div
+                                        style={{
+                                          fontSize: '9.5px',
+                                          color: '#94a3b8',
+                                          fontVariantNumeric: 'tabular-nums',
+                                        }}
+                                      >
+                                        {formatRupiah(g.savedAmount)} / {formatRupiah(g.targetAmount)} ({pct}%)
+                                      </div>
+                                    </div>
+                                    {isSel && <Check size={14} color={activeMode.color} strokeWidth={2.8} />}
+                                  </button>
+                                )
+                              })
+                            : financeVault.buckets.map((b) => {
+                                const isSel = (selectedBucket?.id || '') === b.id
+                                return (
+                                  <button
+                                    key={b.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setFinanceSelectedBucketId(b.id)
+                                      setIsTxSubDropdownOpen(false)
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      gap: '8px',
+                                      padding: '8px 10px',
+                                      borderRadius: '10px',
+                                      border: isSel
+                                        ? `1px solid ${activeMode.border}`
+                                        : '1px solid transparent',
+                                      background: isSel ? activeMode.pillBg : 'transparent',
+                                      color: '#ffffff',
+                                      textAlign: 'left',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                      <div
+                                        style={{
+                                          fontSize: '11.5px',
+                                          fontWeight: 800,
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                      >
+                                        {b.name}
+                                      </div>
+                                      <div
+                                        style={{
+                                          fontSize: '9.5px',
+                                          color: '#94a3b8',
+                                          fontVariantNumeric: 'tabular-nums',
+                                        }}
+                                      >
+                                        Batas {formatRupiah(b.targetMonthly)}/bln
+                                      </div>
+                                    </div>
+                                    {isSel && <Check size={14} color={activeMode.color} strokeWidth={2.8} />}
+                                  </button>
+                                )
+                              })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+
+                {/* Quick Amount Presets Inside Unified Card */}
+                <div
                   style={{
-                    padding: '6px 10px',
-                    borderRadius: '9px',
-                    background: isSelected ? 'rgba(56, 189, 248, 0.16)' : 'rgba(255, 255, 255, 0.04)',
-                    border: isSelected ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
-                    color: isSelected ? '#7dd3fc' : '#e2e8f0',
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(5, 1fr)',
+                    gap: '5px',
+                    paddingTop: '9px',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                   }}
                 >
-                  {formatRupiah(v)}
-                </button>
-              )
-            })}
-          </div>
+                  {[20000, 50000, 100000, 250000, 500000].map((v) => {
+                    const isSelected = parsedQuickAmount === v
+                    return (
+                      <motion.button
+                        key={v}
+                        type="button"
+                        whileTap={{ scale: 0.93 }}
+                        onClick={() => setFinanceAmountInput(formatDigitsWithDots(v))}
+                        style={{
+                          padding: '6px 2px',
+                          borderRadius: '9px',
+                          background: isSelected ? activeMode.pillBg : 'rgba(255, 255, 255, 0.04)',
+                          border: isSelected ? `1px solid ${activeMode.border}` : '1px solid transparent',
+                          color: isSelected ? activeMode.text : '#cbd5e1',
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          fontVariantNumeric: 'tabular-nums',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {v / 1000}rb
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              </div>
 
-          {/* Keterangan input matching Image 3 */}
-          <input
-            type="text"
-            value={financeNoteInput}
-            onChange={(e) => setFinanceNoteInput(e.target.value)}
-            placeholder="Keterangan (misal: Makan siang / Bonus)"
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: '12px',
-              background: '#04060e',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#ffffff',
-              fontSize: '12px',
-              outline: 'none',
-            }}
-          />
-
-          {/* Subcategory selectors if saving or expense */}
-          {financeLogType === 'saving' && financeVault.goals.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-              {financeVault.goals.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => setFinanceSelectedGoalId(g.id)}
+              {/* Bottom Row: Smoked Keterangan Input + Compact Mode-Glow Save CTA */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="text"
+                  value={financeNoteInput}
+                  onChange={(e) => setFinanceNoteInput(e.target.value)}
+                  placeholder="Catatan transaksi..."
                   style={{
-                    textAlign: 'left',
-                    padding: '8px 10px',
-                    borderRadius: '11px',
-                    background: financeSelectedGoalId === g.id ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.05)',
-                    border: financeSelectedGoalId === g.id ? '1px solid #34d399' : '1px solid rgba(255, 255, 255, 0.1)',
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '10px 12px',
+                    borderRadius: '13px',
+                    background: 'rgba(5, 9, 20, 0.80)',
+                    border: '1px solid rgba(255, 255, 255, 0.10)',
                     color: '#ffffff',
-                    fontSize: '10.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
+                    fontSize: '12px',
+                    outline: 'none',
                   }}
-                >
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.title}</div>
-                </button>
-              ))}
-            </div>
-          )}
-          {financeLogType === 'expense' && financeVault.buckets.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-              {financeVault.buckets.map((b) => (
-                <button
-                  key={b.id}
+                />
+                <motion.button
                   type="button"
-                  onClick={() => setFinanceSelectedBucketId(b.id)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setIsTxSubDropdownOpen(false)
+                    handleAddFinanceLog(financeQuestForLog?.id, targetDateIso)
+                  }}
                   style={{
-                    textAlign: 'left',
-                    padding: '8px 10px',
-                    borderRadius: '11px',
-                    background: financeSelectedBucketId === b.id ? 'rgba(245, 158, 11, 0.18)' : 'rgba(255, 255, 255, 0.05)',
-                    border: financeSelectedBucketId === b.id ? '1px solid #fbbf24' : '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#ffffff',
-                    fontSize: '10.5px',
-                    fontWeight: 700,
+                    flexShrink: 0,
+                    padding: '10px 16px',
+                    borderRadius: '13px',
+                    border: 'none',
+                    background: activeMode.cta,
+                    color: '#030712',
+                    fontSize: '12px',
+                    fontWeight: 900,
                     cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    boxShadow: `0 8px 22px -6px rgba(${activeMode.rgb}, 0.55)`,
                   }}
                 >
-                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Submit Action Button matching Image 3 */}
-          <button
-            type="button"
-            onClick={() => handleAddFinanceLog(financeQuestForLog?.id, targetDateIso)}
-            style={{
-              width: '100%',
-              padding: '13px',
-              borderRadius: '14px',
-              border: 'none',
-              background: '#38bdf8',
-              color: '#030712',
-              fontSize: '13.5px',
-              fontWeight: 900,
-              cursor: 'pointer',
-              boxShadow: '0 8px 24px -4px rgba(56, 189, 248, 0.4)',
-              transition: 'transform 0.12s ease',
-            }}
-          >
-            Simpan {parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}
-            {financeQuestForLog && !isQuestDoneOnDate && isTodayOrPast ? ` (+${financeQuestForLog.xp || 15} XP)` : ''}
-          </button>
-        </motion.div>
+                  Simpan
+                  {financeQuestForLog && !isQuestDoneOnDate && isTodayOrPast
+                    ? ` +${financeQuestForLog.xp || 15} XP`
+                    : ''}
+                </motion.button>
+              </div>
+            </motion.div>
+          </>
+        )}
       </AnimatePresence>
     )
   }
@@ -20817,12 +21095,13 @@ export default function Page() {
                 <AnimatePresence>
                   {isNavAddMenuOpen && (
                     <>
-                      {/* Full-screen backdrop to dismiss */}
+                      {/* Full-screen smoked backdrop to dismiss */}
                       <motion.div
                         key="nav-add-backdrop"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
                         onClick={(e) => {
                           e.stopPropagation()
                           setIsNavAddMenuOpen(false)
@@ -20830,127 +21109,111 @@ export default function Page() {
                         style={{
                           position: 'fixed',
                           inset: 0,
-                          background: 'rgba(0, 0, 0, 0.52)',
-                          backdropFilter: 'blur(3px)',
-                          WebkitBackdropFilter: 'blur(3px)',
+                          background: 'rgba(2, 5, 14, 0.76)',
+                          backdropFilter: 'blur(4px)',
+                          WebkitBackdropFilter: 'blur(4px)',
                           zIndex: 60,
                         }}
                       />
 
-                      {/* Monarch Dual-Blade Action Capsule (Dead-Center above Center Orb) */}
+                      {/* #4 MONO STACK — Dead-Center Smoked Glass Vertical Stack */}
                       <motion.div
                         key="nav-add-options"
-                        initial={{ x: '-50%', y: 14, scale: 0.88, opacity: 0 }}
-                        animate={{ x: '-50%', y: 0, scale: 1, opacity: 1 }}
-                        exit={{ x: '-50%', y: 10, scale: 0.88, opacity: 0 }}
-                        transition={{ type: 'spring', stiffness: 420, damping: 25 }}
+                        initial={{ x: '-50%', opacity: 0 }}
+                        animate={{ x: '-50%', opacity: 1 }}
+                        exit={{ x: '-50%', opacity: 0 }}
+                        transition={{ duration: 0.2 }}
                         style={{
                           position: 'absolute',
                           bottom: 'calc(100% + 18px)',
                           left: '50%',
                           x: '-50%',
-                          display: 'inline-flex',
+                          display: 'flex',
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '6px',
-                          padding: '5px 7px',
-                          borderRadius: '999px',
-                          background: 'rgba(6, 11, 23, 0.94)',
-                          border: '1.5px solid rgba(56, 189, 248, 0.4)',
-                          backdropFilter: 'blur(20px)',
-                          WebkitBackdropFilter: 'blur(20px)',
-                          boxShadow: '0 20px 45px rgba(0, 0, 0, 0.85), 0 0 28px rgba(56, 189, 248, 0.22)',
+                          gap: '8px',
                           zIndex: 65,
                           pointerEvents: 'auto',
-                          whiteSpace: 'nowrap',
                         }}
                       >
-                        {/* Option 1: Quest */}
+                        {/* Top Pill: Transaksi */}
                         <motion.button
                           type="button"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
+                          initial={{ y: 24, scale: 0.82, opacity: 0 }}
+                          animate={{ y: 0, scale: 1, opacity: 1 }}
+                          exit={{ y: 18, scale: 0.85, opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 420, damping: 26, delay: 0.04 }}
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.94 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setIsNavAddMenuOpen(false)
+                            setIsTxSubDropdownOpen(false)
+                            setActiveFinanceSheet('log')
+                          }}
+                          style={{
+                            width: '172px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '10px 18px',
+                            borderRadius: '999px',
+                            border: '1px solid rgba(255, 255, 255, 0.35)',
+                            background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
+                            color: '#030712',
+                            fontSize: '12px',
+                            fontWeight: 900,
+                            letterSpacing: '0.01em',
+                            boxShadow: `0 12px 28px -6px ${currentRankTier.glowColor}`,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <Wallet size={15} strokeWidth={2.4} />
+                          <span>Transaksi</span>
+                        </motion.button>
+
+                        {/* Bottom Pill: + Quest Baru */}
+                        <motion.button
+                          type="button"
+                          initial={{ y: 14, scale: 0.84, opacity: 0 }}
+                          animate={{ y: 0, scale: 1, opacity: 1 }}
+                          exit={{ y: 10, scale: 0.86, opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.94 }}
                           onClick={(e) => {
                             e.stopPropagation()
                             setIsNavAddMenuOpen(false)
                             openAddPersonalModal()
                           }}
                           style={{
+                            width: '172px',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '7px',
-                            padding: '9px 18px',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '10px 18px',
                             borderRadius: '999px',
-                            border: '1px solid rgba(168, 85, 247, 0.55)',
-                            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(124, 58, 237, 0.32))',
-                            color: '#f3e8ff',
+                            border: '1px solid rgba(167, 139, 250, 0.45)',
+                            background:
+                              'linear-gradient(168deg, rgba(16, 25, 46, 0.95) 0%, rgba(7, 11, 22, 0.98) 100%)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            color: '#ffffff',
                             fontSize: '12px',
-                            fontWeight: 900,
-                            letterSpacing: '0.02em',
-                            boxShadow: '0 0 16px rgba(168, 85, 247, 0.28)',
+                            fontWeight: 800,
+                            letterSpacing: '0.01em',
+                            boxShadow:
+                              '0 14px 32px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          <Sparkles size={15} color="#c084fc" strokeWidth={2.4} />
-                          <span>+ Quest</span>
+                          <Sparkles size={15} color="#c084fc" strokeWidth={2.3} />
+                          <span>+ Quest Baru</span>
                         </motion.button>
-
-                        {/* Energy Divider */}
-                        <div
-                          style={{
-                            width: '1px',
-                            height: '18px',
-                            background: 'linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.5), transparent)',
-                          }}
-                        />
-
-                        {/* Option 2: Transaksi */}
-                        <motion.button
-                          type="button"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setIsNavAddMenuOpen(false)
-                            setActiveFinanceSheet('log')
-                          }}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '7px',
-                            padding: '9px 18px',
-                            borderRadius: '999px',
-                            border: '1px solid rgba(56, 189, 248, 0.7)',
-                            background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(14, 165, 233, 0.38))',
-                            color: '#e0f2fe',
-                            fontSize: '12px',
-                            fontWeight: 900,
-                            letterSpacing: '0.02em',
-                            boxShadow: '0 0 16px rgba(56, 189, 248, 0.35)',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          <Wallet size={15} color="#38bdf8" strokeWidth={2.4} />
-                          <span>Transaksi</span>
-                        </motion.button>
-
-                        {/* Bottom Pip Arrow pointing directly down at Center Orb */}
-                        <div
-                          style={{
-                            position: 'absolute',
-                            bottom: '-5px',
-                            left: '50%',
-                            marginLeft: '-5px',
-                            width: '10px',
-                            height: '10px',
-                            background: 'rgba(6, 11, 23, 0.94)',
-                            borderRight: '1.5px solid rgba(56, 189, 248, 0.4)',
-                            borderBottom: '1.5px solid rgba(56, 189, 248, 0.4)',
-                            transform: 'rotate(45deg)',
-                            pointerEvents: 'none',
-                          }}
-                        />
                       </motion.div>
                     </>
                   )}
