@@ -2544,6 +2544,7 @@ export default function Page() {
     }
     return 'portal'
   })
+  const [isNavAddMenuOpen, setIsNavAddMenuOpen] = useState<boolean>(false)
 
   const updateFinanceFabStyle = (style: 'split' | 'portal' | 'mecha' | 'island' | 'arc') => {
     setFinanceFabStyle(style)
@@ -8185,6 +8186,305 @@ export default function Page() {
     )
   }
 
+  const renderTransactionTopDrawer = () => {
+    if (activeFinanceSheet !== 'log') return null
+
+    const targetDateIso = activeFinanceQuest?.dateIso || getLocalIsoDate()
+    const financeQuestForLog =
+      currentFinanceQuest ||
+      personalTasks.find(
+        (t) =>
+          t.category === 'Keuangan' ||
+          t.title.toLowerCase().includes('nabung') ||
+          t.title.toLowerCase().includes('uang')
+      ) ||
+      null
+
+    const isQuestDoneOnDate = Boolean(
+      financeQuestForLog && financeQuestForLog.completedDates?.includes(targetDateIso)
+    )
+    const parsedQuickAmount = parseFormattedDigits(financeAmountInput)
+    const isTodayOrPast = targetDateIso <= getLocalIsoDate()
+
+    return (
+      <AnimatePresence>
+        <motion.div
+          key="finance-top-drawer-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setActiveFinanceSheet(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.72)',
+            backdropFilter: 'blur(5px)',
+            WebkitBackdropFilter: 'blur(5px)',
+            zIndex: 88,
+          }}
+        />
+        <motion.div
+          key="finance-top-drawer-content"
+          initial={{ y: '-100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '-100%', opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: '50%',
+            x: '-50%',
+            width: '100%',
+            maxWidth: '480px',
+            maxHeight: '88vh',
+            overflowY: 'auto',
+            borderBottomLeftRadius: '24px',
+            borderBottomRightRadius: '24px',
+            borderBottom: '1px solid rgba(56, 189, 248, 0.28)',
+            borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+            borderTop: 'none',
+            background: '#090e1c',
+            padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px 20px',
+            zIndex: 90,
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          {/* Header matching Image 3 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <strong style={{ fontSize: '15px', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.01em' }}>
+              Catat Pemasukan / Pengeluaran
+            </strong>
+            <button
+              type="button"
+              onClick={() => setActiveFinanceSheet(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: '4px 6px',
+              }}
+            >
+              Tutup
+            </button>
+          </div>
+
+          {/* 3 Tab Segment matching Image 3 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setFinanceLogType('expense')}
+              style={{
+                padding: '9px 6px',
+                borderRadius: '12px',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: financeLogType === 'expense' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                border: financeLogType === 'expense' ? '1.5px solid #fbbf24' : '1px solid rgba(255, 255, 255, 0.1)',
+                color: financeLogType === 'expense' ? '#fde68a' : '#cbd5e1',
+                transition: 'all 0.18s ease',
+              }}
+            >
+              - Keluar
+            </button>
+            <button
+              type="button"
+              onClick={() => setFinanceLogType('income')}
+              style={{
+                padding: '9px 6px',
+                borderRadius: '12px',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: financeLogType === 'income' ? 'rgba(56, 189, 248, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                border: financeLogType === 'income' ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+                color: financeLogType === 'income' ? '#bae6fd' : '#cbd5e1',
+                transition: 'all 0.18s ease',
+              }}
+            >
+              + Pemasukan
+            </button>
+            <button
+              type="button"
+              onClick={() => setFinanceLogType('saving')}
+              style={{
+                padding: '9px 6px',
+                borderRadius: '12px',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: financeLogType === 'saving' ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.04)',
+                border: financeLogType === 'saving' ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.1)',
+                color: financeLogType === 'saving' ? '#a7f3d0' : '#cbd5e1',
+                transition: 'all 0.18s ease',
+              }}
+            >
+              + Nabung
+            </button>
+          </div>
+
+          {/* Large Nominal Box matching Image 3 */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '8px 14px',
+              borderRadius: '14px',
+              background: '#04060e',
+              border: '1px solid rgba(255,255,255,0.15)',
+            }}
+          >
+            <span style={{ fontSize: '18px', fontWeight: 900, color: '#38bdf8' }}>Rp</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={formatDigitsWithDots(financeAmountInput)}
+              onChange={(e) => setFinanceAmountInput(formatDigitsWithDots(e.target.value))}
+              placeholder="50.000"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: '8px 0',
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                color: '#ffffff',
+                fontSize: '22px',
+                fontWeight: 900,
+                letterSpacing: '-0.02em',
+              }}
+            />
+          </div>
+
+          {/* Quick Amount Chips matching Image 3 */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {[20000, 50000, 100000, 250000, 500000].map((v) => {
+              const isSelected = parsedQuickAmount === v
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setFinanceAmountInput(formatDigitsWithDots(v))}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '9px',
+                    background: isSelected ? 'rgba(56, 189, 248, 0.16)' : 'rgba(255, 255, 255, 0.04)',
+                    border: isSelected ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: isSelected ? '#7dd3fc' : '#e2e8f0',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {formatRupiah(v)}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Keterangan input matching Image 3 */}
+          <input
+            type="text"
+            value={financeNoteInput}
+            onChange={(e) => setFinanceNoteInput(e.target.value)}
+            placeholder="Keterangan (misal: Makan siang / Bonus)"
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              borderRadius: '12px',
+              background: '#04060e',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#ffffff',
+              fontSize: '12px',
+              outline: 'none',
+            }}
+          />
+
+          {/* Subcategory selectors if saving or expense */}
+          {financeLogType === 'saving' && financeVault.goals.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+              {financeVault.goals.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setFinanceSelectedGoalId(g.id)}
+                  style={{
+                    textAlign: 'left',
+                    padding: '8px 10px',
+                    borderRadius: '11px',
+                    background: financeSelectedGoalId === g.id ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.05)',
+                    border: financeSelectedGoalId === g.id ? '1px solid #34d399' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#ffffff',
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.title}</div>
+                </button>
+              ))}
+            </div>
+          )}
+          {financeLogType === 'expense' && financeVault.buckets.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+              {financeVault.buckets.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setFinanceSelectedBucketId(b.id)}
+                  style={{
+                    textAlign: 'left',
+                    padding: '8px 10px',
+                    borderRadius: '11px',
+                    background: financeSelectedBucketId === b.id ? 'rgba(245, 158, 11, 0.18)' : 'rgba(255, 255, 255, 0.05)',
+                    border: financeSelectedBucketId === b.id ? '1px solid #fbbf24' : '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#ffffff',
+                    fontSize: '10.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Submit Action Button matching Image 3 */}
+          <button
+            type="button"
+            onClick={() => handleAddFinanceLog(financeQuestForLog?.id, targetDateIso)}
+            style={{
+              width: '100%',
+              padding: '13px',
+              borderRadius: '14px',
+              border: 'none',
+              background: '#38bdf8',
+              color: '#030712',
+              fontSize: '13.5px',
+              fontWeight: 900,
+              cursor: 'pointer',
+              boxShadow: '0 8px 24px -4px rgba(56, 189, 248, 0.4)',
+              transition: 'transform 0.12s ease',
+            }}
+          >
+            Simpan {parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}
+            {financeQuestForLog && !isQuestDoneOnDate && isTodayOrPast ? ` (+${financeQuestForLog.xp || 15} XP)` : ''}
+          </button>
+        </motion.div>
+      </AnimatePresence>
+    )
+  }
+
   const renderFinanceVaultPage = () => {
     if (!activeFinanceQuest || !currentFinanceQuest) return null
 
@@ -8274,7 +8574,7 @@ export default function Page() {
                 }}
               >
                 {iconLog}
-                <span>Catat Uang (Rp)</span>
+                <span>Transaksi</span>
               </motion.button>
 
               {/* Right Arc Pill: Tambah Target */}
@@ -8441,7 +8741,7 @@ export default function Page() {
                       }}
                     >
                       {iconLog}
-                      <span>Catat Rp</span>
+                      <span>Transaksi</span>
                     </motion.button>
                     <motion.button
                       type="button"
@@ -8554,7 +8854,7 @@ export default function Page() {
               }}
             >
               {iconLog}
-              <span>Catat Rp</span>
+              <span>Transaksi</span>
             </motion.button>
 
             {/* Center Mecha Core Trigger */}
@@ -8706,7 +9006,7 @@ export default function Page() {
                 cursor: 'pointer',
               }}
             >
-              <span>Catat Uang (Rp)</span>
+              <span>Transaksi</span>
               {iconLog}
             </motion.button>
 
@@ -8770,7 +9070,7 @@ export default function Page() {
                   gap: '8px',
                 }}
               >
-                {/* Opsi 1: Catat Uang */}
+                {/* Opsi 1: Transaksi */}
                 <motion.button
                   type="button"
                   whileHover={{ scale: 1.04 }}
@@ -8796,7 +9096,7 @@ export default function Page() {
                   }}
                 >
                   {iconLog}
-                  <span>Catat Uang (Rp)</span>
+                  <span>Transaksi</span>
                 </motion.button>
 
                 {/* Center Close */}
@@ -9852,9 +10152,9 @@ export default function Page() {
         {/* 1-TO-2 MORPHING ACTION BUTTON */}
         {renderMorphingFab()}
 
-        {/* SLIDE-UP BOTTOM SHEETS (TARGET BARU / CATAT UANG / UBAH GAJI / EDIT) */}
+        {/* SLIDE-UP BOTTOM SHEETS (TARGET BARU / UBAH GAJI / EDIT) */}
         <AnimatePresence>
-          {activeFinanceSheet && !isFinanceViewOnly && (
+          {activeFinanceSheet && activeFinanceSheet !== 'log' && !isFinanceViewOnly && (
             <>
               <motion.div
                 initial={{ opacity: 0 }}
@@ -10055,184 +10355,6 @@ export default function Page() {
                         </button>
                       </>
                     )}
-                  </>
-                )}
-
-                {activeFinanceSheet === 'log' && (
-                  <>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Catat Pemasukan / Pengeluaran</strong>
-                      <button
-                        type="button"
-                        onClick={() => setActiveFinanceSheet(null)}
-                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        Tutup
-                      </button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setFinanceLogType('expense')}
-                        style={{
-                          padding: '8px 6px',
-                          borderRadius: '11px',
-                          fontSize: '10.5px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          background: financeLogType === 'expense' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)',
-                          border: financeLogType === 'expense' ? '1px solid #fbbf24' : '1px solid rgba(255,255,255,0.1)',
-                          color: financeLogType === 'expense' ? '#fde68a' : '#cbd5e1',
-                        }}
-                      >
-                        - Keluar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFinanceLogType('income')}
-                        style={{
-                          padding: '8px 6px',
-                          borderRadius: '11px',
-                          fontSize: '10.5px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          background: financeLogType === 'income' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
-                          border: financeLogType === 'income' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                          color: financeLogType === 'income' ? '#bae6fd' : '#cbd5e1',
-                        }}
-                      >
-                        + Pemasukan
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFinanceLogType('saving')}
-                        style={{
-                          padding: '8px 6px',
-                          borderRadius: '11px',
-                          fontSize: '10.5px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          background: financeLogType === 'saving' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)',
-                          border: financeLogType === 'saving' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.1)',
-                          color: financeLogType === 'saving' ? '#a7f3d0' : '#cbd5e1',
-                        }}
-                      >
-                        + Nabung
-                      </button>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 900, color: currentRankTier.primaryColor }}>Rp</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={formatDigitsWithDots(financeAmountInput)}
-                        onChange={(e) => setFinanceAmountInput(formatDigitsWithDots(e.target.value))}
-                        placeholder="50.000"
-                        style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '16px', fontWeight: 900 }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                      {[20000, 50000, 100000, 250000, 500000].map((v) => (
-                        <button
-                          key={v}
-                          type="button"
-                          onClick={() => setFinanceAmountInput(formatDigitsWithDots(v))}
-                          style={{
-                            padding: '5px 8px',
-                            borderRadius: '8px',
-                            background: parsedQuickAmount === v ? rankTint : 'rgba(255,255,255,0.05)',
-                            border: parsedQuickAmount === v ? `1px solid ${currentRankTier.primaryColor}` : '1px solid rgba(255,255,255,0.1)',
-                            color: parsedQuickAmount === v ? currentRankTier.highlightColor : '#e2e8f0',
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {formatRupiah(v)}
-                        </button>
-                      ))}
-                    </div>
-                    <input
-                      type="text"
-                      value={financeNoteInput}
-                      onChange={(e) => setFinanceNoteInput(e.target.value)}
-                      placeholder="Keterangan (misal: Makan siang / Bonus)"
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px',
-                        borderRadius: '12px',
-                        background: '#04060e',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        color: '#ffffff',
-                        fontSize: '12px',
-                      }}
-                    />
-                    {financeLogType === 'saving' && financeVault.goals.length > 0 && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                        {financeVault.goals.map((g) => (
-                          <button
-                            key={g.id}
-                            type="button"
-                            onClick={() => setFinanceSelectedGoalId(g.id)}
-                            style={{
-                              textAlign: 'left',
-                              padding: '8px 10px',
-                              borderRadius: '11px',
-                              background: financeSelectedGoalId === g.id ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255,255,255,0.05)',
-                              border: financeSelectedGoalId === g.id ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.1)',
-                              color: '#ffffff',
-                              fontSize: '10.5px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.title}</div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {financeLogType === 'expense' && financeVault.buckets.length > 0 && (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-                        {financeVault.buckets.map((b) => (
-                          <button
-                            key={b.id}
-                            type="button"
-                            onClick={() => setFinanceSelectedBucketId(b.id)}
-                            style={{
-                              textAlign: 'left',
-                              padding: '8px 10px',
-                              borderRadius: '11px',
-                              background: financeSelectedBucketId === b.id ? 'rgba(245, 158, 11, 0.18)' : 'rgba(255,255,255,0.05)',
-                              border: financeSelectedBucketId === b.id ? '1px solid #fbbf24' : '1px solid rgba(255,255,255,0.1)',
-                              color: '#ffffff',
-                              fontSize: '10.5px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleAddFinanceLog(currentFinanceQuest.id, targetDateIso)}
-                      style={{
-                        width: '100%',
-                        padding: '11px',
-                        borderRadius: '12px',
-                        border: 'none',
-                        background: currentRankTier.primaryColor,
-                        color: '#030712',
-                        fontSize: '12px',
-                        fontWeight: 900,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Simpan {parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}
-                      {!isQuestDoneOnDate ? ` (+${currentFinanceQuest.xp} XP)` : ''}
-                    </button>
                   </>
                 )}
 
@@ -20668,6 +20790,7 @@ export default function Page() {
             setIsMasteryPageOpen(false)
             setIsRankSystemOpen(false)
             setIsPersonalModalOpen(false)
+            setIsNavAddMenuOpen(false)
             setActiveTab(tabKey)
           }
           return (
@@ -20690,21 +20813,131 @@ export default function Page() {
                 <CalendarDays size={18} strokeWidth={1.9} />
                 <span>My Quest</span>
               </button>
-              <button
-                type="button"
-                className={`nav-add-slot ${isPersonalModalOpen ? 'open' : ''}`}
-                aria-label="Tambah quest baru"
-                title="Tambah Quest Baru"
-                onClick={() => openAddPersonalModal()}
-              >
-                <div className="nav-add-orb" aria-hidden="true">
-                  <span className="nav-add-ring-outer" />
-                  <span className="nav-add-ring-inner" />
-                  <span className="nav-add-core">
-                    <Plus size={20} strokeWidth={2.6} />
-                  </span>
-                </div>
-              </button>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AnimatePresence>
+                  {isNavAddMenuOpen && (
+                    <>
+                      {/* Full-screen backdrop to dismiss */}
+                      <motion.div
+                        key="nav-add-backdrop"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setIsNavAddMenuOpen(false)
+                        }}
+                        style={{
+                          position: 'fixed',
+                          inset: 0,
+                          background: 'rgba(0, 0, 0, 0.52)',
+                          backdropFilter: 'blur(3px)',
+                          WebkitBackdropFilter: 'blur(3px)',
+                          zIndex: 60,
+                        }}
+                      />
+
+                      {/* 2-Option Floating Pills */}
+                      <motion.div
+                        key="nav-add-options"
+                        initial={{ opacity: 0, y: 15, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 25 }}
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 22px)',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          zIndex: 65,
+                          pointerEvents: 'auto',
+                        }}
+                      >
+                        {/* Option 1: Quest */}
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setIsNavAddMenuOpen(false)
+                            openAddPersonalModal()
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '7px',
+                            padding: '9px 16px',
+                            borderRadius: '999px',
+                            border: `1.5px solid ${currentRankTier.primaryColor}`,
+                            background: 'rgba(9, 14, 28, 0.95)',
+                            color: currentRankTier.highlightColor,
+                            fontSize: '12px',
+                            fontWeight: 900,
+                            boxShadow: `0 10px 28px -6px ${currentRankTier.glowColor}`,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                          }}
+                        >
+                          <Sparkles size={14} />
+                          <span>Quest</span>
+                        </motion.button>
+
+                        {/* Option 2: Transaksi */}
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setIsNavAddMenuOpen(false)
+                            setActiveFinanceSheet('log')
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '7px',
+                            padding: '9px 16px',
+                            borderRadius: '999px',
+                            border: '1px solid rgba(255, 255, 255, 0.4)',
+                            background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
+                            color: '#030712',
+                            fontSize: '12px',
+                            fontWeight: 900,
+                            boxShadow: `0 10px 28px -6px ${currentRankTier.glowColor}`,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <Wallet size={14} />
+                          <span>Transaksi</span>
+                        </motion.button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+
+                <button
+                  type="button"
+                  className={`nav-add-slot ${isNavAddMenuOpen || isPersonalModalOpen ? 'open' : ''}`}
+                  aria-label="Tambah aksi"
+                  title="Tambah Quest atau Transaksi"
+                  onClick={() => setIsNavAddMenuOpen((prev) => !prev)}
+                >
+                  <div className="nav-add-orb" aria-hidden="true">
+                    <span className="nav-add-ring-outer" />
+                    <span className="nav-add-ring-inner" />
+                    <span className="nav-add-core">
+                      <Plus size={20} strokeWidth={2.6} />
+                    </span>
+                  </div>
+                </button>
+              </div>
               <button
                 type="button"
                 className={`nav-item ${activeTab === 'clan' ? 'active' : ''}`}
@@ -22433,6 +22666,11 @@ export default function Page() {
             </div>
           )
         })()}
+
+        {/* ================================================================
+            TOP SLIDE-DOWN DRAWER: TRANSAKSI (ACCESSIBLE FROM DASHBOARD & FINANCE VAULT)
+           ================================================================ */}
+        {renderTransactionTopDrawer()}
       </main>
   )
 }
