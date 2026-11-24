@@ -2524,7 +2524,11 @@ export default function Page() {
     viewOnly?: boolean
   } | null>(null)
   const [financeVault, setFinanceVault] = useState<FinanceVaultState>(DEFAULT_FINANCE_VAULT)
-  const [financeTab, setFinanceTab] = useState<'quick' | 'budget' | 'goals'>('quick')
+  const [financeTab, setFinanceTab] = useState<'goals' | 'budget' | 'history'>('goals')
+  const [activeFinanceSheet, setActiveFinanceSheet] = useState<null | 'target' | 'log' | 'salary' | 'editGoal' | 'editBucket'>(null)
+  const [financeTargetDraftType, setFinanceTargetDraftType] = useState<'goal' | 'bucket'>('goal')
+  const [financeHistoryFilter, setFinanceHistoryFilter] = useState<'all' | 'income' | 'expense' | 'saving'>('all')
+  const [financeParticles, setFinanceParticles] = useState<Array<{ id: string; text: string }>>([])
   const [financeLogType, setFinanceLogType] = useState<'saving' | 'expense' | 'income'>('saving')
   const [financeAmountInput, setFinanceAmountInput] = useState<string>('50.000')
   const [financeSelectedBucketId, setFinanceSelectedBucketId] = useState<string>('b-kebutuhan')
@@ -5713,6 +5717,14 @@ export default function Page() {
     }
   }
 
+  const spawnFinanceParticle = (text: string) => {
+    const id = `fp-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`
+    setFinanceParticles((prev) => [...prev, { id, text }])
+    setTimeout(() => {
+      setFinanceParticles((prev) => prev.filter((p) => p.id !== id))
+    }, 950)
+  }
+
   const handleSaveMonthlyIncome = (newAmountRaw: number) => {
     const amount = Math.max(0, Math.round(Number(newAmountRaw) || 0))
     if (amount <= 0) {
@@ -5725,6 +5737,8 @@ export default function Page() {
     })
     setMonthlyIncomeDraft(formatDigitsWithDots(amount))
     setIsEditingMonthlyIncome(false)
+    setActiveFinanceSheet(null)
+    spawnFinanceParticle(`Gaji ${formatRupiah(amount)}`)
     showToast(`Penghasilan bulanan diatur: ${formatRupiah(amount)}`)
   }
 
@@ -5771,11 +5785,12 @@ export default function Page() {
         handleTogglePersonal(questId, targetIso)
       }
     }
+    spawnFinanceParticle(`+${formatRupiah(amount)}`)
     showToast(`Berhasil menabung +${formatRupiah(amount)} ke ${goal.title}!`)
   }
 
   const handleAddFinanceLog = (questId?: string, targetDateIso?: string) => {
-    const parsedAmount = Math.max(0, Math.round(Number(financeAmountInput.replace(/\D/g, '')) || 0))
+    const parsedAmount = parseFormattedDigits(financeAmountInput)
     if (parsedAmount <= 0) {
       showToast('Nominal transaksi harus lebih dari Rp 0')
       return
@@ -5816,6 +5831,8 @@ export default function Page() {
     })
 
     setFinanceNoteInput('')
+    setActiveFinanceSheet(null)
+    spawnFinanceParticle(`${financeLogType === 'expense' ? '-' : '+'}${formatRupiah(parsedAmount)}`)
 
     let completedNow = false
     if (questId) {
@@ -5887,6 +5904,9 @@ export default function Page() {
     setNewBucketName('')
     setNewBucketTarget('300.000')
     setIsAddingFinanceBucket(false)
+    setActiveFinanceSheet(null)
+    setFinanceTab('budget')
+    spawnFinanceParticle('+ Pos Baru')
     showToast(`Pos pengeluaran "${name}" ditambahkan!`)
   }
 
@@ -5897,6 +5917,7 @@ export default function Page() {
       buckets: financeVault.buckets.map((b) => (b.id === bucketId ? { ...b, targetMonthly: clean } : b)),
     })
     setEditingBucketId(null)
+    setActiveFinanceSheet(null)
     showToast(`Batas pos diperbarui: ${formatRupiah(clean)}`)
   }
 
@@ -5941,6 +5962,9 @@ export default function Page() {
     setNewGoalSaved('0')
     setNewGoalNote('')
     setIsAddingFinanceGoal(false)
+    setActiveFinanceSheet(null)
+    setFinanceTab('goals')
+    spawnFinanceParticle('+ Target Baru')
     showToast(`Target tabungan "${title}" dibuat!`)
   }
 
@@ -5959,6 +5983,7 @@ export default function Page() {
       ),
     })
     setEditingGoalId(null)
+    setActiveFinanceSheet(null)
     showToast(`Target "${title}" diperbarui!`)
   }
 
@@ -8157,70 +8182,100 @@ export default function Page() {
       .reduce((acc, l) => acc + l.amount, 0)
 
     const totalBudgetPool = financeVault.monthlyIncome + monthlyExtraIncome
-    const totalAllocatedMonthly = financeVault.buckets.reduce((acc, b) => acc + b.targetMonthly, 0)
-    const totalExpenseBucketsTarget = financeVault.buckets
-      .filter((b) => b.category !== 'tabungan')
-      .reduce((acc, b) => acc + b.targetMonthly, 0)
-    const unallocatedBalance = totalBudgetPool - totalAllocatedMonthly
     const sisaUangPegangan = totalBudgetPool - monthlyExpenseTotal - monthlySavedTotal
-
     const totalGoalsSaved = financeVault.goals.reduce((acc, g) => acc + g.savedAmount, 0)
-    const totalGoalsTarget = financeVault.goals.reduce((acc, g) => acc + g.targetAmount, 0)
     const totalUangAku = Math.max(0, sisaUangPegangan) + totalGoalsSaved
-
-    const poolForBar = Math.max(1, totalBudgetPool)
-    const savedSharePct = Math.min(100, Math.round((monthlySavedTotal / poolForBar) * 100))
-    const expenseSharePct = Math.min(100 - savedSharePct, Math.round((monthlyExpenseTotal / poolForBar) * 100))
-    const monthlyMandatorySavingTarget =
-      financeVault.buckets
-        .filter((b) => b.category === 'tabungan')
-        .reduce((acc, b) => acc + b.targetMonthly, 0) || 1000000
-    const dailyPaceEstimate = Math.max(10000, Math.round(monthlyMandatorySavingTarget / 30))
+    const rankTint = `rgba(${currentRankTier.primaryRgb}, 0.13)`
     const parsedQuickAmount = parseFormattedDigits(financeAmountInput)
 
+    const filteredLogs = financeVault.logs.filter((l) =>
+      financeHistoryFilter === 'all' ? true : l.type === financeHistoryFilter
+    )
+    const showMainSalaryInHistory = financeHistoryFilter === 'all' || financeHistoryFilter === 'income'
+
     return (
-      <div style={{ animation: 'fadeIn 0.2s ease-in-out', paddingBottom: '36px' }}>
-        {/* TOPBAR FINANCE VAULT */}
+      <div style={{ animation: 'fadeIn 0.2s ease-in-out', paddingBottom: '88px', position: 'relative' }}>
+        {/* FLOATING PARTICLE BURST LAYER */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 70,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <AnimatePresence>
+            {financeParticles.map((p) => (
+              <motion.div
+                key={p.id}
+                initial={{ opacity: 0, y: 12, scale: 0.8 }}
+                animate={{ opacity: [0, 1, 1, 0], y: -56, scale: 1.06 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                style={{
+                  position: 'absolute',
+                  padding: '4px 12px',
+                  borderRadius: '999px',
+                  background: currentRankTier.primaryColor,
+                  color: '#030712',
+                  fontSize: '11.5px',
+                  fontWeight: 900,
+                  boxShadow: `0 6px 20px ${currentRankTier.glowColor}`,
+                }}
+              >
+                {p.text}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* TOPBAR COMPACT (#13 HALO LIQUID) */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '10px',
+            gap: '8px',
             marginBottom: '12px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
             <button
               type="button"
-              onClick={() => setActiveFinanceQuest(null)}
+              onClick={() => {
+                setActiveFinanceSheet(null)
+                setActiveFinanceQuest(null)
+              }}
               style={{
-                background: '#171226',
-                border: '1px solid #32254a',
-                borderRadius: '10px',
-                width: '34px',
-                height: '34px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '9px',
+                width: '30px',
+                height: '30px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#d5beff',
+                color: '#e2e8f0',
                 cursor: 'pointer',
                 flexShrink: 0,
               }}
               title="Kembali"
               aria-label="Kembali"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={15} />
             </button>
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span
                   style={{
-                    fontSize: '9.5px',
-                    fontWeight: 800,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: '#34d399',
+                    fontSize: '11px',
+                    fontWeight: 900,
+                    letterSpacing: '0.06em',
+                    color: '#ffffff',
                   }}
                 >
                   FINANCE VAULT
@@ -8229,338 +8284,248 @@ export default function Page() {
                   style={{
                     fontSize: '9px',
                     fontWeight: 800,
-                    padding: '1px 6px',
+                    padding: '1px 7px',
                     borderRadius: '999px',
-                    background: 'rgba(16, 185, 129, 0.16)',
-                    border: '1px solid rgba(52, 211, 153, 0.35)',
-                    color: '#6ee7b7',
+                    background: rankTint,
+                    border: `1px solid ${currentRankTier.primaryColor}`,
+                    color: currentRankTier.highlightColor,
                   }}
                 >
                   +{currentFinanceQuest.xp} XP
                 </span>
               </div>
-              <h2
+              <div
                 style={{
-                  margin: 0,
-                  fontSize: '15px',
-                  fontWeight: 800,
-                  color: '#f5f2ff',
+                  fontSize: '9.5px',
+                  color: '#94a3b8',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                 }}
               >
-                {currentFinanceQuest.title}
-              </h2>
+                {currentFinanceQuest.title} • Rank{' '}
+                <span style={{ color: currentRankTier.primaryColor, fontWeight: 800 }}>{currentRank}</span>
+              </div>
             </div>
           </div>
 
-          {isFinanceViewOnly ? (
-            <span
-              style={{
-                padding: '6px 10px',
-                borderRadius: '9px',
-                background: 'rgba(148, 163, 184, 0.12)',
-                border: '1px solid rgba(148, 163, 184, 0.25)',
-                color: '#cbd5e1',
-                fontSize: '10px',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                flexShrink: 0,
-              }}
-            >
-              <Lock size={10} />
-              Lihat Saja
-            </span>
-          ) : isQuestDoneOnDate ? (
-            <span
-              style={{
-                padding: '6px 10px',
-                borderRadius: '9px',
-                background: 'rgba(16, 185, 129, 0.18)',
-                border: '1px solid rgba(52, 211, 153, 0.45)',
-                color: '#6ee7b7',
-                fontSize: '10px',
-                fontWeight: 800,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                flexShrink: 0,
-              }}
-            >
-              <CheckCircle2 size={12} />
-              Tuntas
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => handleCompleteFinanceQuest(currentFinanceQuest.id, targetDateIso)}
-              style={{
-                padding: '6px 11px',
-                borderRadius: '9px',
-                background: 'linear-gradient(135deg, #059669 0%, #0284c7 100%)',
-                border: '1px solid rgba(52, 211, 153, 0.6)',
-                color: '#ffffff',
-                fontSize: '10.5px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                flexShrink: 0,
-              }}
-            >
-              <Check size={12} strokeWidth={3} />
-              Selesaikan
-            </button>
-          )}
-        </div>
-
-        {/* HERO CARD: RINGKASAN TOTAL UANG AKU & PENGHASILAN */}
-        <div
-          style={{
-            borderRadius: '16px',
-            padding: '14px',
-            marginBottom: '12px',
-            background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.14) 0%, rgba(15, 12, 28, 0.97) 58%, rgba(14, 116, 144, 0.14) 100%)',
-            border: '1px solid rgba(52, 211, 153, 0.34)',
-            boxShadow: '0 8px 26px rgba(0, 0, 0, 0.42)',
-          }}
-        >
-          {/* TOTAL UANG AKU */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '11px' }}>
-            <div style={{ minWidth: 0 }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                Total Uang Aku ({activeMonthPrefix})
-              </span>
-              <div style={{ fontSize: '23px', fontWeight: 900, color: '#ffffff', marginTop: '2px', letterSpacing: '-0.02em' }}>
-                {formatRupiah(totalUangAku)}
-              </div>
-              <div style={{ fontSize: '10px', color: '#cbd5e1', marginTop: '2px' }}>
-                Uang Pegangan {formatRupiah(Math.max(0, sisaUangPegangan))} + Tabungan {formatRupiah(totalGoalsSaved)}
-              </div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             {!isFinanceViewOnly && (
               <button
                 type="button"
                 onClick={() => {
-                  setMonthlyIncomeDraft(formatDigitsWithDots(financeVault.monthlyIncome))
-                  setIsEditingMonthlyIncome((v) => !v)
+                  setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
+                  setActiveFinanceSheet('target')
                 }}
                 style={{
-                  padding: '6px 9px',
-                  borderRadius: '8px',
-                  background: 'rgba(15, 23, 42, 0.78)',
-                  border: '1px solid rgba(52, 211, 153, 0.38)',
-                  color: '#a7f3d0',
+                  padding: '5px 10px',
+                  borderRadius: '9px',
+                  background: rankTint,
+                  border: `1px solid ${currentRankTier.primaryColor}`,
+                  color: currentRankTier.highlightColor,
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                + Target
+              </button>
+            )}
+
+            {isFinanceViewOnly ? (
+              <span
+                style={{
+                  padding: '5px 9px',
+                  borderRadius: '9px',
+                  background: 'rgba(148, 163, 184, 0.12)',
+                  border: '1px solid rgba(148, 163, 184, 0.25)',
+                  color: '#cbd5e1',
                   fontSize: '10px',
                   fontWeight: 700,
-                  cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
-                  flexShrink: 0,
                 }}
               >
-                <Pencil size={10} />
-                {isEditingMonthlyIncome ? 'Tutup' : 'Ubah Gaji'}
+                <Lock size={10} />
+                Lihat Saja
+              </span>
+            ) : isQuestDoneOnDate ? (
+              <span
+                style={{
+                  padding: '5px 9px',
+                  borderRadius: '9px',
+                  background: rankTint,
+                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.45)`,
+                  color: currentRankTier.highlightColor,
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <CheckCircle2 size={11} />
+                Tuntas
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleCompleteFinanceQuest(currentFinanceQuest.id, targetDateIso)}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '9px',
+                  background: currentRankTier.primaryColor,
+                  border: 'none',
+                  color: '#030712',
+                  fontSize: '10px',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                }}
+              >
+                <Check size={11} strokeWidth={3} />
+                Selesaikan
               </button>
             )}
           </div>
-
-          {isEditingMonthlyIncome && !isFinanceViewOnly && (
-            <div
-              style={{
-                padding: '10px',
-                borderRadius: '11px',
-                background: 'rgba(10, 10, 20, 0.85)',
-                border: '1px solid rgba(52, 211, 153, 0.3)',
-                marginBottom: '11px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-              }}
-            >
-              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#a7f3d0' }}>
-                Penghasilan Bulanan Aku
-              </span>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <div
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '0 10px',
-                    borderRadius: '9px',
-                    background: '#130f21',
-                    border: '1px solid #32254a',
-                  }}
-                >
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#34d399' }}>Rp</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={formatDigitsWithDots(monthlyIncomeDraft)}
-                    onChange={(e) => setMonthlyIncomeDraft(formatDigitsWithDots(e.target.value))}
-                    placeholder="3.500.000"
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      padding: '8px 0',
-                      border: 'none',
-                      outline: 'none',
-                      background: 'transparent',
-                      color: '#ffffff',
-                      fontSize: '13px',
-                      fontWeight: 800,
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleSaveMonthlyIncome(parseFormattedDigits(monthlyIncomeDraft))}
-                  style={{
-                    padding: '9px 14px',
-                    borderRadius: '9px',
-                    background: '#10b981',
-                    border: 'none',
-                    color: '#06281e',
-                    fontSize: '11.5px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Simpan
-                </button>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                {[2500000, 3500000, 5000000, 7500000, 10000000].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => handleSaveMonthlyIncome(preset)}
-                    style={{
-                      padding: '4px 8px',
-                      borderRadius: '7px',
-                      background: financeVault.monthlyIncome === preset ? 'rgba(16, 185, 129, 0.24)' : 'rgba(255, 255, 255, 0.05)',
-                      border: financeVault.monthlyIncome === preset ? '1px solid rgba(52, 211, 153, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
-                      color: '#d5beff',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {formatRupiah(preset)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 4 METRIK LENGKAP (2x2 GRID, SEMUA FORMAT RP PENUH) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '7px', marginBottom: '10px' }}>
-            <div
-              style={{
-                padding: '8px 10px',
-                borderRadius: '10px',
-                background: 'rgba(15, 12, 28, 0.78)',
-                border: '1px solid rgba(168, 85, 247, 0.24)',
-              }}
-            >
-              <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', fontWeight: 700 }}>Penghasilan Bulanan</span>
-              <strong style={{ display: 'block', fontSize: '12.5px', color: '#f5f2ff', marginTop: '1px' }}>
-                {formatRupiah(financeVault.monthlyIncome)}
-              </strong>
-              {monthlyExtraIncome > 0 && (
-                <span style={{ fontSize: '9px', color: '#38bdf8', fontWeight: 700 }}>
-                  + {formatRupiah(monthlyExtraIncome)} uang masuk
-                </span>
-              )}
-            </div>
-
-            <div
-              style={{
-                padding: '8px 10px',
-                borderRadius: '10px',
-                background: 'rgba(15, 12, 28, 0.78)',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-              }}
-            >
-              <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', fontWeight: 700 }}>Sisa Uang Pegangan</span>
-              <strong style={{ display: 'block', fontSize: '12.5px', color: sisaUangPegangan >= 0 ? '#7dd3fc' : '#f87171', marginTop: '1px' }}>
-                {formatRupiah(sisaUangPegangan)}
-              </strong>
-              <span style={{ fontSize: '9px', color: '#b8add1' }}>Siap dipakai bulan ini</span>
-            </div>
-
-            <div
-              style={{
-                padding: '8px 10px',
-                borderRadius: '10px',
-                background: 'rgba(15, 12, 28, 0.78)',
-                border: '1px solid rgba(52, 211, 153, 0.25)',
-              }}
-            >
-              <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', fontWeight: 700 }}>Total Tabungan</span>
-              <strong style={{ display: 'block', fontSize: '12.5px', color: '#6ee7b7', marginTop: '1px' }}>
-                {formatRupiah(totalGoalsSaved)}
-              </strong>
-              <span style={{ fontSize: '9px', color: '#b8add1' }}>Di {financeVault.goals.length} target tabungan</span>
-            </div>
-
-            <div
-              style={{
-                padding: '8px 10px',
-                borderRadius: '10px',
-                background: 'rgba(15, 12, 28, 0.78)',
-                border: '1px solid rgba(245, 158, 11, 0.24)',
-              }}
-            >
-              <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', fontWeight: 700 }}>Pengeluaran Bulan Ini</span>
-              <strong style={{ display: 'block', fontSize: '12.5px', color: '#fcd34d', marginTop: '1px' }}>
-                {formatRupiah(monthlyExpenseTotal)}
-              </strong>
-              <span style={{ fontSize: '9px', color: '#b8add1' }}>Batas pos: {formatRupiah(totalExpenseBucketsTarget)}</span>
-            </div>
-          </div>
-
-          {/* ALOKASI BAR BULAN INI */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5px', color: '#cbd5e1', marginBottom: '4px', fontWeight: 700 }}>
-              <span>Alur Penghasilan Bulan Ini</span>
-              <span>
-                Tabung {savedSharePct}% • Keluar {expenseSharePct}%
-              </span>
-            </div>
-            <div style={{ height: '7px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden', display: 'flex' }}>
-              <div style={{ width: `${savedSharePct}%`, height: '100%', background: '#10b981', transition: 'width 0.3s ease' }} />
-              <div style={{ width: `${expenseSharePct}%`, height: '100%', background: '#f59e0b', transition: 'width 0.3s ease' }} />
-            </div>
-          </div>
         </div>
 
-        {/* 3 SUB-TAB NAVIGATION */}
+        {/* HALO HERO CARD (#13 HALO LIQUID) */}
+        <motion.div
+          data-scroll-card
+          initial={{ opacity: 0, y: 12, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+          style={{
+            borderRadius: '24px',
+            padding: '18px 16px',
+            textAlign: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: `radial-gradient(circle at 50% 0%, rgba(${currentRankTier.primaryRgb}, 0.17), #060914 75%)`,
+            boxShadow: `0 14px 36px -18px ${currentRankTier.glowColor}`,
+            marginBottom: '12px',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '9.5px',
+              fontWeight: 900,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: currentRankTier.highlightColor,
+            }}
+          >
+            TOTAL UANG AKU ({activeMonthPrefix})
+          </span>
+          <div
+            style={{
+              fontSize: '26px',
+              fontWeight: 900,
+              color: '#ffffff',
+              marginTop: '3px',
+              letterSpacing: '-0.02em',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {formatRupiah(totalUangAku)}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (isFinanceViewOnly) return
+                setMonthlyIncomeDraft(formatDigitsWithDots(financeVault.monthlyIncome))
+                setActiveFinanceSheet('salary')
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 11px',
+                borderRadius: '999px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#e2e8f0',
+                fontSize: '10px',
+                fontWeight: 600,
+                cursor: isFinanceViewOnly ? 'default' : 'pointer',
+              }}
+            >
+              <span>Gaji {formatRupiah(financeVault.monthlyIncome)}</span>
+              {!isFinanceViewOnly && <Pencil size={9} />}
+            </button>
+            {monthlyExtraIncome > 0 && (
+              <span
+                style={{
+                  padding: '4px 9px',
+                  borderRadius: '999px',
+                  background: rankTint,
+                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.35)`,
+                  color: currentRankTier.highlightColor,
+                  fontSize: '9.5px',
+                  fontWeight: 800,
+                }}
+              >
+                +{formatRupiah(monthlyExtraIncome)} ekstra
+              </span>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '14px',
+              marginTop: '14px',
+              paddingTop: '12px',
+              borderTop: '1px solid rgba(255,255,255,0.1)',
+              fontSize: '10.5px',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            <div>
+              <span style={{ display: 'block', fontSize: '8.5px', color: '#94a3b8' }}>Dompet</span>
+              <strong style={{ color: currentRankTier.primaryColor }}>{formatRupiah(Math.max(0, sisaUangPegangan))}</strong>
+            </div>
+            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)' }} />
+            <div>
+              <span style={{ display: 'block', fontSize: '8.5px', color: '#94a3b8' }}>Tabungan</span>
+              <strong style={{ color: '#6ee7b7' }}>{formatRupiah(totalGoalsSaved)}</strong>
+            </div>
+            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)' }} />
+            <div>
+              <span style={{ display: 'block', fontSize: '8.5px', color: '#94a3b8' }}>Keluar</span>
+              <strong style={{ color: '#fcd34d' }}>{formatRupiah(monthlyExpenseTotal)}</strong>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* POSISI A: 3 TAB PILL SEJAJAR (TARGET • POS • RIWAYAT) */}
         <div
+          data-scroll-card
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '6px',
+            gap: '4px',
             padding: '4px',
-            borderRadius: '12px',
-            background: '#120e1f',
-            border: '1px solid #2a2140',
+            borderRadius: '16px',
+            background: '#0b1020',
+            border: '1px solid rgba(255,255,255,0.1)',
             marginBottom: '12px',
           }}
         >
           {(
             [
-              { id: 'quick', label: 'Catat Cepat' },
               { id: 'goals', label: `Target (${financeVault.goals.length})` },
               { id: 'budget', label: `Pos (${financeVault.buckets.length})` },
+              { id: 'history', label: `Riwayat (${financeVault.logs.length + 1})` },
             ] as const
           ).map((tab) => {
             const isActive = financeTab === tab.id
@@ -8571,11 +8536,11 @@ export default function Page() {
                 onClick={() => setFinanceTab(tab.id)}
                 style={{
                   padding: '8px 6px',
-                  borderRadius: '9px',
+                  borderRadius: '12px',
                   border: 'none',
-                  background: isActive ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(56, 189, 248, 0.2))' : 'transparent',
-                  color: isActive ? '#a7f3d0' : '#b8add1',
-                  fontSize: '11px',
+                  background: isActive ? rankTint : 'transparent',
+                  color: isActive ? currentRankTier.highlightColor : '#94a3b8',
+                  fontSize: '10.5px',
                   fontWeight: 800,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
@@ -8587,433 +8552,216 @@ export default function Page() {
           })}
         </div>
 
-        {/* SUB-TAB 1: CATAT CEPAT (SUPER SIMPLE 3 LANGKAH) */}
-        {financeTab === 'quick' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {!isFinanceViewOnly && (
-              <div
-                style={{
-                  borderRadius: '14px',
-                  padding: '13px',
-                  background: '#130f22',
-                  border: '1px solid #2b2242',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '11px',
-                }}
-              >
-                {/* LANGKAH 1: PILIH JENIS */}
-                <div>
-                  <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#b8add1', marginBottom: '6px' }}>
-                    1. Mau catat apa?
-                  </span>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                    {(
-                      [
-                        { id: 'saving', label: '+ Nabung', activeBg: 'rgba(16, 185, 129, 0.22)', border: '#34d399', color: '#6ee7b7' },
-                        { id: 'expense', label: '- Pengeluaran', activeBg: 'rgba(245, 158, 11, 0.2)', border: '#fbbf24', color: '#fde68a' },
-                        { id: 'income', label: '+ Uang Masuk', activeBg: 'rgba(56, 189, 248, 0.2)', border: '#38bdf8', color: '#7dd3fc' },
-                      ] as const
-                    ).map((m) => {
-                      const active = financeLogType === m.id
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => setFinanceLogType(m.id)}
-                          style={{
-                            padding: '8px 6px',
-                            borderRadius: '9px',
-                            fontSize: '10.5px',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            background: active ? m.activeBg : 'rgba(255,255,255,0.03)',
-                            border: active ? `1px solid ${m.border}` : '1px solid rgba(255,255,255,0.08)',
-                            color: active ? m.color : '#b8add1',
-                          }}
-                        >
-                          {m.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#cbd5e1', marginTop: '5px' }}>
-                    {financeLogType === 'saving'
-                      ? 'Menambah saldo Target Tabungan & mengurangi uang pegangan.'
-                      : financeLogType === 'expense'
-                        ? 'Mencatat belanja/jajan dari pos & mengurangi uang pegangan.'
-                        : 'Menambah uang pegangan bulan ini (bonus, freelance, dll).'}
-                  </div>
-                </div>
-
-                {/* LANGKAH 2: NOMINAL OTOMATIS FORMAT RP */}
-                <div>
-                  <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#b8add1', marginBottom: '5px' }}>
-                    2. Berapa nominalnya?
-                  </span>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '0 12px',
-                      borderRadius: '11px',
-                      background: '#0b0816',
-                      border: '1px solid #32254a',
-                    }}
-                  >
-                    <span style={{ fontSize: '15px', fontWeight: 900, color: '#34d399' }}>Rp</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={formatDigitsWithDots(financeAmountInput)}
-                      onChange={(e) => setFinanceAmountInput(formatDigitsWithDots(e.target.value))}
-                      placeholder="50.000"
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        padding: '10px 0',
-                        border: 'none',
-                        outline: 'none',
-                        background: 'transparent',
-                        color: '#ffffff',
-                        fontSize: '17px',
-                        fontWeight: 900,
-                      }}
-                    />
-                    {financeAmountInput && (
-                      <button
-                        type="button"
-                        onClick={() => setFinanceAmountInput('')}
-                        style={{
-                          background: 'rgba(255,255,255,0.07)',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '4px 7px',
-                          color: '#cbd5e1',
-                          fontSize: '10px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Reset
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '7px' }}>
-                    {[20000, 50000, 100000, 250000, 500000, 1000000].map((val) => {
-                      const isPicked = parsedQuickAmount === val
-                      return (
-                        <button
-                          key={val}
-                          type="button"
-                          onClick={() => setFinanceAmountInput(formatDigitsWithDots(val))}
-                          style={{
-                            padding: '5px 8px',
-                            borderRadius: '7px',
-                            background: isPicked ? 'rgba(52, 211, 153, 0.2)' : 'rgba(168, 85, 247, 0.1)',
-                            border: isPicked ? '1px solid rgba(52, 211, 153, 0.5)' : '1px solid rgba(168, 85, 247, 0.22)',
-                            color: isPicked ? '#6ee7b7' : '#d8b4fe',
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {formatRupiah(val)}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* LANGKAH 3: PILIH TUJUAN DENGAN 1-TAP KARTU */}
-                {financeLogType === 'saving' && (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#b8add1' }}>
-                        3. Masukkan ke Target Tabungan
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFinanceTab('goals')
-                          setIsAddingFinanceGoal(true)
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#6ee7b7',
-                          fontSize: '10px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          padding: 0,
-                        }}
-                      >
-                        + Buat Target Baru
-                      </button>
-                    </div>
-                    {financeVault.goals.length === 0 ? (
-                      <div style={{ fontSize: '11px', color: '#b8add1', padding: '8px', borderRadius: '8px', border: '1px dashed #32254a' }}>
-                        Belum ada target tabungan. Klik "+ Buat Target Baru".
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {financeVault.goals.map((g) => {
-                          const isSelected = (financeSelectedGoalId || financeVault.goals[0]?.id) === g.id
-                          const pct = g.targetAmount > 0 ? Math.min(100, Math.round((g.savedAmount / g.targetAmount) * 100)) : 0
-                          return (
-                            <button
-                              key={g.id}
-                              type="button"
-                              onClick={() => setFinanceSelectedGoalId(g.id)}
-                              style={{
-                                width: '100%',
-                                textAlign: 'left',
-                                padding: '9px 10px',
-                                borderRadius: '10px',
-                                cursor: 'pointer',
-                                background: isSelected ? 'rgba(16, 185, 129, 0.16)' : '#0d0919',
-                                border: isSelected ? '1.5px solid rgba(52, 211, 153, 0.65)' : '1px solid #2b2242',
-                              }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                                <strong style={{ fontSize: '11.5px', color: '#ffffff' }}>{g.title}</strong>
-                                <span style={{ fontSize: '10px', fontWeight: 800, color: '#6ee7b7' }}>{pct}%</span>
-                              </div>
-                              <div style={{ fontSize: '10px', color: '#cbd5e1', marginTop: '2px' }}>
-                                {formatRupiah(g.savedAmount)} / {formatRupiah(g.targetAmount)}
-                              </div>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {financeLogType === 'expense' && (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#b8add1' }}>
-                        3. Ambil dari Pos Pengeluaran
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFinanceTab('budget')
-                          setIsAddingFinanceBucket(true)
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#7dd3fc',
-                          fontSize: '10px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          padding: 0,
-                        }}
-                      >
-                        + Tambah Pos
-                      </button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px' }}>
-                      {financeVault.buckets.map((b) => {
-                        const isSelected = (financeSelectedBucketId || financeVault.buckets[0]?.id) === b.id
-                        const used = monthLogs
-                          .filter((l) => l.type === 'expense' && l.bucketId === b.id)
-                          .reduce((acc, l) => acc + l.amount, 0)
-                        const remaining = Math.max(0, b.targetMonthly - used)
-                        return (
-                          <button
-                            key={b.id}
-                            type="button"
-                            onClick={() => setFinanceSelectedBucketId(b.id)}
-                            style={{
-                              textAlign: 'left',
-                              padding: '8px 9px',
-                              borderRadius: '10px',
-                              cursor: 'pointer',
-                              background: isSelected ? 'rgba(245, 158, 11, 0.16)' : '#0d0919',
-                              border: isSelected ? '1.5px solid rgba(251, 191, 36, 0.65)' : '1px solid #2b2242',
-                            }}
-                          >
-                            <div style={{ fontSize: '11px', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {b.name}
-                            </div>
-                            <div style={{ fontSize: '9.5px', color: '#fcd34d', marginTop: '2px' }}>
-                              Sisa {formatRupiah(remaining)}
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <input
-                    type="text"
-                    value={financeNoteInput}
-                    onChange={(e) => setFinanceNoteInput(e.target.value)}
-                    placeholder="Catatan singkat (opsional, misal: Makan siang / Sisih gaji)"
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      borderRadius: '9px',
-                      background: '#0b0816',
-                      border: '1px solid #2b2242',
-                      color: '#f5f2ff',
-                      fontSize: '11.5px',
-                    }}
-                  />
-                </div>
-
+        {/* SUB-TAB 1: TARGET TABUNGAN (LIQUID-FILL GLASS CARDS) */}
+        {financeTab === 'goals' && (
+          <div data-scroll-card style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+              <strong style={{ fontSize: '12px', color: '#ffffff' }}>
+                Target Tabungan ({financeVault.goals.length})
+              </strong>
+              {!isFinanceViewOnly && (
                 <button
                   type="button"
-                  onClick={() => handleAddFinanceLog(currentFinanceQuest.id, targetDateIso)}
+                  onClick={() => {
+                    setFinanceTargetDraftType('goal')
+                    setActiveFinanceSheet('target')
+                  }}
                   style={{
-                    width: '100%',
-                    padding: '11px',
-                    borderRadius: '11px',
-                    border: 'none',
-                    background:
-                      financeLogType === 'saving'
-                        ? 'linear-gradient(135deg, #059669 0%, #0284c7 100%)'
-                        : financeLogType === 'expense'
-                          ? 'linear-gradient(135deg, #d97706 0%, #e11d48 100%)'
-                          : 'linear-gradient(135deg, #0284c7 0%, #6366f1 100%)',
-                    color: '#ffffff',
-                    fontSize: '12px',
+                    padding: '5px 11px',
+                    borderRadius: '999px',
+                    background: rankTint,
+                    border: `1px solid ${currentRankTier.primaryColor}`,
+                    color: currentRankTier.highlightColor,
+                    fontSize: '10px',
                     fontWeight: 800,
                     cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.25)',
                   }}
                 >
-                  {financeLogType === 'saving'
-                    ? `Simpan Tabungan ${parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}`
-                    : financeLogType === 'expense'
-                      ? `Simpan Pengeluaran ${parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}`
-                      : `Simpan Uang Masuk ${parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}`}
-                  {!isQuestDoneOnDate ? ` (+${currentFinanceQuest.xp} XP)` : ''}
+                  + Tambah Target
                 </button>
-              </div>
-            )}
-
-            {/* RIWAYAT TRANSAKSI TERKINI */}
-            <div
-              style={{
-                borderRadius: '14px',
-                padding: '12px',
-                background: '#110d1e',
-                border: '1px solid #28213a',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <strong style={{ fontSize: '12px', color: '#f5f2ff' }}>Riwayat Catatan Keuangan</strong>
-                <span style={{ fontSize: '10px', color: '#b8add1' }}>{monthLogs.length} catatan bulan ini</span>
-              </div>
-
-              {financeVault.logs.length === 0 ? (
-                <div
-                  style={{
-                    padding: '16px 10px',
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    color: '#b8add1',
-                    borderRadius: '10px',
-                    border: '1px dashed #2e2444',
-                  }}
-                >
-                  Belum ada catatan. Catat transaksi pertamamu dengan 3 langkah di atas!
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                  {financeVault.logs.slice(0, 15).map((log) => {
-                    const isSaving = log.type === 'saving'
-                    const isIncome = log.type === 'income'
-                    const badgeColor = isSaving ? '#6ee7b7' : isIncome ? '#7dd3fc' : '#fcd34d'
-                    const sign = log.type === 'expense' ? '-' : '+'
-                    return (
-                      <div
-                        key={log.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '8px',
-                          padding: '8px 10px',
-                          borderRadius: '10px',
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                        }}
-                      >
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#f5f2ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {log.note}
-                          </div>
-                          <div style={{ fontSize: '9.5px', color: '#b8add1', marginTop: '2px' }}>
-                            {log.dateIso} • {isSaving ? 'Tabungan' : isIncome ? 'Uang Masuk' : 'Pengeluaran'}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
-                          <strong style={{ fontSize: '11.5px', color: badgeColor }}>
-                            {sign}
-                            {formatRupiah(log.amount)}
-                          </strong>
-                          {!isFinanceViewOnly && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteFinanceLog(log.id)}
-                              title="Hapus catatan"
-                              style={{
-                                background: 'rgba(239, 68, 68, 0.12)',
-                                border: '1px solid rgba(239, 68, 68, 0.28)',
-                                borderRadius: '6px',
-                                padding: '4px',
-                                color: '#fca5a5',
-                                cursor: 'pointer',
-                                display: 'flex',
-                              }}
-                            >
-                              <Trash2 size={11} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
               )}
             </div>
+
+            {financeVault.goals.length === 0 ? (
+              <div
+                style={{
+                  padding: '22px 14px',
+                  borderRadius: '16px',
+                  background: '#080d1c',
+                  border: '1px dashed rgba(255,255,255,0.16)',
+                  textAlign: 'center',
+                  fontSize: '11.5px',
+                  color: '#cbd5e1',
+                }}
+              >
+                Belum ada Target Tabungan. Klik "+ Tambah Target" untuk membuat target pertamamu!
+              </div>
+            ) : (
+              financeVault.goals.map((goal) => {
+                const pct = goal.targetAmount > 0 ? Math.min(100, Math.round((goal.savedAmount / goal.targetAmount) * 100)) : 0
+                const isDoneGoal = goal.savedAmount >= goal.targetAmount
+                return (
+                  <div
+                    key={goal.id}
+                    style={{
+                      position: 'relative',
+                      overflow: 'hidden',
+                      borderRadius: '16px',
+                      border: `1px solid ${isDoneGoal ? `rgba(${currentRankTier.primaryRgb}, 0.45)` : 'rgba(255,255,255,0.1)'}`,
+                      background: '#080d1c',
+                      padding: '12px',
+                    }}
+                  >
+                    {/* Liquid-Fill Backdrop */}
+                    <motion.div
+                      aria-hidden="true"
+                      initial={{ width: '0%' }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ type: 'spring', stiffness: 130, damping: 20 }}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        opacity: 0.2,
+                        pointerEvents: 'none',
+                        background: `linear-gradient(90deg, ${currentRankTier.secondaryColor}, ${currentRankTier.primaryColor})`,
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'relative',
+                        zIndex: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <strong
+                            style={{
+                              fontSize: '12px',
+                              color: '#ffffff',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {goal.title}
+                          </strong>
+                          <span style={{ fontSize: '9.5px', fontWeight: 900, color: currentRankTier.primaryColor, flexShrink: 0 }}>
+                            {pct}%
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: '#e2e8f0', marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
+                          {formatRupiah(goal.savedAmount)} / {formatRupiah(goal.targetAmount)}
+                        </div>
+                      </div>
+
+                      {!isFinanceViewOnly && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                          {!isDoneGoal && (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickSaveToGoal(goal.id, 50000, currentFinanceQuest.id, targetDateIso)}
+                              style={{
+                                padding: '5px 9px',
+                                borderRadius: '10px',
+                                background: 'rgba(3, 7, 18, 0.55)',
+                                border: '1px solid rgba(255,255,255,0.16)',
+                                color: '#a7f3d0',
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              +Rp 50rb
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingGoalId(goal.id)
+                              setEditingGoalTitleDraft(goal.title)
+                              setEditingGoalTargetDraft(formatDigitsWithDots(goal.targetAmount))
+                              setEditingGoalSavedDraft(formatDigitsWithDots(goal.savedAmount))
+                              setActiveFinanceSheet('editGoal')
+                            }}
+                            title="Edit target"
+                            style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '8px',
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              color: '#cbd5e1',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFinanceGoal(goal.id)}
+                            title="Hapus target"
+                            style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '8px',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(248, 113, 113, 0.25)',
+                              color: '#fca5a5',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
+            )}
           </div>
         )}
 
-        {/* SUB-TAB 2: POS PENGELUARAN & ALOKASI */}
+        {/* SUB-TAB 2: POS PENGELUARAN (LIQUID-FILL AMBER CARDS) */}
         {financeTab === 'budget' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div
-              style={{
-                padding: '10px 12px',
-                borderRadius: '12px',
-                background: unallocatedBalance < 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(56, 189, 248, 0.1)',
-                border: unallocatedBalance < 0 ? '1px solid rgba(248, 113, 113, 0.4)' : '1px solid rgba(56, 189, 248, 0.3)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: 800, color: '#f5f2ff' }}>
-                  {unallocatedBalance >= 0 ? 'Sisa Belum Dialokasikan' : 'Total Pos Melebihi Penghasilan!'}
-                </div>
-                <div style={{ fontSize: '10px', color: '#b8add1' }}>
-                  Total pos: {formatRupiah(totalAllocatedMonthly)} / {formatRupiah(totalBudgetPool)}
-                </div>
-              </div>
-              <strong style={{ fontSize: '12px', color: unallocatedBalance < 0 ? '#fca5a5' : '#67e8f9' }}>
-                {unallocatedBalance < 0 ? `-${formatRupiah(Math.abs(unallocatedBalance))}` : formatRupiah(unallocatedBalance)}
+          <div data-scroll-card style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+              <strong style={{ fontSize: '12px', color: '#ffffff' }}>
+                Pos Pengeluaran ({financeVault.buckets.length})
               </strong>
+              {!isFinanceViewOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceTargetDraftType('bucket')
+                    setActiveFinanceSheet('target')
+                  }}
+                  style={{
+                    padding: '5px 11px',
+                    borderRadius: '999px',
+                    background: 'rgba(245, 158, 11, 0.14)',
+                    border: '1px solid rgba(251, 191, 36, 0.4)',
+                    color: '#fde68a',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Tambah Pos
+                </button>
+              )}
             </div>
 
             {financeVault.buckets.map((bucket) => {
@@ -9026,735 +8774,991 @@ export default function Page() {
               const pct = bucket.targetMonthly > 0 ? Math.min(100, Math.round((usedAmount / bucket.targetMonthly) * 100)) : 0
               const remainingBucket = bucket.targetMonthly - usedAmount
               const isOver = !isSavingBucket && usedAmount > bucket.targetMonthly
-              const accent = bucket.color || '#a855f7'
 
               return (
                 <div
                   key={bucket.id}
                   style={{
-                    borderRadius: '13px',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: '16px',
+                    border: `1px solid ${isOver ? 'rgba(248, 113, 113, 0.45)' : 'rgba(255,255,255,0.1)'}`,
+                    background: '#080d1c',
                     padding: '12px',
-                    background: '#130f22',
-                    border: `1px solid ${isOver ? 'rgba(248, 113, 113, 0.5)' : '#2b2242'}`,
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <strong style={{ fontSize: '12.5px', color: '#ffffff' }}>{bucket.name}</strong>
-                        <span
-                          style={{
-                            fontSize: '9px',
-                            fontWeight: 800,
-                            padding: '1px 6px',
-                            borderRadius: '999px',
-                            background: 'rgba(255,255,255,0.06)',
-                            color: accent,
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {bucket.category}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '10.5px', color: '#b8add1', marginTop: '2px' }}>
-                        {isSavingBucket ? 'Tersimpan' : 'Terpakai'} {formatRupiah(usedAmount)} / {formatRupiah(bucket.targetMonthly)} ({pct}%)
-                      </div>
-                      <div style={{ fontSize: '10px', color: isOver ? '#fca5a5' : '#7dd3fc', fontWeight: 700, marginTop: '1px' }}>
-                        {isSavingBucket
-                          ? remainingBucket > 0
-                            ? `Kurang setor: ${formatRupiah(remainingBucket)}`
-                            : 'Target tabungan bulanan terpenuhi!'
-                          : remainingBucket >= 0
-                            ? `Sisa jatah: ${formatRupiah(remainingBucket)}`
-                            : `Melebihi batas ${formatRupiah(Math.abs(remainingBucket))}`}
-                      </div>
+                  <motion.div
+                    aria-hidden="true"
+                    initial={{ width: '0%' }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ type: 'spring', stiffness: 130, damping: 20 }}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      opacity: 0.18,
+                      pointerEvents: 'none',
+                      background: isOver
+                        ? 'linear-gradient(90deg, #b91c1c, #ef4444)'
+                        : isSavingBucket
+                          ? `linear-gradient(90deg, ${currentRankTier.secondaryColor}, ${currentRankTier.primaryColor})`
+                          : 'linear-gradient(90deg, #d97706, #fbbf24)',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'relative',
+                      zIndex: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <strong style={{ fontSize: '12px', color: '#ffffff', display: 'block' }}>{bucket.name}</strong>
+                      <span style={{ fontSize: '10px', color: '#cbd5e1', fontVariantNumeric: 'tabular-nums' }}>
+                        {isSavingBucket ? 'Tersimpan' : 'Terpakai'} {formatRupiah(usedAmount)} / {formatRupiah(bucket.targetMonthly)}
+                      </span>
                     </div>
 
-                    {!isFinanceViewOnly && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          color: isOver ? '#fca5a5' : isSavingBucket ? '#6ee7b7' : '#fcd34d',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {isSavingBucket
+                          ? remainingBucket > 0
+                            ? `Kurang ${formatRupiah(remainingBucket)}`
+                            : 'Tercapai'
+                          : remainingBucket >= 0
+                            ? `Sisa ${formatRupiah(remainingBucket)}`
+                            : `Lewat ${formatRupiah(Math.abs(remainingBucket))}`}
+                      </span>
+                      {!isFinanceViewOnly && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingBucketId(bucket.id)
+                              setEditingBucketTargetDraft(formatDigitsWithDots(bucket.targetMonthly))
+                              setActiveFinanceSheet('editBucket')
+                            }}
+                            title="Edit batas pos"
+                            style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '8px',
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              color: '#cbd5e1',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          {financeVault.buckets.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFinanceBucket(bucket.id)}
+                              title="Hapus pos"
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                borderRadius: '8px',
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                border: '1px solid rgba(248, 113, 113, 0.25)',
+                                color: '#fca5a5',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* SUB-TAB 3: RIWAYAT PEMASUKAN & PENGELUARAN (POSISI A) */}
+        {financeTab === 'history' && (
+          <div data-scroll-card style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Ringkasan Pemasukan vs Pengeluaran */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+              <div
+                style={{
+                  padding: '9px 11px',
+                  borderRadius: '13px',
+                  background: 'rgba(14, 165, 233, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: '8.5px', fontWeight: 800, color: '#7dd3fc', textTransform: 'uppercase' }}>
+                  Total Pemasukan
+                </span>
+                <strong style={{ fontSize: '12px', color: '#ffffff', fontVariantNumeric: 'tabular-nums' }}>
+                  +{formatRupiah(totalBudgetPool)}
+                </strong>
+              </div>
+              <div
+                style={{
+                  padding: '9px 11px',
+                  borderRadius: '13px',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(251, 191, 36, 0.25)',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: '8.5px', fontWeight: 800, color: '#fcd34d', textTransform: 'uppercase' }}>
+                  Total Pengeluaran
+                </span>
+                <strong style={{ fontSize: '12px', color: '#ffffff', fontVariantNumeric: 'tabular-nums' }}>
+                  -{formatRupiah(monthlyExpenseTotal)}
+                </strong>
+              </div>
+            </div>
+
+            {/* Filter Chips */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+              {(
+                [
+                  { id: 'all', label: 'Semua' },
+                  { id: 'income', label: '+ Pemasukan' },
+                  { id: 'expense', label: '- Pengeluaran' },
+                  { id: 'saving', label: 'Tabungan' },
+                ] as const
+              ).map((f) => {
+                const active = financeHistoryFilter === f.id
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setFinanceHistoryFilter(f.id)}
+                    style={{
+                      flexShrink: 0,
+                      padding: '5px 11px',
+                      borderRadius: '999px',
+                      background: active ? rankTint : 'rgba(255,255,255,0.03)',
+                      border: active ? `1px solid ${currentRankTier.primaryColor}` : '1px solid rgba(255,255,255,0.1)',
+                      color: active ? currentRankTier.highlightColor : '#94a3b8',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Daftar Transaksi */}
+            {filteredLogs.length === 0 && !showMainSalaryInHistory ? (
+              <div
+                style={{
+                  padding: '20px 14px',
+                  borderRadius: '16px',
+                  background: '#080d1c',
+                  border: '1px dashed rgba(255,255,255,0.15)',
+                  textAlign: 'center',
+                  fontSize: '11px',
+                  color: '#cbd5e1',
+                }}
+              >
+                Belum ada transaksi pada filter ini.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                {filteredLogs.map((log) => {
+                  const isExp = log.type === 'expense'
+                  const isSav = log.type === 'saving'
+                  const color = isSav ? '#34d399' : isExp ? '#fbbf24' : '#38bdf8'
+                  const sign = isExp ? '-' : '+'
+                  const badge = isSav ? 'Tabung' : isExp ? 'Keluar' : 'Masuk'
+                  return (
+                    <div
+                      key={log.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        padding: '10px 12px',
+                        borderRadius: '16px',
+                        background: '#080d1c',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            color: '#ffffff',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {log.note}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', fontSize: '9.5px', color: '#94a3b8' }}>
+                          <span
+                            style={{
+                              padding: '1px 6px',
+                              borderRadius: '5px',
+                              background: 'rgba(255,255,255,0.06)',
+                              color,
+                              fontSize: '8.5px',
+                              fontWeight: 800,
+                            }}
+                          >
+                            {badge}
+                          </span>
+                          <span>{log.dateIso}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                        <strong style={{ fontSize: '11.5px', color, fontVariantNumeric: 'tabular-nums' }}>
+                          {sign}
+                          {formatRupiah(log.amount)}
+                        </strong>
+                        {!isFinanceViewOnly && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFinanceLog(log.id)}
+                            title="Hapus"
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '8px',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(248, 113, 113, 0.25)',
+                              color: '#fca5a5',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <X size={11} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {showMainSalaryInHistory && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      padding: '10px 12px',
+                      borderRadius: '16px',
+                      background: '#080d1c',
+                      border: '1px solid rgba(56, 189, 248, 0.18)',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#ffffff' }}>
+                        Gaji / Pemasukan Utama
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', fontSize: '9.5px', color: '#94a3b8' }}>
+                        <span
+                          style={{
+                            padding: '1px 6px',
+                            borderRadius: '5px',
+                            background: 'rgba(255,255,255,0.06)',
+                            color: '#38bdf8',
+                            fontSize: '8.5px',
+                            fontWeight: 800,
+                          }}
+                        >
+                          Masuk
+                        </span>
+                        <span>{activeMonthPrefix} • Tetap</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      <strong style={{ fontSize: '11.5px', color: '#38bdf8', fontVariantNumeric: 'tabular-nums' }}>
+                        +{formatRupiah(financeVault.monthlyIncome)}
+                      </strong>
+                      {!isFinanceViewOnly && (
                         <button
                           type="button"
                           onClick={() => {
-                            if (editingBucketId === bucket.id) {
-                              setEditingBucketId(null)
-                            } else {
-                              setEditingBucketId(bucket.id)
-                              setEditingBucketTargetDraft(formatDigitsWithDots(bucket.targetMonthly))
-                            }
+                            setMonthlyIncomeDraft(formatDigitsWithDots(financeVault.monthlyIncome))
+                            setActiveFinanceSheet('salary')
                           }}
+                          title="Ubah gaji"
                           style={{
-                            padding: '4px 7px',
-                            borderRadius: '7px',
-                            background: 'rgba(168, 85, 247, 0.14)',
-                            border: '1px solid rgba(168, 85, 247, 0.3)',
-                            color: '#e9d5ff',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '8px',
+                            background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            color: '#cbd5e1',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Pencil size={10} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* DOCKED BOTTOM ACTION BAR (FINANCE VAULT) */}
+        {!isFinanceViewOnly && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '100%',
+              maxWidth: '480px',
+              padding: '10px 14px calc(10px + env(safe-area-inset-bottom, 0px))',
+              background: 'rgba(6, 9, 20, 0.95)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              borderTop: '1px solid rgba(255,255,255,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              zIndex: 45,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveFinanceSheet('log')}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                borderRadius: '13px',
+                border: 'none',
+                background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
+                color: '#030712',
+                fontSize: '12px',
+                fontWeight: 900,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                boxShadow: `0 6px 20px -6px ${currentRankTier.glowColor}`,
+              }}
+            >
+              <Plus size={15} strokeWidth={2.8} />
+              <span>Catat Uang (Rp)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
+                setActiveFinanceSheet('target')
+              }}
+              style={{
+                padding: '10px 14px',
+                borderRadius: '13px',
+                border: '1px solid rgba(255,255,255,0.15)',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#ffffff',
+                fontSize: '12px',
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              + Target
+            </button>
+          </div>
+        )}
+
+        {/* SLIDE-UP BOTTOM SHEETS (TARGET BARU / CATAT UANG / UBAH GAJI / EDIT) */}
+        <AnimatePresence>
+          {activeFinanceSheet && !isFinanceViewOnly && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setActiveFinanceSheet(null)}
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.68)',
+                  backdropFilter: 'blur(4px)',
+                  zIndex: 58,
+                }}
+              />
+              <motion.div
+                initial={{ y: '100%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '100%', opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+                style={{
+                  position: 'fixed',
+                  bottom: 0,
+                  left: '50%',
+                  x: '-50%',
+                  width: '100%',
+                  maxWidth: '480px',
+                  maxHeight: '85vh',
+                  overflowY: 'auto',
+                  borderTopLeftRadius: '24px',
+                  borderTopRightRadius: '24px',
+                  borderTop: '1px solid rgba(255,255,255,0.15)',
+                  background: '#090e1c',
+                  padding: '16px 16px calc(18px + env(safe-area-inset-bottom, 0px))',
+                  zIndex: 60,
+                  boxShadow: '0 -12px 40px rgba(0,0,0,0.85)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                {activeFinanceSheet === 'target' && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>+ Buat Target Baru</strong>
+                      <button
+                        type="button"
+                        onClick={() => setActiveFinanceSheet(null)}
+                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setFinanceTargetDraftType('goal')}
+                        style={{
+                          padding: '9px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: financeTargetDraftType === 'goal' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)',
+                          border: financeTargetDraftType === 'goal' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.1)',
+                          color: financeTargetDraftType === 'goal' ? '#a7f3d0' : '#cbd5e1',
+                        }}
+                      >
+                        Target Tabungan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFinanceTargetDraftType('bucket')}
+                        style={{
+                          padding: '9px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: financeTargetDraftType === 'bucket' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)',
+                          border: financeTargetDraftType === 'bucket' ? '1px solid #fbbf24' : '1px solid rgba(255,255,255,0.1)',
+                          color: financeTargetDraftType === 'bucket' ? '#fde68a' : '#cbd5e1',
+                        }}
+                      >
+                        Pos Pengeluaran
+                      </button>
+                    </div>
+                    {financeTargetDraftType === 'goal' ? (
+                      <>
+                        <input
+                          type="text"
+                          value={newGoalTitle}
+                          onChange={(e) => setNewGoalTitle(e.target.value)}
+                          placeholder="Nama target (misal: Beli Laptop / Dana Darurat)"
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            borderRadius: '12px',
+                            background: '#04060e',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            color: '#ffffff',
+                            fontSize: '12.5px',
+                          }}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 900, color: currentRankTier.primaryColor }}>Rp</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={formatDigitsWithDots(newGoalTarget)}
+                            onChange={(e) => setNewGoalTarget(formatDigitsWithDots(e.target.value))}
+                            placeholder="1.000.000"
+                            style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '15px', fontWeight: 900 }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {[500000, 1000000, 2500000, 5000000].map((v) => (
+                            <button
+                              key={v}
+                              type="button"
+                              onClick={() => setNewGoalTarget(formatDigitsWithDots(v))}
+                              style={{
+                                padding: '5px 9px',
+                                borderRadius: '8px',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: '#e2e8f0',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {formatRupiah(v)}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddFinanceGoal}
+                          style={{
+                            width: '100%',
+                            padding: '11px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            background: currentRankTier.primaryColor,
+                            color: '#030712',
+                            fontSize: '12px',
+                            fontWeight: 900,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Simpan Target Tabungan
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          value={newBucketName}
+                          onChange={(e) => setNewBucketName(e.target.value)}
+                          placeholder="Nama pos (misal: Kos / Transport / Jajan)"
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            borderRadius: '12px',
+                            background: '#04060e',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            color: '#ffffff',
+                            fontSize: '12.5px',
+                          }}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 900, color: '#fbbf24' }}>Rp</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={formatDigitsWithDots(newBucketTarget)}
+                            onChange={(e) => setNewBucketTarget(formatDigitsWithDots(e.target.value))}
+                            placeholder="500.000"
+                            style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '15px', fontWeight: 900 }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddFinanceBucket}
+                          style={{
+                            width: '100%',
+                            padding: '11px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            background: '#fbbf24',
+                            color: '#030712',
+                            fontSize: '12px',
+                            fontWeight: 900,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Simpan Pos Pengeluaran
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {activeFinanceSheet === 'log' && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Catat Pemasukan / Pengeluaran</strong>
+                      <button
+                        type="button"
+                        onClick={() => setActiveFinanceSheet(null)}
+                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setFinanceLogType('expense')}
+                        style={{
+                          padding: '8px 6px',
+                          borderRadius: '11px',
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: financeLogType === 'expense' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)',
+                          border: financeLogType === 'expense' ? '1px solid #fbbf24' : '1px solid rgba(255,255,255,0.1)',
+                          color: financeLogType === 'expense' ? '#fde68a' : '#cbd5e1',
+                        }}
+                      >
+                        - Keluar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFinanceLogType('income')}
+                        style={{
+                          padding: '8px 6px',
+                          borderRadius: '11px',
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: financeLogType === 'income' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
+                          border: financeLogType === 'income' ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                          color: financeLogType === 'income' ? '#bae6fd' : '#cbd5e1',
+                        }}
+                      >
+                        + Pemasukan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFinanceLogType('saving')}
+                        style={{
+                          padding: '8px 6px',
+                          borderRadius: '11px',
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: financeLogType === 'saving' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)',
+                          border: financeLogType === 'saving' ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.1)',
+                          color: financeLogType === 'saving' ? '#a7f3d0' : '#cbd5e1',
+                        }}
+                      >
+                        + Nabung
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 900, color: currentRankTier.primaryColor }}>Rp</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatDigitsWithDots(financeAmountInput)}
+                        onChange={(e) => setFinanceAmountInput(formatDigitsWithDots(e.target.value))}
+                        placeholder="50.000"
+                        style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '16px', fontWeight: 900 }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                      {[20000, 50000, 100000, 250000, 500000].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setFinanceAmountInput(formatDigitsWithDots(v))}
+                          style={{
+                            padding: '5px 8px',
+                            borderRadius: '8px',
+                            background: parsedQuickAmount === v ? rankTint : 'rgba(255,255,255,0.05)',
+                            border: parsedQuickAmount === v ? `1px solid ${currentRankTier.primaryColor}` : '1px solid rgba(255,255,255,0.1)',
+                            color: parsedQuickAmount === v ? currentRankTier.highlightColor : '#e2e8f0',
                             fontSize: '10px',
                             fontWeight: 700,
                             cursor: 'pointer',
                           }}
                         >
-                          Edit
+                          {formatRupiah(v)}
                         </button>
-                        {financeVault.buckets.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteFinanceBucket(bucket.id)}
-                            style={{
-                              padding: '5px',
-                              borderRadius: '7px',
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              border: '1px solid rgba(239, 68, 68, 0.25)',
-                              color: '#fca5a5',
-                              cursor: 'pointer',
-                              display: 'flex',
-                            }}
-                            title="Hapus pos"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {editingBucketId === bucket.id && !isFinanceViewOnly && (
-                    <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'center' }}>
-                      <div
-                        style={{
-                          flex: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '0 9px',
-                          borderRadius: '8px',
-                          background: '#0b0816',
-                          border: '1px solid #32254a',
-                        }}
-                      >
-                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#34d399' }}>Rp</span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={formatDigitsWithDots(editingBucketTargetDraft)}
-                          onChange={(e) => setEditingBucketTargetDraft(formatDigitsWithDots(e.target.value))}
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            padding: '7px 0',
-                            border: 'none',
-                            outline: 'none',
-                            background: 'transparent',
-                            color: '#ffffff',
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                          }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateFinanceBucketTarget(bucket.id, parseFormattedDigits(editingBucketTargetDraft))}
-                        style={{
-                          padding: '7px 11px',
-                          borderRadius: '8px',
-                          background: '#10b981',
-                          border: 'none',
-                          color: '#052e16',
-                          fontSize: '10.5px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Simpan
-                      </button>
+                      ))}
                     </div>
-                  )}
-
-                  <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                    <div
+                    <input
+                      type="text"
+                      value={financeNoteInput}
+                      onChange={(e) => setFinanceNoteInput(e.target.value)}
+                      placeholder="Keterangan (misal: Makan siang / Bonus)"
                       style={{
-                        width: `${pct}%`,
-                        height: '100%',
-                        borderRadius: '999px',
-                        background: isOver ? '#ef4444' : accent,
-                        transition: 'width 0.3s ease',
+                        width: '100%',
+                        padding: '9px 12px',
+                        borderRadius: '12px',
+                        background: '#04060e',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        color: '#ffffff',
+                        fontSize: '12px',
                       }}
                     />
-                  </div>
-                </div>
-              )
-            })}
-
-            {!isFinanceViewOnly && (
-              isAddingFinanceBucket ? (
-                <div
-                  style={{
-                    borderRadius: '13px',
-                    padding: '12px',
-                    background: '#151026',
-                    border: '1px solid rgba(56, 189, 248, 0.35)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                  }}
-                >
-                  <strong style={{ fontSize: '12px', color: '#7dd3fc' }}>Pos Pengeluaran Baru</strong>
-                  <input
-                    type="text"
-                    value={newBucketName}
-                    onChange={(e) => setNewBucketName(e.target.value)}
-                    placeholder="Nama pos (misal: Kos / Internet / Belanja)"
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      background: '#0b0816',
-                      border: '1px solid #32254a',
-                      color: '#ffffff',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '7px' }}>
-                    <select
-                      value={newBucketCategory}
-                      onChange={(e) => setNewBucketCategory(e.target.value as FinanceBudgetBucket['category'])}
-                      style={{
-                        padding: '8px',
-                        borderRadius: '8px',
-                        background: '#0b0816',
-                        border: '1px solid #32254a',
-                        color: '#ffffff',
-                        fontSize: '11.5px',
-                      }}
-                    >
-                      <option value="kebutuhan">Kebutuhan</option>
-                      <option value="hiburan">Hiburan</option>
-                      <option value="tabungan">Tabungan</option>
-                      <option value="cicilan">Cicilan</option>
-                    </select>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '0 8px',
-                        borderRadius: '8px',
-                        background: '#0b0816',
-                        border: '1px solid #32254a',
-                      }}
-                    >
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#34d399' }}>Rp</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={formatDigitsWithDots(newBucketTarget)}
-                        onChange={(e) => setNewBucketTarget(formatDigitsWithDots(e.target.value))}
-                        placeholder="300.000"
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          padding: '8px 0',
-                          border: 'none',
-                          outline: 'none',
-                          background: 'transparent',
-                          color: '#ffffff',
-                          fontSize: '11.5px',
-                          fontWeight: 700,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '7px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingFinanceBucket(false)}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        borderRadius: '8px',
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        color: '#d5beff',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddFinanceBucket}
-                      style={{
-                        flex: 2,
-                        padding: '8px',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, #059669, #0284c7)',
-                        border: 'none',
-                        color: '#ffffff',
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Simpan Pos
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingFinanceBucket(true)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    borderRadius: '11px',
-                    background: 'rgba(168, 85, 247, 0.12)',
-                    border: '1px dashed rgba(168, 85, 247, 0.45)',
-                    color: '#e9d5ff',
-                    fontSize: '11.5px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <Plus size={14} />
-                  Tambah Pos Pengeluaran / Alokasi
-                </button>
-              )
-            )}
-          </div>
-        )}
-
-        {/* SUB-TAB 3: TARGET TABUNGAN (SAVING GOALS) */}
-        {financeTab === 'goals' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div
-              style={{
-                padding: '10px 12px',
-                borderRadius: '12px',
-                background: 'rgba(16, 185, 129, 0.12)',
-                border: '1px solid rgba(52, 211, 153, 0.35)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: 800, color: '#6ee7b7' }}>Total Tabungan Impian</div>
-                <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                  Estimasi setor: {formatRupiah(dailyPaceEstimate)}/hari
-                </div>
-              </div>
-              <strong style={{ fontSize: '11.5px', color: '#ffffff', textAlign: 'right' }}>
-                {formatRupiah(totalGoalsSaved)} / {formatRupiah(totalGoalsTarget)}
-              </strong>
-            </div>
-
-            {financeVault.goals.length === 0 ? (
-              <div
-                style={{
-                  padding: '18px 12px',
-                  borderRadius: '12px',
-                  background: '#130f22',
-                  border: '1px dashed #32254a',
-                  textAlign: 'center',
-                  fontSize: '11px',
-                  color: '#b8add1',
-                }}
-              >
-                Belum ada Target Tabungan. Buat target tabungan pertamamu di bawah!
-              </div>
-            ) : (
-              financeVault.goals.map((goal) => {
-                const pct = goal.targetAmount > 0 ? Math.min(100, Math.round((goal.savedAmount / goal.targetAmount) * 100)) : 0
-                const remaining = Math.max(0, goal.targetAmount - goal.savedAmount)
-                const estDaysLeft = remaining > 0 ? Math.ceil(remaining / dailyPaceEstimate) : 0
-                const isGoalDone = remaining === 0
-
-                return (
-                  <div
-                    key={goal.id}
-                    style={{
-                      borderRadius: '13px',
-                      padding: '12px',
-                      background: '#130f22',
-                      border: `1px solid ${isGoalDone ? 'rgba(52, 211, 153, 0.55)' : '#2b2242'}`,
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <strong style={{ fontSize: '12.5px', color: '#ffffff' }}>{goal.title}</strong>
-                          {isGoalDone && (
-                            <span
-                              style={{
-                                fontSize: '9px',
-                                fontWeight: 800,
-                                padding: '1px 6px',
-                                borderRadius: '999px',
-                                background: 'rgba(16, 185, 129, 0.22)',
-                                color: '#6ee7b7',
-                              }}
-                            >
-                              TERCAPAI!
-                            </span>
-                          )}
-                        </div>
-                        {goal.note && (
-                          <div style={{ fontSize: '10px', color: '#b8add1', marginTop: '1px' }}>{goal.note}</div>
-                        )}
-                      </div>
-                      {!isFinanceViewOnly && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                    {financeLogType === 'saving' && financeVault.goals.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                        {financeVault.goals.map((g) => (
                           <button
+                            key={g.id}
                             type="button"
-                            onClick={() => {
-                              if (editingGoalId === goal.id) {
-                                setEditingGoalId(null)
-                              } else {
-                                setEditingGoalId(goal.id)
-                                setEditingGoalTitleDraft(goal.title)
-                                setEditingGoalTargetDraft(formatDigitsWithDots(goal.targetAmount))
-                                setEditingGoalSavedDraft(formatDigitsWithDots(goal.savedAmount))
-                              }
-                            }}
+                            onClick={() => setFinanceSelectedGoalId(g.id)}
                             style={{
-                              padding: '4px 7px',
-                              borderRadius: '7px',
-                              background: 'rgba(168, 85, 247, 0.14)',
-                              border: '1px solid rgba(168, 85, 247, 0.3)',
-                              color: '#e9d5ff',
-                              fontSize: '10px',
+                              textAlign: 'left',
+                              padding: '8px 10px',
+                              borderRadius: '11px',
+                              background: financeSelectedGoalId === g.id ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255,255,255,0.05)',
+                              border: financeSelectedGoalId === g.id ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.1)',
+                              color: '#ffffff',
+                              fontSize: '10.5px',
                               fontWeight: 700,
                               cursor: 'pointer',
                             }}
                           >
-                            Edit
+                            <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.title}</div>
                           </button>
+                        ))}
+                      </div>
+                    )}
+                    {financeLogType === 'expense' && financeVault.buckets.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                        {financeVault.buckets.map((b) => (
                           <button
+                            key={b.id}
                             type="button"
-                            onClick={() => handleDeleteFinanceGoal(goal.id)}
+                            onClick={() => setFinanceSelectedBucketId(b.id)}
                             style={{
-                              padding: '5px',
-                              borderRadius: '7px',
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              border: '1px solid rgba(239, 68, 68, 0.25)',
-                              color: '#fca5a5',
+                              textAlign: 'left',
+                              padding: '8px 10px',
+                              borderRadius: '11px',
+                              background: financeSelectedBucketId === b.id ? 'rgba(245, 158, 11, 0.18)' : 'rgba(255,255,255,0.05)',
+                              border: financeSelectedBucketId === b.id ? '1px solid #fbbf24' : '1px solid rgba(255,255,255,0.1)',
+                              color: '#ffffff',
+                              fontSize: '10.5px',
+                              fontWeight: 700,
                               cursor: 'pointer',
-                              display: 'flex',
                             }}
-                            title="Hapus target"
                           >
-                            <Trash2 size={11} />
+                            <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
                           </button>
-                        </div>
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleAddFinanceLog(currentFinanceQuest.id, targetDateIso)}
+                      style={{
+                        width: '100%',
+                        padding: '11px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        background: currentRankTier.primaryColor,
+                        color: '#030712',
+                        fontSize: '12px',
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Simpan {parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}
+                      {!isQuestDoneOnDate ? ` (+${currentFinanceQuest.xp} XP)` : ''}
+                    </button>
+                  </>
+                )}
 
-                    {editingGoalId === goal.id && !isFinanceViewOnly && (
-                      <div
-                        style={{
-                          padding: '9px',
-                          borderRadius: '10px',
-                          background: '#0b0816',
-                          border: '1px solid rgba(168, 85, 247, 0.3)',
-                          marginBottom: '8px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '6px',
-                        }}
+                {activeFinanceSheet === 'salary' && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Ubah Penghasilan Bulanan</strong>
+                      <button
+                        type="button"
+                        onClick={() => setActiveFinanceSheet(null)}
+                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                       >
-                        <input
-                          type="text"
-                          value={editingGoalTitleDraft}
-                          onChange={(e) => setEditingGoalTitleDraft(e.target.value)}
-                          placeholder="Nama target"
-                          style={{
-                            padding: '7px 9px',
-                            borderRadius: '7px',
-                            background: '#130f22',
-                            border: '1px solid #32254a',
-                            color: '#ffffff',
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                          }}
-                        />
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', borderRadius: '7px', background: '#130f22', border: '1px solid #32254a' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 800, color: '#34d399' }}>Rp</span>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={formatDigitsWithDots(editingGoalTargetDraft)}
-                              onChange={(e) => setEditingGoalTargetDraft(formatDigitsWithDots(e.target.value))}
-                              placeholder="Target"
-                              style={{ flex: 1, minWidth: 0, padding: '7px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '11px', fontWeight: 700 }}
-                            />
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', borderRadius: '7px', background: '#130f22', border: '1px solid #32254a' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8' }}>Rp</span>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={formatDigitsWithDots(editingGoalSavedDraft)}
-                              onChange={(e) => setEditingGoalSavedDraft(formatDigitsWithDots(e.target.value))}
-                              placeholder="Terkumpul"
-                              style={{ flex: 1, minWidth: 0, padding: '7px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '11px', fontWeight: 700 }}
-                            />
-                          </div>
-                        </div>
+                        Tutup
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 900, color: currentRankTier.primaryColor }}>Rp</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatDigitsWithDots(monthlyIncomeDraft)}
+                        onChange={(e) => setMonthlyIncomeDraft(formatDigitsWithDots(e.target.value))}
+                        placeholder="3.500.000"
+                        style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '16px', fontWeight: 900 }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                      {[2500000, 3500000, 5000000, 7500000, 10000000].map((v) => (
                         <button
+                          key={v}
                           type="button"
-                          onClick={() => handleUpdateFinanceGoal(goal.id)}
+                          onClick={() => handleSaveMonthlyIncome(v)}
                           style={{
-                            padding: '7px',
-                            borderRadius: '7px',
-                            background: '#10b981',
-                            border: 'none',
-                            color: '#052e16',
-                            fontSize: '11px',
-                            fontWeight: 800,
+                            padding: '5px 9px',
+                            borderRadius: '8px',
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: '#e2e8f0',
+                            fontSize: '10px',
+                            fontWeight: 700,
                             cursor: 'pointer',
                           }}
                         >
-                          Simpan Perubahan Target
+                          {formatRupiah(v)}
                         </button>
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '5px', gap: '6px' }}>
-                      <span style={{ color: '#6ee7b7', fontWeight: 800 }}>{formatRupiah(goal.savedAmount)}</span>
-                      <span style={{ color: '#cbd5e1', fontWeight: 700 }}>
-                        {pct}% dari {formatRupiah(goal.targetAmount)}
-                      </span>
+                      ))}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveMonthlyIncome(parseFormattedDigits(monthlyIncomeDraft))}
+                      style={{
+                        width: '100%',
+                        padding: '11px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        background: currentRankTier.primaryColor,
+                        color: '#030712',
+                        fontSize: '12px',
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Simpan Gaji
+                    </button>
+                  </>
+                )}
 
-                    <div style={{ height: '7px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: '7px' }}>
-                      <div
-                        style={{
-                          width: `${pct}%`,
-                          height: '100%',
-                          borderRadius: '999px',
-                          background: 'linear-gradient(90deg, #10b981 0%, #38bdf8 100%)',
-                          transition: 'width 0.3s ease',
-                        }}
+                {activeFinanceSheet === 'editGoal' && editingGoalId && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Edit Target Tabungan</strong>
+                      <button
+                        type="button"
+                        onClick={() => setActiveFinanceSheet(null)}
+                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={editingGoalTitleDraft}
+                      onChange={(e) => setEditingGoalTitleDraft(e.target.value)}
+                      placeholder="Nama target"
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontSize: '12.5px' }}
+                    />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Target Dana</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 10px', borderRadius: '11px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 900, color: currentRankTier.primaryColor }}>Rp</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={formatDigitsWithDots(editingGoalTargetDraft)}
+                            onChange={(e) => setEditingGoalTargetDraft(formatDigitsWithDots(e.target.value))}
+                            style={{ flex: 1, minWidth: 0, padding: '9px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '12.5px', fontWeight: 800 }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Terkumpul Saat Ini</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 10px', borderRadius: '11px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 900, color: '#34d399' }}>Rp</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={formatDigitsWithDots(editingGoalSavedDraft)}
+                            onChange={(e) => setEditingGoalSavedDraft(formatDigitsWithDots(e.target.value))}
+                            style={{ flex: 1, minWidth: 0, padding: '9px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '12.5px', fontWeight: 800 }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateFinanceGoal(editingGoalId)}
+                      style={{
+                        width: '100%',
+                        padding: '11px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        background: currentRankTier.primaryColor,
+                        color: '#030712',
+                        fontSize: '12px',
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Simpan Perubahan Target
+                    </button>
+                  </>
+                )}
+
+                {activeFinanceSheet === 'editBucket' && editingBucketId && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Edit Batas Pos Pengeluaran</strong>
+                      <button
+                        type="button"
+                        onClick={() => setActiveFinanceSheet(null)}
+                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 900, color: '#fbbf24' }}>Rp</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatDigitsWithDots(editingBucketTargetDraft)}
+                        onChange={(e) => setEditingBucketTargetDraft(formatDigitsWithDots(e.target.value))}
+                        style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '16px', fontWeight: 900 }}
                       />
                     </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                      <span style={{ fontSize: '10px', color: '#b8add1' }}>
-                        {isGoalDone
-                          ? 'Target dana sudah terpenuhi sepenuhnya!'
-                          : `Kurang ${formatRupiah(remaining)} • Est. ±${estDaysLeft} hari lagi`}
-                      </span>
-                      {!isFinanceViewOnly && !isGoalDone && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {[20000, 50000, 100000].map((amt) => (
-                            <button
-                              key={amt}
-                              type="button"
-                              onClick={() => handleQuickSaveToGoal(goal.id, amt, currentFinanceQuest.id, targetDateIso)}
-                              style={{
-                                padding: '4px 7px',
-                                borderRadius: '7px',
-                                background: 'rgba(16, 185, 129, 0.16)',
-                                border: '1px solid rgba(52, 211, 153, 0.4)',
-                                color: '#6ee7b7',
-                                fontSize: '9.5px',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              +{formatRupiah(amt)}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-
-            {!isFinanceViewOnly && (
-              isAddingFinanceGoal ? (
-                <div
-                  style={{
-                    borderRadius: '13px',
-                    padding: '12px',
-                    background: '#151026',
-                    border: '1px solid rgba(52, 211, 153, 0.35)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                  }}
-                >
-                  <strong style={{ fontSize: '12px', color: '#6ee7b7' }}>Target Tabungan Baru</strong>
-                  <input
-                    type="text"
-                    value={newGoalTitle}
-                    onChange={(e) => setNewGoalTitle(e.target.value)}
-                    placeholder="Nama target (misal: Membership Gym / Dana Darurat)"
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      background: '#0b0816',
-                      border: '1px solid #32254a',
-                      color: '#ffffff',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
-                    <div>
-                      <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', marginBottom: '3px' }}>Target Dana</span>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          padding: '0 8px',
-                          borderRadius: '8px',
-                          background: '#0b0816',
-                          border: '1px solid #32254a',
-                        }}
-                      >
-                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#34d399' }}>Rp</span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={formatDigitsWithDots(newGoalTarget)}
-                          onChange={(e) => setNewGoalTarget(formatDigitsWithDots(e.target.value))}
-                          placeholder="2.000.000"
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            padding: '8px 0',
-                            border: 'none',
-                            outline: 'none',
-                            background: 'transparent',
-                            color: '#ffffff',
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', marginBottom: '3px' }}>Saldo Awal (Opsional)</span>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          padding: '0 8px',
-                          borderRadius: '8px',
-                          background: '#0b0816',
-                          border: '1px solid #32254a',
-                        }}
-                      >
-                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8' }}>Rp</span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={formatDigitsWithDots(newGoalSaved)}
-                          onChange={(e) => setNewGoalSaved(formatDigitsWithDots(e.target.value))}
-                          placeholder="0"
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            padding: '8px 0',
-                            border: 'none',
-                            outline: 'none',
-                            background: 'transparent',
-                            color: '#ffffff',
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <input
-                    type="text"
-                    value={newGoalNote}
-                    onChange={(e) => setNewGoalNote(e.target.value)}
-                    placeholder="Catatan singkat (opsional)"
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      background: '#0b0816',
-                      border: '1px solid #32254a',
-                      color: '#ffffff',
-                      fontSize: '11.5px',
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: '7px' }}>
                     <button
                       type="button"
-                      onClick={() => setIsAddingFinanceGoal(false)}
+                      onClick={() => handleUpdateFinanceBucketTarget(editingBucketId, parseFormattedDigits(editingBucketTargetDraft))}
                       style={{
-                        flex: 1,
-                        padding: '8px',
-                        borderRadius: '8px',
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        color: '#d5beff',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddFinanceGoal}
-                      style={{
-                        flex: 2,
-                        padding: '8px',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, #059669, #0284c7)',
+                        width: '100%',
+                        padding: '11px',
+                        borderRadius: '12px',
                         border: 'none',
-                        color: '#ffffff',
-                        fontSize: '11px',
-                        fontWeight: 800,
+                        background: '#fbbf24',
+                        color: '#030712',
+                        fontSize: '12px',
+                        fontWeight: 900,
                         cursor: 'pointer',
                       }}
                     >
-                      Simpan Target
+                      Simpan Batas Pos
                     </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingFinanceGoal(true)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    borderRadius: '11px',
-                    background: 'rgba(16, 185, 129, 0.12)',
-                    border: '1px dashed rgba(52, 211, 153, 0.45)',
-                    color: '#6ee7b7',
-                    fontSize: '11.5px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <Plus size={14} />
-                  Buat Target Tabungan Baru
-                </button>
-              )
-            )}
-          </div>
-        )}
+                  </>
+                )}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     )
   }
@@ -9996,6 +10000,58 @@ export default function Page() {
               transform: 'translate3d(0, -10px, 0)',
             }}
           >
+            {activeFinanceQuest && currentFinanceQuest ? (() => {
+              const mPref = (activeFinanceQuest.dateIso || getLocalIsoDate()).slice(0, 7)
+              const mLogs = financeVault.logs.filter((l) => l.dateIso.startsWith(mPref))
+              const mExtra = mLogs.filter((l) => l.type === 'income').reduce((a, l) => a + l.amount, 0)
+              const mExp = mLogs.filter((l) => l.type === 'expense').reduce((a, l) => a + l.amount, 0)
+              const mSav = mLogs.filter((l) => l.type === 'saving').reduce((a, l) => a + l.amount, 0)
+              const mTotalSav = financeVault.goals.reduce((a, g) => a + g.savedAmount, 0)
+              const mWallet = Math.max(0, financeVault.monthlyIncome + mExtra - mExp - mSav)
+              const mTotal = mWallet + mTotalSav
+              return (
+                <>
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                    }}
+                  >
+                    <span style={{ fontSize: '9px', fontWeight: 900, letterSpacing: '0.06em', color: currentRankTier.primaryColor }}>
+                      UANG AKU
+                    </span>
+                    <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '8.5px' }}>•</span>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#ffffff', fontVariantNumeric: 'tabular-nums' }}>
+                      {formatRupiah(mTotal)}
+                    </span>
+                  </div>
+                  {!(activeFinanceQuest.viewOnly || (activeFinanceQuest.dateIso && activeFinanceQuest.dateIso > todayIsoStr)) && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveFinanceSheet('log')}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '999px',
+                        border: 'none',
+                        background: currentRankTier.primaryColor,
+                        color: '#030712',
+                        fontSize: '9.5px',
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + Catat Rp
+                    </button>
+                  )}
+                </>
+              )
+            })() : (
+              <>
             <div
               style={{
                 display: 'inline-flex',
@@ -10119,6 +10175,8 @@ export default function Page() {
                 </span>
               </button>
             </div>
+              </>
+            )}
           </div>
 
           {/* SCROLL PROGRESS LASER LINE */}
@@ -15776,7 +15834,8 @@ export default function Page() {
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            setFinanceTab('quick')
+                                            setFinanceTab('goals')
+                                            setActiveFinanceSheet(null)
                                             setActiveFinanceQuest({
                                               id: task.id,
                                               dateIso: activeScheduleDayObj.isoDate,
@@ -15859,7 +15918,8 @@ export default function Page() {
                                           <button
                                             type="button"
                                             onClick={() => {
-                                              setFinanceTab('quick')
+                                              setFinanceTab('goals')
+                                              setActiveFinanceSheet(null)
                                               setActiveFinanceQuest({
                                                 id: task.id,
                                                 dateIso: activeScheduleDayObj.isoDate,
@@ -16933,7 +16993,8 @@ export default function Page() {
                           })
                         }}
                         onOpenFinance={() => {
-                          setFinanceTab('quick')
+                          setFinanceTab('goals')
+                          setActiveFinanceSheet(null)
                           setActiveFinanceQuest({
                             id: task.id,
                             viewOnly: questScheduleTab === 'upcoming',
