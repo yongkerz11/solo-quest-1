@@ -348,8 +348,8 @@ export const DEFAULT_FINANCE_VAULT: FinanceVaultState = {
     { id: 'b-tabungan', name: 'Alokasi Tabungan Wajib', category: 'tabungan', targetMonthly: 1000000, color: '#10b981' },
   ],
   goals: [
-    { id: 'g-darurat', title: 'Dana Darurat Hunter', targetAmount: 5000000, savedAmount: 1250000, note: 'Benteng pertahanan keuangan' },
-    { id: 'g-gear', title: 'Target Impian / Upgrade Gear', targetAmount: 3500000, savedAmount: 700000, note: 'Alat kerja & self-reward' },
+    { id: 'g-darurat', title: 'Dana Darurat Hunter', targetAmount: 5000000, savedAmount: 0, note: 'Benteng pertahanan keuangan' },
+    { id: 'g-gear', title: 'Target Impian / Upgrade Gear', targetAmount: 3500000, savedAmount: 0, note: 'Alat kerja & self-reward' },
   ],
   logs: [],
   updatedAt: 0,

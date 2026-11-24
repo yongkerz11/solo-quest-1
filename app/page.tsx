@@ -2526,23 +2526,27 @@ export default function Page() {
   const [financeVault, setFinanceVault] = useState<FinanceVaultState>(DEFAULT_FINANCE_VAULT)
   const [financeTab, setFinanceTab] = useState<'quick' | 'budget' | 'goals'>('quick')
   const [financeLogType, setFinanceLogType] = useState<'saving' | 'expense' | 'income'>('saving')
-  const [financeAmountInput, setFinanceAmountInput] = useState<string>('50000')
+  const [financeAmountInput, setFinanceAmountInput] = useState<string>('50.000')
   const [financeSelectedBucketId, setFinanceSelectedBucketId] = useState<string>('b-kebutuhan')
   const [financeSelectedGoalId, setFinanceSelectedGoalId] = useState<string>('g-darurat')
   const [financeNoteInput, setFinanceNoteInput] = useState<string>('')
   const [isEditingMonthlyIncome, setIsEditingMonthlyIncome] = useState<boolean>(false)
-  const [monthlyIncomeDraft, setMonthlyIncomeDraft] = useState<string>('3500000')
+  const [monthlyIncomeDraft, setMonthlyIncomeDraft] = useState<string>('3.500.000')
   const [isAddingFinanceBucket, setIsAddingFinanceBucket] = useState<boolean>(false)
   const [newBucketName, setNewBucketName] = useState<string>('')
   const [newBucketCategory, setNewBucketCategory] = useState<'kebutuhan' | 'hiburan' | 'tabungan' | 'cicilan'>('kebutuhan')
-  const [newBucketTarget, setNewBucketTarget] = useState<string>('300000')
+  const [newBucketTarget, setNewBucketTarget] = useState<string>('300.000')
   const [editingBucketId, setEditingBucketId] = useState<string | null>(null)
   const [editingBucketTargetDraft, setEditingBucketTargetDraft] = useState<string>('')
   const [isAddingFinanceGoal, setIsAddingFinanceGoal] = useState<boolean>(false)
   const [newGoalTitle, setNewGoalTitle] = useState<string>('')
-  const [newGoalTarget, setNewGoalTarget] = useState<string>('2000000')
+  const [newGoalTarget, setNewGoalTarget] = useState<string>('2.000.000')
   const [newGoalSaved, setNewGoalSaved] = useState<string>('0')
   const [newGoalNote, setNewGoalNote] = useState<string>('')
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
+  const [editingGoalTitleDraft, setEditingGoalTitleDraft] = useState<string>('')
+  const [editingGoalTargetDraft, setEditingGoalTargetDraft] = useState<string>('')
+  const [editingGoalSavedDraft, setEditingGoalSavedDraft] = useState<string>('')
   const [photoUploadDate, setPhotoUploadDate] = useState<string>(() => getLocalIsoDate())
   const [timelapseSpeedMs, setTimelapseSpeedMs] = useState<number>(250)
   const [isGeneratingTimelapse, setIsGeneratingTimelapse] = useState<boolean>(false)
@@ -5680,6 +5684,20 @@ export default function Page() {
     return formatRupiah(val)
   }
 
+  const formatDigitsWithDots = (raw: string | number): string => {
+    const digits = String(raw ?? '').replace(/\D/g, '')
+    if (!digits) return ''
+    const num = parseInt(digits, 10)
+    if (Number.isNaN(num)) return ''
+    return num.toLocaleString('id-ID')
+  }
+
+  const parseFormattedDigits = (raw: string | number): number => {
+    const digits = String(raw ?? '').replace(/\D/g, '')
+    if (!digits) return 0
+    return Math.max(0, parseInt(digits, 10) || 0)
+  }
+
   const persistFinanceVault = (nextVault: FinanceVaultState) => {
     const stamped: FinanceVaultState = { ...nextVault, updatedAt: Date.now() }
     setFinanceVault(stamped)
@@ -5698,14 +5716,14 @@ export default function Page() {
   const handleSaveMonthlyIncome = (newAmountRaw: number) => {
     const amount = Math.max(0, Math.round(Number(newAmountRaw) || 0))
     if (amount <= 0) {
-      showToast('Masukkan target penghasilan yang valid (> 0)')
+      showToast('Masukkan penghasilan bulanan yang valid (> Rp 0)')
       return
     }
     persistFinanceVault({
       ...financeVault,
       monthlyIncome: amount,
     })
-    setMonthlyIncomeDraft(String(amount))
+    setMonthlyIncomeDraft(formatDigitsWithDots(amount))
     setIsEditingMonthlyIncome(false)
     showToast(`Penghasilan bulanan diatur: ${formatRupiah(amount)}`)
   }
@@ -5843,9 +5861,9 @@ export default function Page() {
 
   const handleAddFinanceBucket = () => {
     const name = newBucketName.trim()
-    const target = Math.max(0, Math.round(Number(newBucketTarget.replace(/\D/g, '')) || 0))
+    const target = parseFormattedDigits(newBucketTarget)
     if (!name || target <= 0) {
-      showToast('Isi nama pos dan target bulanan (> Rp 0)')
+      showToast('Isi nama pos dan batas anggaran (> Rp 0)')
       return
     }
     const colorMap: Record<FinanceBudgetBucket['category'], string> = {
@@ -5867,18 +5885,19 @@ export default function Page() {
     })
     setFinanceSelectedBucketId(newBucket.id)
     setNewBucketName('')
-    setNewBucketTarget('300000')
+    setNewBucketTarget('300.000')
     setIsAddingFinanceBucket(false)
-    showToast(`Pos anggaran "${name}" ditambahkan!`)
+    showToast(`Pos pengeluaran "${name}" ditambahkan!`)
   }
 
   const handleUpdateFinanceBucketTarget = (bucketId: string, nextTarget: number) => {
-    const clean = Math.max(50000, Math.round(nextTarget))
+    const clean = Math.max(10000, Math.round(nextTarget))
     persistFinanceVault({
       ...financeVault,
       buckets: financeVault.buckets.map((b) => (b.id === bucketId ? { ...b, targetMonthly: clean } : b)),
     })
     setEditingBucketId(null)
+    showToast(`Batas pos diperbarui: ${formatRupiah(clean)}`)
   }
 
   const handleDeleteFinanceBucket = (bucketId: string) => {
@@ -5899,8 +5918,8 @@ export default function Page() {
 
   const handleAddFinanceGoal = () => {
     const title = newGoalTitle.trim()
-    const target = Math.max(0, Math.round(Number(newGoalTarget.replace(/\D/g, '')) || 0))
-    const saved = Math.max(0, Math.round(Number(newGoalSaved.replace(/\D/g, '')) || 0))
+    const target = parseFormattedDigits(newGoalTarget)
+    const saved = parseFormattedDigits(newGoalSaved)
     if (!title || target <= 0) {
       showToast('Isi nama target tabungan & nominal target (> Rp 0)')
       return
@@ -5918,11 +5937,29 @@ export default function Page() {
     })
     setFinanceSelectedGoalId(newGoal.id)
     setNewGoalTitle('')
-    setNewGoalTarget('2000000')
+    setNewGoalTarget('2.000.000')
     setNewGoalSaved('0')
     setNewGoalNote('')
     setIsAddingFinanceGoal(false)
     showToast(`Target tabungan "${title}" dibuat!`)
+  }
+
+  const handleUpdateFinanceGoal = (goalId: string) => {
+    const title = editingGoalTitleDraft.trim()
+    const target = parseFormattedDigits(editingGoalTargetDraft)
+    const saved = parseFormattedDigits(editingGoalSavedDraft)
+    if (!title || target <= 0) {
+      showToast('Nama target dan nominal target harus valid (> Rp 0)')
+      return
+    }
+    persistFinanceVault({
+      ...financeVault,
+      goals: financeVault.goals.map((g) =>
+        g.id === goalId ? { ...g, title, targetAmount: target, savedAmount: saved } : g
+      ),
+    })
+    setEditingGoalId(null)
+    showToast(`Target "${title}" diperbarui!`)
   }
 
   const handleDeleteFinanceGoal = (goalId: string) => {
@@ -8121,20 +8158,25 @@ export default function Page() {
 
     const totalBudgetPool = financeVault.monthlyIncome + monthlyExtraIncome
     const totalAllocatedMonthly = financeVault.buckets.reduce((acc, b) => acc + b.targetMonthly, 0)
+    const totalExpenseBucketsTarget = financeVault.buckets
+      .filter((b) => b.category !== 'tabungan')
+      .reduce((acc, b) => acc + b.targetMonthly, 0)
     const unallocatedBalance = totalBudgetPool - totalAllocatedMonthly
-    const sisaCashflowBulanIni = totalBudgetPool - monthlyExpenseTotal - monthlySavedTotal
-    const cashflowRatioPct =
-      totalBudgetPool > 0
-        ? Math.max(0, Math.min(100, Math.round(((monthlyExpenseTotal + monthlySavedTotal) / totalBudgetPool) * 100)))
-        : 0
+    const sisaUangPegangan = totalBudgetPool - monthlyExpenseTotal - monthlySavedTotal
 
     const totalGoalsSaved = financeVault.goals.reduce((acc, g) => acc + g.savedAmount, 0)
     const totalGoalsTarget = financeVault.goals.reduce((acc, g) => acc + g.targetAmount, 0)
+    const totalUangAku = Math.max(0, sisaUangPegangan) + totalGoalsSaved
+
+    const poolForBar = Math.max(1, totalBudgetPool)
+    const savedSharePct = Math.min(100, Math.round((monthlySavedTotal / poolForBar) * 100))
+    const expenseSharePct = Math.min(100 - savedSharePct, Math.round((monthlyExpenseTotal / poolForBar) * 100))
     const monthlyMandatorySavingTarget =
       financeVault.buckets
         .filter((b) => b.category === 'tabungan')
         .reduce((acc, b) => acc + b.targetMonthly, 0) || 1000000
     const dailyPaceEstimate = Math.max(10000, Math.round(monthlyMandatorySavingTarget / 30))
+    const parsedQuickAmount = parseFormattedDigits(financeAmountInput)
 
     return (
       <div style={{ animation: 'fadeIn 0.2s ease-in-out', paddingBottom: '36px' }}>
@@ -8145,7 +8187,7 @@ export default function Page() {
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '10px',
-            marginBottom: '14px',
+            marginBottom: '12px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
@@ -8276,54 +8318,54 @@ export default function Page() {
           )}
         </div>
 
-        {/* HERO CARD: TARGET PENGHASILAN & CASHFLOW BULAN INI */}
+        {/* HERO CARD: RINGKASAN TOTAL UANG AKU & PENGHASILAN */}
         <div
           style={{
             borderRadius: '16px',
             padding: '14px',
             marginBottom: '12px',
-            background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.14) 0%, rgba(15, 12, 28, 0.96) 55%, rgba(14, 116, 144, 0.14) 100%)',
+            background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.14) 0%, rgba(15, 12, 28, 0.97) 58%, rgba(14, 116, 144, 0.14) 100%)',
             border: '1px solid rgba(52, 211, 153, 0.34)',
-            boxShadow: '0 8px 26px rgba(0, 0, 0, 0.4)',
+            boxShadow: '0 8px 26px rgba(0, 0, 0, 0.42)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
-            <div>
-              <span style={{ fontSize: '10px', fontWeight: 700, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Target Penghasilan ({activeMonthPrefix})
+          {/* TOTAL UANG AKU */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '11px' }}>
+            <div style={{ minWidth: 0 }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                Total Uang Aku ({activeMonthPrefix})
               </span>
-              <div style={{ fontSize: '21px', fontWeight: 900, color: '#ffffff', marginTop: '2px', letterSpacing: '-0.02em' }}>
-                {formatRupiah(financeVault.monthlyIncome)}
+              <div style={{ fontSize: '23px', fontWeight: 900, color: '#ffffff', marginTop: '2px', letterSpacing: '-0.02em' }}>
+                {formatRupiah(totalUangAku)}
               </div>
-              {monthlyExtraIncome > 0 && (
-                <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 700 }}>
-                  + {formatRupiah(monthlyExtraIncome)} pemasukan ekstra bulan ini
-                </span>
-              )}
+              <div style={{ fontSize: '10px', color: '#cbd5e1', marginTop: '2px' }}>
+                Uang Pegangan {formatRupiah(Math.max(0, sisaUangPegangan))} + Tabungan {formatRupiah(totalGoalsSaved)}
+              </div>
             </div>
             {!isFinanceViewOnly && (
               <button
                 type="button"
                 onClick={() => {
-                  setMonthlyIncomeDraft(String(financeVault.monthlyIncome))
+                  setMonthlyIncomeDraft(formatDigitsWithDots(financeVault.monthlyIncome))
                   setIsEditingMonthlyIncome((v) => !v)
                 }}
                 style={{
-                  padding: '5px 9px',
+                  padding: '6px 9px',
                   borderRadius: '8px',
-                  background: 'rgba(15, 23, 42, 0.72)',
-                  border: '1px solid rgba(52, 211, 153, 0.35)',
+                  background: 'rgba(15, 23, 42, 0.78)',
+                  border: '1px solid rgba(52, 211, 153, 0.38)',
                   color: '#a7f3d0',
-                  fontSize: '10.5px',
+                  fontSize: '10px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
+                  flexShrink: 0,
                 }}
               >
                 <Pencil size={10} />
-                {isEditingMonthlyIncome ? 'Tutup' : 'Atur Gaji'}
+                {isEditingMonthlyIncome ? 'Tutup' : 'Ubah Gaji'}
               </button>
             )}
           </div>
@@ -8333,38 +8375,57 @@ export default function Page() {
               style={{
                 padding: '10px',
                 borderRadius: '11px',
-                background: 'rgba(10, 10, 20, 0.78)',
-                border: '1px solid rgba(52, 211, 153, 0.25)',
-                marginBottom: '10px',
+                background: 'rgba(10, 10, 20, 0.85)',
+                border: '1px solid rgba(52, 211, 153, 0.3)',
+                marginBottom: '11px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',
               }}
             >
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <input
-                  type="number"
-                  value={monthlyIncomeDraft}
-                  onChange={(e) => setMonthlyIncomeDraft(e.target.value)}
-                  placeholder="Contoh: 3500000"
+              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#a7f3d0' }}>
+                Penghasilan Bulanan Aku
+              </span>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <div
                   style={{
                     flex: 1,
                     minWidth: 0,
-                    padding: '8px 10px',
-                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '0 10px',
+                    borderRadius: '9px',
                     background: '#130f21',
                     border: '1px solid #32254a',
-                    color: '#ffffff',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
                   }}
-                />
+                >
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#34d399' }}>Rp</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formatDigitsWithDots(monthlyIncomeDraft)}
+                    onChange={(e) => setMonthlyIncomeDraft(formatDigitsWithDots(e.target.value))}
+                    placeholder="3.500.000"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '8px 0',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      color: '#ffffff',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                    }}
+                  />
+                </div>
                 <button
                   type="button"
-                  onClick={() => handleSaveMonthlyIncome(Number(monthlyIncomeDraft))}
+                  onClick={() => handleSaveMonthlyIncome(parseFormattedDigits(monthlyIncomeDraft))}
                   style={{
-                    padding: '8px 14px',
-                    borderRadius: '8px',
+                    padding: '9px 14px',
+                    borderRadius: '9px',
                     background: '#10b981',
                     border: 'none',
                     color: '#06281e',
@@ -8393,73 +8454,91 @@ export default function Page() {
                       cursor: 'pointer',
                     }}
                   >
-                    {formatRupiahCompact(preset)}
+                    {formatRupiah(preset)}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* 3 KPI BOXES */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '7px', marginBottom: '10px' }}>
+          {/* 4 METRIK LENGKAP (2x2 GRID, SEMUA FORMAT RP PENUH) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '7px', marginBottom: '10px' }}>
             <div
               style={{
-                padding: '8px 9px',
+                padding: '8px 10px',
                 borderRadius: '10px',
-                background: 'rgba(15, 12, 28, 0.72)',
-                border: '1px solid rgba(168, 85, 247, 0.22)',
+                background: 'rgba(15, 12, 28, 0.78)',
+                border: '1px solid rgba(168, 85, 247, 0.24)',
               }}
             >
-              <span style={{ display: 'block', fontSize: '9px', color: '#b8add1', fontWeight: 700 }}>Dialokasikan</span>
-              <strong style={{ fontSize: '11.5px', color: unallocatedBalance < 0 ? '#fca5a5' : '#e9d5ff' }}>
-                {formatRupiahCompact(totalAllocatedMonthly)}
+              <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', fontWeight: 700 }}>Penghasilan Bulanan</span>
+              <strong style={{ display: 'block', fontSize: '12.5px', color: '#f5f2ff', marginTop: '1px' }}>
+                {formatRupiah(financeVault.monthlyIncome)}
               </strong>
+              {monthlyExtraIncome > 0 && (
+                <span style={{ fontSize: '9px', color: '#38bdf8', fontWeight: 700 }}>
+                  + {formatRupiah(monthlyExtraIncome)} uang masuk
+                </span>
+              )}
             </div>
+
             <div
               style={{
-                padding: '8px 9px',
+                padding: '8px 10px',
                 borderRadius: '10px',
-                background: 'rgba(15, 12, 28, 0.72)',
-                border: '1px solid rgba(245, 158, 11, 0.22)',
+                background: 'rgba(15, 12, 28, 0.78)',
+                border: '1px solid rgba(56, 189, 248, 0.25)',
               }}
             >
-              <span style={{ display: 'block', fontSize: '9px', color: '#b8add1', fontWeight: 700 }}>Terpakai</span>
-              <strong style={{ fontSize: '11.5px', color: '#fcd34d' }}>
-                {formatRupiahCompact(monthlyExpenseTotal)}
+              <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', fontWeight: 700 }}>Sisa Uang Pegangan</span>
+              <strong style={{ display: 'block', fontSize: '12.5px', color: sisaUangPegangan >= 0 ? '#7dd3fc' : '#f87171', marginTop: '1px' }}>
+                {formatRupiah(sisaUangPegangan)}
               </strong>
+              <span style={{ fontSize: '9px', color: '#b8add1' }}>Siap dipakai bulan ini</span>
             </div>
+
             <div
               style={{
-                padding: '8px 9px',
+                padding: '8px 10px',
                 borderRadius: '10px',
-                background: 'rgba(15, 12, 28, 0.72)',
+                background: 'rgba(15, 12, 28, 0.78)',
                 border: '1px solid rgba(52, 211, 153, 0.25)',
               }}
             >
-              <span style={{ display: 'block', fontSize: '9px', color: '#b8add1', fontWeight: 700 }}>Ditabung</span>
-              <strong style={{ fontSize: '11.5px', color: '#6ee7b7' }}>
-                {formatRupiahCompact(monthlySavedTotal)}
+              <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', fontWeight: 700 }}>Total Tabungan</span>
+              <strong style={{ display: 'block', fontSize: '12.5px', color: '#6ee7b7', marginTop: '1px' }}>
+                {formatRupiah(totalGoalsSaved)}
               </strong>
+              <span style={{ fontSize: '9px', color: '#b8add1' }}>Di {financeVault.goals.length} target tabungan</span>
+            </div>
+
+            <div
+              style={{
+                padding: '8px 10px',
+                borderRadius: '10px',
+                background: 'rgba(15, 12, 28, 0.78)',
+                border: '1px solid rgba(245, 158, 11, 0.24)',
+              }}
+            >
+              <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', fontWeight: 700 }}>Pengeluaran Bulan Ini</span>
+              <strong style={{ display: 'block', fontSize: '12.5px', color: '#fcd34d', marginTop: '1px' }}>
+                {formatRupiah(monthlyExpenseTotal)}
+              </strong>
+              <span style={{ fontSize: '9px', color: '#b8add1' }}>Batas pos: {formatRupiah(totalExpenseBucketsTarget)}</span>
             </div>
           </div>
 
+          {/* ALOKASI BAR BULAN INI */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#cbd5e1', marginBottom: '4px', fontWeight: 700 }}>
-              <span>Sisa Cashflow Bulan Ini</span>
-              <span style={{ color: sisaCashflowBulanIni >= 0 ? '#6ee7b7' : '#f87171' }}>
-                {formatRupiah(sisaCashflowBulanIni)}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5px', color: '#cbd5e1', marginBottom: '4px', fontWeight: 700 }}>
+              <span>Alur Penghasilan Bulan Ini</span>
+              <span>
+                Tabung {savedSharePct}% • Keluar {expenseSharePct}%
               </span>
             </div>
-            <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-              <div
-                style={{
-                  width: `${cashflowRatioPct}%`,
-                  height: '100%',
-                  borderRadius: '999px',
-                  background: sisaCashflowBulanIni < 0 ? '#ef4444' : 'linear-gradient(90deg, #10b981, #38bdf8)',
-                  transition: 'width 0.3s ease',
-                }}
-              />
+            <div style={{ height: '7px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden', display: 'flex' }}>
+              <div style={{ width: `${savedSharePct}%`, height: '100%', background: '#10b981', transition: 'width 0.3s ease' }} />
+              <div style={{ width: `${expenseSharePct}%`, height: '100%', background: '#f59e0b', transition: 'width 0.3s ease' }} />
             </div>
           </div>
         </div>
@@ -8479,9 +8558,9 @@ export default function Page() {
         >
           {(
             [
-              { id: 'quick', label: 'Catat Harian' },
-              { id: 'budget', label: `Budget (${financeVault.buckets.length})` },
-              { id: 'goals', label: `Goals (${financeVault.goals.length})` },
+              { id: 'quick', label: 'Catat Cepat' },
+              { id: 'goals', label: `Target (${financeVault.goals.length})` },
+              { id: 'budget', label: `Pos (${financeVault.buckets.length})` },
             ] as const
           ).map((tab) => {
             const isActive = financeTab === tab.id
@@ -8508,7 +8587,7 @@ export default function Page() {
           })}
         </div>
 
-        {/* SUB-TAB 1: QUICK LOG HARIAN */}
+        {/* SUB-TAB 1: CATAT CEPAT (SUPER SIMPLE 3 LANGKAH) */}
         {financeTab === 'quick' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {!isFinanceViewOnly && (
@@ -8520,139 +8599,254 @@ export default function Page() {
                   border: '1px solid #2b2242',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px',
+                  gap: '11px',
                 }}
               >
-                {/* MODE SWITCH */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                  {(
-                    [
-                      { id: 'saving', label: '+ Nabung', activeBg: 'rgba(16, 185, 129, 0.22)', border: '#34d399', color: '#6ee7b7' },
-                      { id: 'expense', label: '- Jajan/Keluar', activeBg: 'rgba(245, 158, 11, 0.2)', border: '#fbbf24', color: '#fde68a' },
-                      { id: 'income', label: '+ Ekstra', activeBg: 'rgba(56, 189, 248, 0.2)', border: '#38bdf8', color: '#7dd3fc' },
-                    ] as const
-                  ).map((m) => {
-                    const active = financeLogType === m.id
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setFinanceLogType(m.id)}
-                        style={{
-                          padding: '7px 6px',
-                          borderRadius: '9px',
-                          fontSize: '10.5px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          background: active ? m.activeBg : 'rgba(255,255,255,0.03)',
-                          border: active ? `1px solid ${m.border}` : '1px solid rgba(255,255,255,0.08)',
-                          color: active ? m.color : '#b8add1',
-                        }}
-                      >
-                        {m.label}
-                      </button>
-                    )
-                  })}
+                {/* LANGKAH 1: PILIH JENIS */}
+                <div>
+                  <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#b8add1', marginBottom: '6px' }}>
+                    1. Mau catat apa?
+                  </span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                    {(
+                      [
+                        { id: 'saving', label: '+ Nabung', activeBg: 'rgba(16, 185, 129, 0.22)', border: '#34d399', color: '#6ee7b7' },
+                        { id: 'expense', label: '- Pengeluaran', activeBg: 'rgba(245, 158, 11, 0.2)', border: '#fbbf24', color: '#fde68a' },
+                        { id: 'income', label: '+ Uang Masuk', activeBg: 'rgba(56, 189, 248, 0.2)', border: '#38bdf8', color: '#7dd3fc' },
+                      ] as const
+                    ).map((m) => {
+                      const active = financeLogType === m.id
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setFinanceLogType(m.id)}
+                          style={{
+                            padding: '8px 6px',
+                            borderRadius: '9px',
+                            fontSize: '10.5px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            background: active ? m.activeBg : 'rgba(255,255,255,0.03)',
+                            border: active ? `1px solid ${m.border}` : '1px solid rgba(255,255,255,0.08)',
+                            color: active ? m.color : '#b8add1',
+                          }}
+                        >
+                          {m.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#cbd5e1', marginTop: '5px' }}>
+                    {financeLogType === 'saving'
+                      ? 'Menambah saldo Target Tabungan & mengurangi uang pegangan.'
+                      : financeLogType === 'expense'
+                        ? 'Mencatat belanja/jajan dari pos & mengurangi uang pegangan.'
+                        : 'Menambah uang pegangan bulan ini (bonus, freelance, dll).'}
+                  </div>
                 </div>
 
-                {/* INPUT NOMINAL & PRESETS */}
+                {/* LANGKAH 2: NOMINAL OTOMATIS FORMAT RP */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: '#b8add1', marginBottom: '5px' }}>
-                    Nominal (Rp)
-                  </label>
-                  <input
-                    type="number"
-                    value={financeAmountInput}
-                    onChange={(e) => setFinanceAmountInput(e.target.value)}
-                    placeholder="50000"
+                  <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#b8add1', marginBottom: '5px' }}>
+                    2. Berapa nominalnya?
+                  </span>
+                  <div
                     style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '0 12px',
+                      borderRadius: '11px',
                       background: '#0b0816',
                       border: '1px solid #32254a',
-                      color: '#ffffff',
-                      fontSize: '15px',
-                      fontWeight: 800,
                     }}
-                  />
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '7px' }}>
-                    {[20000, 50000, 100000, 250000, 500000].map((val) => (
+                  >
+                    <span style={{ fontSize: '15px', fontWeight: 900, color: '#34d399' }}>Rp</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={formatDigitsWithDots(financeAmountInput)}
+                      onChange={(e) => setFinanceAmountInput(formatDigitsWithDots(e.target.value))}
+                      placeholder="50.000"
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '10px 0',
+                        border: 'none',
+                        outline: 'none',
+                        background: 'transparent',
+                        color: '#ffffff',
+                        fontSize: '17px',
+                        fontWeight: 900,
+                      }}
+                    />
+                    {financeAmountInput && (
                       <button
-                        key={val}
                         type="button"
-                        onClick={() => setFinanceAmountInput(String(val))}
+                        onClick={() => setFinanceAmountInput('')}
                         style={{
-                          padding: '4px 8px',
-                          borderRadius: '7px',
-                          background: Number(financeAmountInput) === val ? 'rgba(52, 211, 153, 0.2)' : 'rgba(168, 85, 247, 0.1)',
-                          border: Number(financeAmountInput) === val ? '1px solid rgba(52, 211, 153, 0.5)' : '1px solid rgba(168, 85, 247, 0.22)',
-                          color: Number(financeAmountInput) === val ? '#6ee7b7' : '#d8b4fe',
+                          background: 'rgba(255,255,255,0.07)',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '4px 7px',
+                          color: '#cbd5e1',
                           fontSize: '10px',
                           fontWeight: 700,
                           cursor: 'pointer',
                         }}
                       >
-                        {formatRupiahCompact(val)}
+                        Reset
                       </button>
-                    ))}
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '7px' }}>
+                    {[20000, 50000, 100000, 250000, 500000, 1000000].map((val) => {
+                      const isPicked = parsedQuickAmount === val
+                      return (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setFinanceAmountInput(formatDigitsWithDots(val))}
+                          style={{
+                            padding: '5px 8px',
+                            borderRadius: '7px',
+                            background: isPicked ? 'rgba(52, 211, 153, 0.2)' : 'rgba(168, 85, 247, 0.1)',
+                            border: isPicked ? '1px solid rgba(52, 211, 153, 0.5)' : '1px solid rgba(168, 85, 247, 0.22)',
+                            color: isPicked ? '#6ee7b7' : '#d8b4fe',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {formatRupiah(val)}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
-                {/* TARGET GOAL ATAU POS BUCKET */}
-                {financeLogType === 'saving' && financeVault.goals.length > 0 && (
+                {/* LANGKAH 3: PILIH TUJUAN DENGAN 1-TAP KARTU */}
+                {financeLogType === 'saving' && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: '#b8add1', marginBottom: '5px' }}>
-                      Masukkan ke Target Tabungan
-                    </label>
-                    <select
-                      value={financeSelectedGoalId}
-                      onChange={(e) => setFinanceSelectedGoalId(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '9px 10px',
-                        borderRadius: '10px',
-                        background: '#0b0816',
-                        border: '1px solid #32254a',
-                        color: '#ffffff',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {financeVault.goals.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.title} ({formatRupiahCompact(g.savedAmount)} / {formatRupiahCompact(g.targetAmount)})
-                        </option>
-                      ))}
-                    </select>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#b8add1' }}>
+                        3. Masukkan ke Target Tabungan
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFinanceTab('goals')
+                          setIsAddingFinanceGoal(true)
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#6ee7b7',
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                      >
+                        + Buat Target Baru
+                      </button>
+                    </div>
+                    {financeVault.goals.length === 0 ? (
+                      <div style={{ fontSize: '11px', color: '#b8add1', padding: '8px', borderRadius: '8px', border: '1px dashed #32254a' }}>
+                        Belum ada target tabungan. Klik "+ Buat Target Baru".
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {financeVault.goals.map((g) => {
+                          const isSelected = (financeSelectedGoalId || financeVault.goals[0]?.id) === g.id
+                          const pct = g.targetAmount > 0 ? Math.min(100, Math.round((g.savedAmount / g.targetAmount) * 100)) : 0
+                          return (
+                            <button
+                              key={g.id}
+                              type="button"
+                              onClick={() => setFinanceSelectedGoalId(g.id)}
+                              style={{
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '9px 10px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                background: isSelected ? 'rgba(16, 185, 129, 0.16)' : '#0d0919',
+                                border: isSelected ? '1.5px solid rgba(52, 211, 153, 0.65)' : '1px solid #2b2242',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                                <strong style={{ fontSize: '11.5px', color: '#ffffff' }}>{g.title}</strong>
+                                <span style={{ fontSize: '10px', fontWeight: 800, color: '#6ee7b7' }}>{pct}%</span>
+                              </div>
+                              <div style={{ fontSize: '10px', color: '#cbd5e1', marginTop: '2px' }}>
+                                {formatRupiah(g.savedAmount)} / {formatRupiah(g.targetAmount)}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {financeLogType === 'expense' && financeVault.buckets.length > 0 && (
+                {financeLogType === 'expense' && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: '#b8add1', marginBottom: '5px' }}>
-                      Ambil dari Pos Pengeluaran
-                    </label>
-                    <select
-                      value={financeSelectedBucketId}
-                      onChange={(e) => setFinanceSelectedBucketId(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '9px 10px',
-                        borderRadius: '10px',
-                        background: '#0b0816',
-                        border: '1px solid #32254a',
-                        color: '#ffffff',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {financeVault.buckets.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name} (Target {formatRupiahCompact(b.targetMonthly)}/bln)
-                        </option>
-                      ))}
-                    </select>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#b8add1' }}>
+                        3. Ambil dari Pos Pengeluaran
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFinanceTab('budget')
+                          setIsAddingFinanceBucket(true)
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#7dd3fc',
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                      >
+                        + Tambah Pos
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px' }}>
+                      {financeVault.buckets.map((b) => {
+                        const isSelected = (financeSelectedBucketId || financeVault.buckets[0]?.id) === b.id
+                        const used = monthLogs
+                          .filter((l) => l.type === 'expense' && l.bucketId === b.id)
+                          .reduce((acc, l) => acc + l.amount, 0)
+                        const remaining = Math.max(0, b.targetMonthly - used)
+                        return (
+                          <button
+                            key={b.id}
+                            type="button"
+                            onClick={() => setFinanceSelectedBucketId(b.id)}
+                            style={{
+                              textAlign: 'left',
+                              padding: '8px 9px',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              background: isSelected ? 'rgba(245, 158, 11, 0.16)' : '#0d0919',
+                              border: isSelected ? '1.5px solid rgba(251, 191, 36, 0.65)' : '1px solid #2b2242',
+                            }}
+                          >
+                            <div style={{ fontSize: '11px', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {b.name}
+                            </div>
+                            <div style={{ fontSize: '9.5px', color: '#fcd34d', marginTop: '2px' }}>
+                              Sisa {formatRupiah(remaining)}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -8695,9 +8889,12 @@ export default function Page() {
                     boxShadow: '0 4px 16px rgba(16, 185, 129, 0.25)',
                   }}
                 >
-                  {isQuestDoneOnDate
-                    ? 'Catat Transaksi ke Vault'
-                    : `Catat & Selesaikan Quest (+${currentFinanceQuest.xp} XP)`}
+                  {financeLogType === 'saving'
+                    ? `Simpan Tabungan ${parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}`
+                    : financeLogType === 'expense'
+                      ? `Simpan Pengeluaran ${parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}`
+                      : `Simpan Uang Masuk ${parsedQuickAmount > 0 ? formatRupiah(parsedQuickAmount) : ''}`}
+                  {!isQuestDoneOnDate ? ` (+${currentFinanceQuest.xp} XP)` : ''}
                 </button>
               </div>
             )}
@@ -8727,7 +8924,7 @@ export default function Page() {
                     border: '1px dashed #2e2444',
                   }}
                 >
-                  Belum ada catatan. Mulai catat tabungan atau pengeluaran pertamamu di atas!
+                  Belum ada catatan. Catat transaksi pertamamu dengan 3 langkah di atas!
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
@@ -8755,7 +8952,7 @@ export default function Page() {
                             {log.note}
                           </div>
                           <div style={{ fontSize: '9.5px', color: '#b8add1', marginTop: '2px' }}>
-                            {log.dateIso} • {isSaving ? 'Tabungan' : isIncome ? 'Ekstra' : 'Pengeluaran'}
+                            {log.dateIso} • {isSaving ? 'Tabungan' : isIncome ? 'Uang Masuk' : 'Pengeluaran'}
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
@@ -8791,7 +8988,7 @@ export default function Page() {
           </div>
         )}
 
-        {/* SUB-TAB 2: BUDGET & POS PENGELUARAN */}
+        {/* SUB-TAB 2: POS PENGELUARAN & ALOKASI */}
         {financeTab === 'budget' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div
@@ -8808,7 +9005,7 @@ export default function Page() {
             >
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 800, color: '#f5f2ff' }}>
-                  {unallocatedBalance >= 0 ? 'Sisa Belum Dialokasikan' : 'Melebihi Target Penghasilan!'}
+                  {unallocatedBalance >= 0 ? 'Sisa Belum Dialokasikan' : 'Total Pos Melebihi Penghasilan!'}
                 </div>
                 <div style={{ fontSize: '10px', color: '#b8add1' }}>
                   Total pos: {formatRupiah(totalAllocatedMonthly)} / {formatRupiah(totalBudgetPool)}
@@ -8827,6 +9024,7 @@ export default function Page() {
                     .filter((l) => l.type === 'expense' && l.bucketId === bucket.id)
                     .reduce((acc, l) => acc + l.amount, 0)
               const pct = bucket.targetMonthly > 0 ? Math.min(100, Math.round((usedAmount / bucket.targetMonthly) * 100)) : 0
+              const remainingBucket = bucket.targetMonthly - usedAmount
               const isOver = !isSavingBucket && usedAmount > bucket.targetMonthly
               const accent = bucket.color || '#a855f7'
 
@@ -8861,6 +9059,15 @@ export default function Page() {
                       <div style={{ fontSize: '10.5px', color: '#b8add1', marginTop: '2px' }}>
                         {isSavingBucket ? 'Tersimpan' : 'Terpakai'} {formatRupiah(usedAmount)} / {formatRupiah(bucket.targetMonthly)} ({pct}%)
                       </div>
+                      <div style={{ fontSize: '10px', color: isOver ? '#fca5a5' : '#7dd3fc', fontWeight: 700, marginTop: '1px' }}>
+                        {isSavingBucket
+                          ? remainingBucket > 0
+                            ? `Kurang setor: ${formatRupiah(remainingBucket)}`
+                            : 'Target tabungan bulanan terpenuhi!'
+                          : remainingBucket >= 0
+                            ? `Sisa jatah: ${formatRupiah(remainingBucket)}`
+                            : `Melebihi batas ${formatRupiah(Math.abs(remainingBucket))}`}
+                      </div>
                     </div>
 
                     {!isFinanceViewOnly && (
@@ -8872,7 +9079,7 @@ export default function Page() {
                               setEditingBucketId(null)
                             } else {
                               setEditingBucketId(bucket.id)
-                              setEditingBucketTargetDraft(String(bucket.targetMonthly))
+                              setEditingBucketTargetDraft(formatDigitsWithDots(bucket.targetMonthly))
                             }
                           }}
                           style={{
@@ -8911,27 +9118,43 @@ export default function Page() {
                   </div>
 
                   {editingBucketId === bucket.id && !isFinanceViewOnly && (
-                    <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                      <input
-                        type="number"
-                        value={editingBucketTargetDraft}
-                        onChange={(e) => setEditingBucketTargetDraft(e.target.value)}
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'center' }}>
+                      <div
                         style={{
                           flex: 1,
-                          padding: '6px 9px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '0 9px',
                           borderRadius: '8px',
                           background: '#0b0816',
                           border: '1px solid #32254a',
-                          color: '#ffffff',
-                          fontSize: '11.5px',
-                          fontWeight: 700,
                         }}
-                      />
+                      >
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#34d399' }}>Rp</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatDigitsWithDots(editingBucketTargetDraft)}
+                          onChange={(e) => setEditingBucketTargetDraft(formatDigitsWithDots(e.target.value))}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '7px 0',
+                            border: 'none',
+                            outline: 'none',
+                            background: 'transparent',
+                            color: '#ffffff',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                          }}
+                        />
+                      </div>
                       <button
                         type="button"
-                        onClick={() => handleUpdateFinanceBucketTarget(bucket.id, Number(editingBucketTargetDraft))}
+                        onClick={() => handleUpdateFinanceBucketTarget(bucket.id, parseFormattedDigits(editingBucketTargetDraft))}
                         style={{
-                          padding: '6px 11px',
+                          padding: '7px 11px',
                           borderRadius: '8px',
                           background: '#10b981',
                           border: 'none',
@@ -8974,12 +9197,12 @@ export default function Page() {
                     gap: '8px',
                   }}
                 >
-                  <strong style={{ fontSize: '12px', color: '#7dd3fc' }}>Pos Anggaran Baru</strong>
+                  <strong style={{ fontSize: '12px', color: '#7dd3fc' }}>Pos Pengeluaran Baru</strong>
                   <input
                     type="text"
                     value={newBucketName}
                     onChange={(e) => setNewBucketName(e.target.value)}
-                    placeholder="Nama pos (misal: Kos / Internet / Investasi)"
+                    placeholder="Nama pos (misal: Kos / Internet / Belanja)"
                     style={{
                       padding: '8px 10px',
                       borderRadius: '8px',
@@ -8989,7 +9212,7 @@ export default function Page() {
                       fontSize: '12px',
                     }}
                   />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '7px' }}>
                     <select
                       value={newBucketCategory}
                       onChange={(e) => setNewBucketCategory(e.target.value as FinanceBudgetBucket['category'])}
@@ -9007,20 +9230,37 @@ export default function Page() {
                       <option value="tabungan">Tabungan</option>
                       <option value="cicilan">Cicilan</option>
                     </select>
-                    <input
-                      type="number"
-                      value={newBucketTarget}
-                      onChange={(e) => setNewBucketTarget(e.target.value)}
-                      placeholder="Target Rp"
+                    <div
                       style={{
-                        padding: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '0 8px',
                         borderRadius: '8px',
                         background: '#0b0816',
                         border: '1px solid #32254a',
-                        color: '#ffffff',
-                        fontSize: '11.5px',
                       }}
-                    />
+                    >
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#34d399' }}>Rp</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatDigitsWithDots(newBucketTarget)}
+                        onChange={(e) => setNewBucketTarget(formatDigitsWithDots(e.target.value))}
+                        placeholder="300.000"
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          padding: '8px 0',
+                          border: 'none',
+                          outline: 'none',
+                          background: 'transparent',
+                          color: '#ffffff',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                        }}
+                      />
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: '7px' }}>
                     <button
@@ -9087,7 +9327,7 @@ export default function Page() {
           </div>
         )}
 
-        {/* SUB-TAB 3: SAVING GOALS */}
+        {/* SUB-TAB 3: TARGET TABUNGAN (SAVING GOALS) */}
         {financeTab === 'goals' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div
@@ -9105,11 +9345,11 @@ export default function Page() {
               <div>
                 <div style={{ fontSize: '11px', fontWeight: 800, color: '#6ee7b7' }}>Total Tabungan Impian</div>
                 <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
-                  Estimasi pace: {formatRupiahCompact(dailyPaceEstimate)}/hari
+                  Estimasi setor: {formatRupiah(dailyPaceEstimate)}/hari
                 </div>
               </div>
-              <strong style={{ fontSize: '12px', color: '#ffffff' }}>
-                {formatRupiahCompact(totalGoalsSaved)} / {formatRupiahCompact(totalGoalsTarget)}
+              <strong style={{ fontSize: '11.5px', color: '#ffffff', textAlign: 'right' }}>
+                {formatRupiah(totalGoalsSaved)} / {formatRupiah(totalGoalsTarget)}
               </strong>
             </div>
 
@@ -9125,7 +9365,7 @@ export default function Page() {
                   color: '#b8add1',
                 }}
               >
-                Belum ada Saving Goal. Buat target tabungan pertamamu di bawah!
+                Belum ada Target Tabungan. Buat target tabungan pertamamu di bawah!
               </div>
             ) : (
               financeVault.goals.map((goal) => {
@@ -9168,29 +9408,127 @@ export default function Page() {
                         )}
                       </div>
                       {!isFinanceViewOnly && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteFinanceGoal(goal.id)}
-                          style={{
-                            padding: '5px',
-                            borderRadius: '7px',
-                            background: 'rgba(239, 68, 68, 0.12)',
-                            border: '1px solid rgba(239, 68, 68, 0.25)',
-                            color: '#fca5a5',
-                            cursor: 'pointer',
-                            display: 'flex',
-                          }}
-                          title="Hapus target"
-                        >
-                          <Trash2 size={11} />
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editingGoalId === goal.id) {
+                                setEditingGoalId(null)
+                              } else {
+                                setEditingGoalId(goal.id)
+                                setEditingGoalTitleDraft(goal.title)
+                                setEditingGoalTargetDraft(formatDigitsWithDots(goal.targetAmount))
+                                setEditingGoalSavedDraft(formatDigitsWithDots(goal.savedAmount))
+                              }
+                            }}
+                            style={{
+                              padding: '4px 7px',
+                              borderRadius: '7px',
+                              background: 'rgba(168, 85, 247, 0.14)',
+                              border: '1px solid rgba(168, 85, 247, 0.3)',
+                              color: '#e9d5ff',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFinanceGoal(goal.id)}
+                            style={{
+                              padding: '5px',
+                              borderRadius: '7px',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              color: '#fca5a5',
+                              cursor: 'pointer',
+                              display: 'flex',
+                            }}
+                            title="Hapus target"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '5px' }}>
+                    {editingGoalId === goal.id && !isFinanceViewOnly && (
+                      <div
+                        style={{
+                          padding: '9px',
+                          borderRadius: '10px',
+                          background: '#0b0816',
+                          border: '1px solid rgba(168, 85, 247, 0.3)',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={editingGoalTitleDraft}
+                          onChange={(e) => setEditingGoalTitleDraft(e.target.value)}
+                          placeholder="Nama target"
+                          style={{
+                            padding: '7px 9px',
+                            borderRadius: '7px',
+                            background: '#130f22',
+                            border: '1px solid #32254a',
+                            color: '#ffffff',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                          }}
+                        />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', borderRadius: '7px', background: '#130f22', border: '1px solid #32254a' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 800, color: '#34d399' }}>Rp</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatDigitsWithDots(editingGoalTargetDraft)}
+                              onChange={(e) => setEditingGoalTargetDraft(formatDigitsWithDots(e.target.value))}
+                              placeholder="Target"
+                              style={{ flex: 1, minWidth: 0, padding: '7px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '11px', fontWeight: 700 }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', borderRadius: '7px', background: '#130f22', border: '1px solid #32254a' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 800, color: '#38bdf8' }}>Rp</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatDigitsWithDots(editingGoalSavedDraft)}
+                              onChange={(e) => setEditingGoalSavedDraft(formatDigitsWithDots(e.target.value))}
+                              placeholder="Terkumpul"
+                              style={{ flex: 1, minWidth: 0, padding: '7px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '11px', fontWeight: 700 }}
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateFinanceGoal(goal.id)}
+                          style={{
+                            padding: '7px',
+                            borderRadius: '7px',
+                            background: '#10b981',
+                            border: 'none',
+                            color: '#052e16',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Simpan Perubahan Target
+                        </button>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '5px', gap: '6px' }}>
                       <span style={{ color: '#6ee7b7', fontWeight: 800 }}>{formatRupiah(goal.savedAmount)}</span>
                       <span style={{ color: '#cbd5e1', fontWeight: 700 }}>
-                        {pct}% dari {formatRupiahCompact(goal.targetAmount)}
+                        {pct}% dari {formatRupiah(goal.targetAmount)}
                       </span>
                     </div>
 
@@ -9213,7 +9551,7 @@ export default function Page() {
                           : `Kurang ${formatRupiah(remaining)} • Est. ±${estDaysLeft} hari lagi`}
                       </span>
                       {!isFinanceViewOnly && !isGoalDone && (
-                        <div style={{ display: 'flex', gap: '4px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                           {[20000, 50000, 100000].map((amt) => (
                             <button
                               key={amt}
@@ -9230,7 +9568,7 @@ export default function Page() {
                                 cursor: 'pointer',
                               }}
                             >
-                              +{amt / 1000}rb
+                              +{formatRupiah(amt)}
                             </button>
                           ))}
                         </div>
@@ -9259,7 +9597,7 @@ export default function Page() {
                     type="text"
                     value={newGoalTitle}
                     onChange={(e) => setNewGoalTitle(e.target.value)}
-                    placeholder="Nama target (misal: Laptop Kerja / Dana Darurat / Liburan)"
+                    placeholder="Nama target (misal: Membership Gym / Dana Darurat)"
                     style={{
                       padding: '8px 10px',
                       borderRadius: '8px',
@@ -9270,34 +9608,74 @@ export default function Page() {
                     }}
                   />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
-                    <input
-                      type="number"
-                      value={newGoalTarget}
-                      onChange={(e) => setNewGoalTarget(e.target.value)}
-                      placeholder="Target Rp"
-                      style={{
-                        padding: '8px',
-                        borderRadius: '8px',
-                        background: '#0b0816',
-                        border: '1px solid #32254a',
-                        color: '#ffffff',
-                        fontSize: '11.5px',
-                      }}
-                    />
-                    <input
-                      type="number"
-                      value={newGoalSaved}
-                      onChange={(e) => setNewGoalSaved(e.target.value)}
-                      placeholder="Saldo awal Rp"
-                      style={{
-                        padding: '8px',
-                        borderRadius: '8px',
-                        background: '#0b0816',
-                        border: '1px solid #32254a',
-                        color: '#ffffff',
-                        fontSize: '11.5px',
-                      }}
-                    />
+                    <div>
+                      <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', marginBottom: '3px' }}>Target Dana</span>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '0 8px',
+                          borderRadius: '8px',
+                          background: '#0b0816',
+                          border: '1px solid #32254a',
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#34d399' }}>Rp</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatDigitsWithDots(newGoalTarget)}
+                          onChange={(e) => setNewGoalTarget(formatDigitsWithDots(e.target.value))}
+                          placeholder="2.000.000"
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '8px 0',
+                            border: 'none',
+                            outline: 'none',
+                            background: 'transparent',
+                            color: '#ffffff',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '9.5px', color: '#b8add1', marginBottom: '3px' }}>Saldo Awal (Opsional)</span>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '0 8px',
+                          borderRadius: '8px',
+                          background: '#0b0816',
+                          border: '1px solid #32254a',
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8' }}>Rp</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatDigitsWithDots(newGoalSaved)}
+                          onChange={(e) => setNewGoalSaved(formatDigitsWithDots(e.target.value))}
+                          placeholder="0"
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '8px 0',
+                            border: 'none',
+                            outline: 'none',
+                            background: 'transparent',
+                            color: '#ffffff',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                   <input
                     type="text"
