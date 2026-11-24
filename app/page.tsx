@@ -20837,23 +20837,31 @@ export default function Page() {
                         }}
                       />
 
-                      {/* 2-Option Floating Pills */}
+                      {/* Monarch Dual-Blade Action Capsule (Dead-Center above Center Orb) */}
                       <motion.div
                         key="nav-add-options"
-                        initial={{ opacity: 0, y: 15, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                        initial={{ x: '-50%', y: 14, scale: 0.88, opacity: 0 }}
+                        animate={{ x: '-50%', y: 0, scale: 1, opacity: 1 }}
+                        exit={{ x: '-50%', y: 10, scale: 0.88, opacity: 0 }}
                         transition={{ type: 'spring', stiffness: 420, damping: 25 }}
                         style={{
                           position: 'absolute',
-                          bottom: 'calc(100% + 22px)',
+                          bottom: 'calc(100% + 18px)',
                           left: '50%',
-                          transform: 'translateX(-50%)',
-                          display: 'flex',
+                          x: '-50%',
+                          display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '10px',
+                          gap: '6px',
+                          padding: '5px 7px',
+                          borderRadius: '999px',
+                          background: 'rgba(6, 11, 23, 0.94)',
+                          border: '1.5px solid rgba(56, 189, 248, 0.4)',
+                          backdropFilter: 'blur(20px)',
+                          WebkitBackdropFilter: 'blur(20px)',
+                          boxShadow: '0 20px 45px rgba(0, 0, 0, 0.85), 0 0 28px rgba(56, 189, 248, 0.22)',
                           zIndex: 65,
                           pointerEvents: 'auto',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {/* Option 1: Quest */}
@@ -20870,23 +20878,31 @@ export default function Page() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '7px',
-                            padding: '9px 16px',
+                            padding: '9px 18px',
                             borderRadius: '999px',
-                            border: `1.5px solid ${currentRankTier.primaryColor}`,
-                            background: 'rgba(9, 14, 28, 0.95)',
-                            color: currentRankTier.highlightColor,
+                            border: '1px solid rgba(168, 85, 247, 0.55)',
+                            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(124, 58, 237, 0.32))',
+                            color: '#f3e8ff',
                             fontSize: '12px',
                             fontWeight: 900,
-                            boxShadow: `0 10px 28px -6px ${currentRankTier.glowColor}`,
+                            letterSpacing: '0.02em',
+                            boxShadow: '0 0 16px rgba(168, 85, 247, 0.28)',
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
-                            backdropFilter: 'blur(10px)',
-                            WebkitBackdropFilter: 'blur(10px)',
                           }}
                         >
-                          <Sparkles size={14} />
-                          <span>Quest</span>
+                          <Sparkles size={15} color="#c084fc" strokeWidth={2.4} />
+                          <span>+ Quest</span>
                         </motion.button>
+
+                        {/* Energy Divider */}
+                        <div
+                          style={{
+                            width: '1px',
+                            height: '18px',
+                            background: 'linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.5), transparent)',
+                          }}
+                        />
 
                         {/* Option 2: Transaksi */}
                         <motion.button
@@ -20902,21 +20918,39 @@ export default function Page() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '7px',
-                            padding: '9px 16px',
+                            padding: '9px 18px',
                             borderRadius: '999px',
-                            border: '1px solid rgba(255, 255, 255, 0.4)',
-                            background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                            color: '#030712',
+                            border: '1px solid rgba(56, 189, 248, 0.7)',
+                            background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(14, 165, 233, 0.38))',
+                            color: '#e0f2fe',
                             fontSize: '12px',
                             fontWeight: 900,
-                            boxShadow: `0 10px 28px -6px ${currentRankTier.glowColor}`,
+                            letterSpacing: '0.02em',
+                            boxShadow: '0 0 16px rgba(56, 189, 248, 0.35)',
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          <Wallet size={14} />
+                          <Wallet size={15} color="#38bdf8" strokeWidth={2.4} />
                           <span>Transaksi</span>
                         </motion.button>
+
+                        {/* Bottom Pip Arrow pointing directly down at Center Orb */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '-5px',
+                            left: '50%',
+                            marginLeft: '-5px',
+                            width: '10px',
+                            height: '10px',
+                            background: 'rgba(6, 11, 23, 0.94)',
+                            borderRight: '1.5px solid rgba(56, 189, 248, 0.4)',
+                            borderBottom: '1.5px solid rgba(56, 189, 248, 0.4)',
+                            transform: 'rotate(45deg)',
+                            pointerEvents: 'none',
+                          }}
+                        />
                       </motion.div>
                     </>
                   )}
