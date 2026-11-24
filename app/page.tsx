@@ -2526,7 +2526,7 @@ export default function Page() {
   } | null>(null)
   const [financeVault, setFinanceVault] = useState<FinanceVaultState>(DEFAULT_FINANCE_VAULT)
   const [financeTab, setFinanceTab] = useState<'goals' | 'budget' | 'history'>('goals')
-  const [activeFinanceSheet, setActiveFinanceSheet] = useState<null | 'target' | 'log' | 'salary' | 'editGoal' | 'editBucket'>(null)
+  const [activeFinanceSheet, setActiveFinanceSheet] = useState<null | 'target' | 'log' | 'salary' | 'editGoal' | 'editBucket' | 'editLog'>(null)
   const [financeTargetDraftType, setFinanceTargetDraftType] = useState<'goal' | 'bucket'>('goal')
   const [financeHistoryFilter, setFinanceHistoryFilter] = useState<'all' | 'income' | 'expense' | 'saving'>('all')
   const [financeParticles, setFinanceParticles] = useState<Array<{ id: string; text: string }>>([])
@@ -2574,6 +2574,13 @@ export default function Page() {
   const [editingGoalTitleDraft, setEditingGoalTitleDraft] = useState<string>('')
   const [editingGoalTargetDraft, setEditingGoalTargetDraft] = useState<string>('')
   const [editingGoalSavedDraft, setEditingGoalSavedDraft] = useState<string>('')
+  const [editingLogId, setEditingLogId] = useState<string | null>(null)
+  const [editingLogNoteDraft, setEditingLogNoteDraft] = useState<string>('')
+  const [editingLogAmountDraft, setEditingLogAmountDraft] = useState<string>('')
+  const [editingLogTypeDraft, setEditingLogTypeDraft] = useState<'saving' | 'expense' | 'income'>('expense')
+  const [editingLogBucketDraft, setEditingLogBucketDraft] = useState<string>('')
+  const [editingLogGoalDraft, setEditingLogGoalDraft] = useState<string>('')
+  const [editingLogDateDraft, setEditingLogDateDraft] = useState<string>('')
   const [photoUploadDate, setPhotoUploadDate] = useState<string>(() => getLocalIsoDate())
   const [timelapseSpeedMs, setTimelapseSpeedMs] = useState<number>(250)
   const [isGeneratingTimelapse, setIsGeneratingTimelapse] = useState<boolean>(false)
@@ -5771,19 +5778,19 @@ export default function Page() {
 
   const handleSaveMonthlyIncome = (newAmountRaw: number) => {
     const amount = Math.max(0, Math.round(Number(newAmountRaw) || 0))
-    if (amount <= 0) {
-      showToast('Masukkan penghasilan bulanan yang valid (> Rp 0)')
-      return
-    }
     persistFinanceVault({
       ...financeVault,
       monthlyIncome: amount,
     })
-    setMonthlyIncomeDraft(formatDigitsWithDots(amount))
+    setMonthlyIncomeDraft(amount > 0 ? formatDigitsWithDots(amount) : '')
     setIsEditingMonthlyIncome(false)
     setActiveFinanceSheet(null)
-    spawnFinanceParticle(`Gaji ${formatRupiah(amount)}`)
-    showToast(`Penghasilan bulanan diatur: ${formatRupiah(amount)}`)
+    if (amount <= 0) {
+      showToast('Gaji / Penghasilan utama dikosongkan (Rp 0)')
+    } else {
+      spawnFinanceParticle(`Gaji ${formatRupiah(amount)}`)
+      showToast(`Penghasilan bulanan diatur: ${formatRupiah(amount)}`)
+    }
   }
 
   const handleCompleteFinanceQuest = (taskId: string, targetDateIso?: string) => {
@@ -5919,6 +5926,61 @@ export default function Page() {
       logs: financeVault.logs.filter((l) => l.id !== logId),
     })
     showToast('Catatan transaksi dihapus.')
+  }
+
+  const handleUpdateFinanceLog = (logId: string) => {
+    const targetLog = financeVault.logs.find((l) => l.id === logId)
+    if (!targetLog) return
+
+    const newAmount = parseFormattedDigits(editingLogAmountDraft)
+    if (newAmount <= 0) {
+      showToast('Nominal harus lebih dari Rp 0')
+      return
+    }
+
+    const note = editingLogNoteDraft.trim() || (editingLogTypeDraft === 'saving' ? 'Tabungan' : editingLogTypeDraft === 'income' ? 'Pemasukan' : 'Pengeluaran')
+
+    let updatedGoals = [...financeVault.goals]
+
+    if (targetLog.type === 'saving' && targetLog.goalId) {
+      updatedGoals = updatedGoals.map((g) =>
+        g.id === targetLog.goalId
+          ? { ...g, savedAmount: Math.max(0, g.savedAmount - targetLog.amount) }
+          : g
+      )
+    }
+
+    if (editingLogTypeDraft === 'saving' && editingLogGoalDraft) {
+      updatedGoals = updatedGoals.map((g) =>
+        g.id === editingLogGoalDraft
+          ? { ...g, savedAmount: g.savedAmount + newAmount }
+          : g
+      )
+    }
+
+    const updatedLogs = financeVault.logs.map((l) =>
+      l.id === logId
+        ? {
+            ...l,
+            type: editingLogTypeDraft,
+            amount: newAmount,
+            note,
+            bucketId: editingLogTypeDraft === 'expense' ? editingLogBucketDraft : undefined,
+            goalId: editingLogTypeDraft === 'saving' ? editingLogGoalDraft : undefined,
+            dateIso: editingLogDateDraft || l.dateIso,
+          }
+        : l
+    )
+
+    persistFinanceVault({
+      ...financeVault,
+      goals: updatedGoals,
+      logs: updatedLogs,
+    })
+
+    setActiveFinanceSheet(null)
+    setEditingLogId(null)
+    showToast('Transaksi berhasil diperbarui.')
   }
 
   const handleAddFinanceBucket = () => {
@@ -8830,7 +8892,9 @@ export default function Page() {
     const filteredLogs = financeVault.logs.filter((l) =>
       financeHistoryFilter === 'all' ? true : l.type === financeHistoryFilter
     )
-    const showMainSalaryInHistory = financeHistoryFilter === 'all' || financeHistoryFilter === 'income'
+    const showMainSalaryInHistory =
+      (financeHistoryFilter === 'all' || financeHistoryFilter === 'income') &&
+      financeVault.monthlyIncome > 0
 
     const renderMorphingFab = () => {
       if (isFinanceViewOnly) return null
@@ -9762,7 +9826,7 @@ export default function Page() {
                 cursor: isFinanceViewOnly ? 'default' : 'pointer',
               }}
             >
-              <span>Gaji {formatRupiah(financeVault.monthlyIncome)}</span>
+              <span>Gaji {financeVault.monthlyIncome > 0 ? formatRupiah(financeVault.monthlyIncome) : 'Rp 0'}</span>
               {!isFinanceViewOnly && <Pencil size={9} />}
             </button>
             {monthlyExtraIncome > 0 && (
@@ -9831,7 +9895,7 @@ export default function Page() {
             [
               { id: 'goals', label: `Target (${financeVault.goals.length})` },
               { id: 'budget', label: `Pos (${financeVault.buckets.length})` },
-              { id: 'history', label: `Riwayat (${financeVault.logs.length + 1})` },
+              { id: 'history', label: `Riwayat (${financeVault.logs.length + (financeVault.monthlyIncome > 0 ? 1 : 0)})` },
             ] as const
           ).map((tab) => {
             const isActive = financeTab === tab.id
@@ -10280,6 +10344,17 @@ export default function Page() {
                   return (
                     <div
                       key={log.id}
+                      onClick={() => {
+                        if (isFinanceViewOnly) return
+                        setEditingLogId(log.id)
+                        setEditingLogNoteDraft(log.note)
+                        setEditingLogAmountDraft(formatDigitsWithDots(log.amount))
+                        setEditingLogTypeDraft(log.type)
+                        setEditingLogBucketDraft(log.bucketId || financeVault.buckets[0]?.id || '')
+                        setEditingLogGoalDraft(log.goalId || financeVault.goals[0]?.id || '')
+                        setEditingLogDateDraft(log.dateIso)
+                        setActiveFinanceSheet('editLog')
+                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -10289,6 +10364,7 @@ export default function Page() {
                         borderRadius: '16px',
                         background: '#080d1c',
                         border: '1px solid rgba(255,255,255,0.08)',
+                        cursor: isFinanceViewOnly ? 'default' : 'pointer',
                       }}
                     >
                       <div style={{ minWidth: 0 }}>
@@ -10320,31 +10396,65 @@ export default function Page() {
                           <span>{log.dateIso}</span>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                         <strong style={{ fontSize: '11.5px', color, fontVariantNumeric: 'tabular-nums' }}>
                           {sign}
                           {formatRupiah(log.amount)}
                         </strong>
                         {!isFinanceViewOnly && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteFinanceLog(log.id)}
-                            title="Hapus"
-                            style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '8px',
-                              background: 'rgba(239, 68, 68, 0.12)',
-                              border: '1px solid rgba(248, 113, 113, 0.25)',
-                              color: '#fca5a5',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <X size={11} />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingLogId(log.id)
+                                setEditingLogNoteDraft(log.note)
+                                setEditingLogAmountDraft(formatDigitsWithDots(log.amount))
+                                setEditingLogTypeDraft(log.type)
+                                setEditingLogBucketDraft(log.bucketId || financeVault.buckets[0]?.id || '')
+                                setEditingLogGoalDraft(log.goalId || financeVault.goals[0]?.id || '')
+                                setEditingLogDateDraft(log.dateIso)
+                                setActiveFinanceSheet('editLog')
+                              }}
+                              title="Edit transaksi"
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '8px',
+                                background: 'rgba(255,255,255,0.06)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                color: '#cbd5e1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Pencil size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteFinanceLog(log.id)
+                              }}
+                              title="Hapus transaksi"
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '8px',
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                border: '1px solid rgba(248, 113, 113, 0.25)',
+                                color: '#fca5a5',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <X size={11} />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -10353,6 +10463,11 @@ export default function Page() {
 
                 {showMainSalaryInHistory && (
                   <div
+                    onClick={() => {
+                      if (isFinanceViewOnly) return
+                      setMonthlyIncomeDraft(financeVault.monthlyIncome > 0 ? formatDigitsWithDots(financeVault.monthlyIncome) : '')
+                      setActiveFinanceSheet('salary')
+                    }}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -10362,6 +10477,7 @@ export default function Page() {
                       borderRadius: '16px',
                       background: '#080d1c',
                       border: '1px solid rgba(56, 189, 248, 0.18)',
+                      cursor: isFinanceViewOnly ? 'default' : 'pointer',
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
@@ -10384,33 +10500,58 @@ export default function Page() {
                         <span>{activeMonthPrefix} • Tetap</span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                       <strong style={{ fontSize: '11.5px', color: '#38bdf8', fontVariantNumeric: 'tabular-nums' }}>
                         +{formatRupiah(financeVault.monthlyIncome)}
                       </strong>
                       {!isFinanceViewOnly && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMonthlyIncomeDraft(formatDigitsWithDots(financeVault.monthlyIncome))
-                            setActiveFinanceSheet('salary')
-                          }}
-                          title="Ubah gaji"
-                          style={{
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '8px',
-                            background: 'rgba(255,255,255,0.06)',
-                            border: '1px solid rgba(255,255,255,0.12)',
-                            color: '#cbd5e1',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <Pencil size={10} />
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setMonthlyIncomeDraft(financeVault.monthlyIncome > 0 ? formatDigitsWithDots(financeVault.monthlyIncome) : '')
+                              setActiveFinanceSheet('salary')
+                            }}
+                            title="Ubah gaji"
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '8px',
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              color: '#cbd5e1',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSaveMonthlyIncome(0)
+                            }}
+                            title="Hapus / Kosongkan Gaji"
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '8px',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(248, 113, 113, 0.25)',
+                              color: '#fca5a5',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <X size={11} />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -10653,7 +10794,7 @@ export default function Page() {
                 {activeFinanceSheet === 'salary' && (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Ubah Penghasilan Bulanan</strong>
+                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Atur Penghasilan Bulanan</strong>
                       <button
                         type="button"
                         onClick={() => setActiveFinanceSheet(null)}
@@ -10667,18 +10808,40 @@ export default function Page() {
                       <input
                         type="text"
                         inputMode="numeric"
-                        value={formatDigitsWithDots(monthlyIncomeDraft)}
+                        value={monthlyIncomeDraft}
                         onChange={(e) => setMonthlyIncomeDraft(formatDigitsWithDots(e.target.value))}
-                        placeholder="3.500.000"
+                        placeholder="0 (bisa dikosongkan)"
                         style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '16px', fontWeight: 900 }}
                       />
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMonthlyIncomeDraft('')
+                          handleSaveMonthlyIncome(0)
+                        }}
+                        style={{
+                          padding: '5px 9px',
+                          borderRadius: '8px',
+                          background: 'rgba(239, 68, 68, 0.15)',
+                          border: '1px solid rgba(248, 113, 113, 0.3)',
+                          color: '#fca5a5',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Kosongkan (Rp 0)
+                      </button>
                       {[2500000, 3500000, 5000000, 7500000, 10000000].map((v) => (
                         <button
                           key={v}
                           type="button"
-                          onClick={() => handleSaveMonthlyIncome(v)}
+                          onClick={() => {
+                            setMonthlyIncomeDraft(formatDigitsWithDots(v))
+                            handleSaveMonthlyIncome(v)
+                          }}
                           style={{
                             padding: '5px 9px',
                             borderRadius: '8px',
@@ -10694,23 +10857,46 @@ export default function Page() {
                         </button>
                       ))}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveMonthlyIncome(parseFormattedDigits(monthlyIncomeDraft))}
-                      style={{
-                        width: '100%',
-                        padding: '11px',
-                        borderRadius: '12px',
-                        border: 'none',
-                        background: currentRankTier.primaryColor,
-                        color: '#030712',
-                        fontSize: '12px',
-                        fontWeight: 900,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Simpan Gaji
-                    </button>
+                    <div style={{ display: 'grid', gridTemplateColumns: financeVault.monthlyIncome > 0 ? '1fr 2fr' : '1fr', gap: '8px' }}>
+                      {financeVault.monthlyIncome > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMonthlyIncomeDraft('')
+                            handleSaveMonthlyIncome(0)
+                          }}
+                          style={{
+                            padding: '11px',
+                            borderRadius: '12px',
+                            border: '1px solid rgba(248, 113, 113, 0.35)',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#fca5a5',
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Hapus Gaji
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleSaveMonthlyIncome(parseFormattedDigits(monthlyIncomeDraft))}
+                        style={{
+                          width: '100%',
+                          padding: '11px',
+                          borderRadius: '12px',
+                          border: 'none',
+                          background: currentRankTier.primaryColor,
+                          color: '#030712',
+                          fontSize: '12px',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Simpan Gaji
+                      </button>
+                    </div>
                   </>
                 )}
 
@@ -10820,6 +11006,181 @@ export default function Page() {
                     >
                       Simpan Batas Pos
                     </button>
+                  </>
+                )}
+
+                {activeFinanceSheet === 'editLog' && editingLogId && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Edit Transaksi</strong>
+                      <button
+                        type="button"
+                        onClick={() => setActiveFinanceSheet(null)}
+                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Tutup
+                      </button>
+                    </div>
+
+                    {/* Tipe Transaksi: Keluar / Masuk / Nabung */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                      {(
+                        [
+                          { id: 'expense', label: 'Keluar', color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)' },
+                          { id: 'income', label: 'Masuk', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)' },
+                          { id: 'saving', label: 'Nabung', color: '#34d399', bg: 'rgba(16, 185, 129, 0.15)' },
+                        ] as const
+                      ).map((tab) => {
+                        const active = editingLogTypeDraft === tab.id
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setEditingLogTypeDraft(tab.id)}
+                            style={{
+                              padding: '8px 4px',
+                              borderRadius: '11px',
+                              fontSize: '11px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              background: active ? tab.bg : 'rgba(255,255,255,0.04)',
+                              border: active ? `1.5px solid ${tab.color}` : '1px solid rgba(255,255,255,0.08)',
+                              color: active ? tab.color : '#94a3b8',
+                            }}
+                          >
+                            {tab.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Nominal */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 900, color: editingLogTypeDraft === 'saving' ? '#34d399' : editingLogTypeDraft === 'income' ? '#38bdf8' : '#fbbf24' }}>
+                        Rp
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={editingLogAmountDraft}
+                        onChange={(e) => setEditingLogAmountDraft(formatDigitsWithDots(e.target.value))}
+                        placeholder="0"
+                        style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '16px', fontWeight: 900 }}
+                      />
+                    </div>
+
+                    {/* Target / Pos Dropdown */}
+                    {editingLogTypeDraft === 'expense' && (
+                      <div>
+                        <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Pos Pengeluaran:</span>
+                        <select
+                          value={editingLogBucketDraft}
+                          onChange={(e) => setEditingLogBucketDraft(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            borderRadius: '12px',
+                            background: '#04060e',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            color: '#ffffff',
+                            fontSize: '12px',
+                            outline: 'none',
+                          }}
+                        >
+                          {financeVault.buckets.map((b) => (
+                            <option key={b.id} value={b.id} style={{ background: '#0a0f1d', color: '#ffffff' }}>
+                              {b.name} (Batas {formatRupiah(b.targetMonthly)})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {editingLogTypeDraft === 'saving' && (
+                      <div>
+                        <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Tujuan Tabungan:</span>
+                        <select
+                          value={editingLogGoalDraft}
+                          onChange={(e) => setEditingLogGoalDraft(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            borderRadius: '12px',
+                            background: '#04060e',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            color: '#ffffff',
+                            fontSize: '12px',
+                            outline: 'none',
+                          }}
+                        >
+                          {financeVault.goals.map((g) => (
+                            <option key={g.id} value={g.id} style={{ background: '#0a0f1d', color: '#ffffff' }}>
+                              {g.title} ({formatRupiah(g.savedAmount)} / {formatRupiah(g.targetAmount)})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Catatan */}
+                    <div>
+                      <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Catatan Transaksi:</span>
+                      <input
+                        type="text"
+                        value={editingLogNoteDraft}
+                        onChange={(e) => setEditingLogNoteDraft(e.target.value)}
+                        placeholder="Misal: Makan Siang, Bensin, Bonus"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '12px',
+                          background: '#04060e',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          color: '#ffffff',
+                          fontSize: '12.5px',
+                        }}
+                      />
+                    </div>
+
+                    {/* Tombol Simpan & Hapus */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '8px', marginTop: '4px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleDeleteFinanceLog(editingLogId)
+                          setActiveFinanceSheet(null)
+                          setEditingLogId(null)
+                        }}
+                        style={{
+                          padding: '11px',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(248, 113, 113, 0.35)',
+                          background: 'rgba(239, 68, 68, 0.15)',
+                          color: '#fca5a5',
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Hapus
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateFinanceLog(editingLogId)}
+                        style={{
+                          padding: '11px',
+                          borderRadius: '12px',
+                          border: 'none',
+                          background: currentRankTier.primaryColor,
+                          color: '#030712',
+                          fontSize: '12px',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Simpan Perubahan
+                      </button>
+                    </div>
                   </>
                 )}
               </motion.div>
