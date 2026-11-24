@@ -2546,6 +2546,7 @@ export default function Page() {
   })
   const [isNavAddMenuOpen, setIsNavAddMenuOpen] = useState<boolean>(false)
   const [isTxSubDropdownOpen, setIsTxSubDropdownOpen] = useState<boolean>(false)
+  const lenisRef = useRef<Lenis | null>(null)
 
   const updateFinanceFabStyle = (style: 'split' | 'portal' | 'mecha' | 'island' | 'arc') => {
     setFinanceFabStyle(style)
@@ -4110,6 +4111,7 @@ export default function Page() {
       lerp: 0.11,
       smoothWheel: true,
     })
+    lenisRef.current = lenis
 
     let rafId = 0
     let smoothScroll = window.scrollY || 0
@@ -4185,9 +4187,29 @@ export default function Page() {
     rafId = requestAnimationFrame(raf)
     return () => {
       cancelAnimationFrame(rafId)
+      lenisRef.current = null
       lenis.destroy()
     }
   }, [])
+
+  // Pause Lenis & lock background scroll when Top Transaction Drawer / Sheet / Nav Menu is open
+  useEffect(() => {
+    const shouldLock = Boolean(activeFinanceSheet || isNavAddMenuOpen)
+    if (shouldLock) {
+      lenisRef.current?.stop()
+      document.documentElement.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden'
+    } else {
+      lenisRef.current?.start()
+      document.documentElement.style.overflow = ''
+      document.body.style.overflow = ''
+    }
+    return () => {
+      lenisRef.current?.start()
+      document.documentElement.style.overflow = ''
+      document.body.style.overflow = ''
+    }
+  }, [activeFinanceSheet, isNavAddMenuOpen])
 
   // Cleanup live flip interval & camera stream on unmount or leave photos subpage
   useEffect(() => {
@@ -8279,6 +8301,7 @@ export default function Page() {
             {/* Deep Smoked Backdrop */}
             <motion.div
               key="finance-top-drawer-backdrop"
+              data-lenis-prevent
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -8290,6 +8313,7 @@ export default function Page() {
                 background: 'rgba(2, 5, 13, 0.82)',
                 backdropFilter: 'blur(6px)',
                 WebkitBackdropFilter: 'blur(6px)',
+                touchAction: 'none',
                 zIndex: 88,
               }}
             />
@@ -8297,6 +8321,7 @@ export default function Page() {
             {/* #O SCHEDULE GLASS TOP SLIDE-DOWN DRAWER */}
             <motion.div
               key="finance-top-drawer-content"
+              data-lenis-prevent
               initial={{ y: '-100%', x: '-50%', opacity: 0 }}
               animate={{ y: 0, x: '-50%', opacity: 1 }}
               exit={{ y: '-100%', x: '-50%', opacity: 0 }}
@@ -8310,6 +8335,8 @@ export default function Page() {
                 maxWidth: '480px',
                 maxHeight: '88vh',
                 overflowY: 'auto',
+                overscrollBehavior: 'contain',
+                WebkitOverflowScrolling: 'touch',
                 borderBottomLeftRadius: '28px',
                 borderBottomRightRadius: '28px',
                 borderBottom: `1px solid rgba(${currentRankTier.primaryRgb}, 0.34)`,
@@ -8541,6 +8568,8 @@ export default function Page() {
                     <AnimatePresence>
                       {isTxSubDropdownOpen && (
                         <motion.div
+                          data-lenis-prevent
+                          onWheel={(e) => e.stopPropagation()}
                           initial={{ opacity: 0, y: -6, scale: 0.98 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -6, scale: 0.98 }}
@@ -8557,6 +8586,8 @@ export default function Page() {
                             gap: '3px',
                             maxHeight: '165px',
                             overflowY: 'auto',
+                            overscrollBehavior: 'contain',
+                            WebkitOverflowScrolling: 'touch',
                           }}
                         >
                           {financeLogType === 'saving'
@@ -21085,6 +21116,7 @@ export default function Page() {
                 {isNavAddMenuOpen && (
                   <motion.div
                     key="nav-add-backdrop"
+                    data-lenis-prevent
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -21096,6 +21128,7 @@ export default function Page() {
                       background: 'rgba(2, 5, 14, 0.72)',
                       backdropFilter: 'blur(4px)',
                       WebkitBackdropFilter: 'blur(4px)',
+                      touchAction: 'none',
                       zIndex: 48,
                     }}
                   />
@@ -21133,13 +21166,13 @@ export default function Page() {
                         transition={{ duration: 0.2 }}
                         style={{
                           position: 'absolute',
-                          bottom: 'calc(100% + 18px)',
+                          bottom: 'calc(100% + 36px)',
                           left: '50%',
                           x: '-50%',
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '8px',
+                          gap: '10px',
                           zIndex: 65,
                           pointerEvents: 'auto',
                         }}
