@@ -4021,26 +4021,14 @@ export default function Page() {
         setIsQuestAlertSealed(true)
         setArrivedQuestAlert(newlyArrived)
       }
-      // Hanya kirim fallback Notification lokal jika background Web Push TIDAK aktif
-      // agar tidak terjadi duplikasi dengan push server dari Service Worker.
-      if (
-        prefNotification &&
-        pushStatus !== 'active' &&
-        typeof window !== 'undefined' &&
-        'Notification' in window &&
-        Notification.permission === 'granted'
-      ) {
-        try {
-          new Notification(newlyArrived.title, {
-            body: `${newlyArrived.targetTime} • ${newlyArrived.category} (+${newlyArrived.xp} XP)`,
-            tag: `quest-${todayIso}-${newlyArrived.id}`,
-          })
-        } catch {}
-      }
+      // Tidak memanggil `new Notification(...)` di sini karena effect ini hanya berjalan
+      // saat user sudah berada di dalam app (`visibilityState === 'visible'`) sehingga
+      // pop-up System HUD in-app sudah tampil dan tidak menimbulkan notifikasi OS ganda
+      // setiap kali user masuk ke app sebelum quest diterima.
     } else {
       setPendingQuestAlertCount(0)
     }
-  }, [timeTick, mounted, todayPersonalTasks, arrivedQuestAlert, prefNotification, prefSound, pushStatus])
+  }, [timeTick, mounted, todayPersonalTasks, arrivedQuestAlert, prefNotification, prefSound])
 
   const getPushEnvironmentInfo = (): 'ready' | 'needs-pwa' | 'unsupported' => {
     if (typeof window === 'undefined') return 'unsupported'
