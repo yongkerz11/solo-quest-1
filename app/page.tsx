@@ -2533,7 +2533,24 @@ export default function Page() {
   const [financeLogType, setFinanceLogType] = useState<'saving' | 'expense' | 'income'>('saving')
   const [financeAmountInput, setFinanceAmountInput] = useState<string>('50.000')
   const [isFinanceFabOpen, setIsFinanceFabOpen] = useState<boolean>(false)
-  const [financeFabStyle, setFinanceFabStyle] = useState<'split' | 'portal' | 'mecha' | 'island' | 'arc'>('split')
+  const [financeFabStyle, setFinanceFabStyle] = useState<'split' | 'portal' | 'mecha' | 'island' | 'arc'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('solo_finance_fab_style')
+        if (saved && ['split', 'portal', 'mecha', 'island', 'arc'].includes(saved)) {
+          return saved as any
+        }
+      } catch {}
+    }
+    return 'portal'
+  })
+
+  const updateFinanceFabStyle = (style: 'split' | 'portal' | 'mecha' | 'island' | 'arc') => {
+    setFinanceFabStyle(style)
+    try {
+      localStorage.setItem('solo_finance_fab_style', style)
+    } catch {}
+  }
   const [financeSelectedBucketId, setFinanceSelectedBucketId] = useState<string>('b-kebutuhan')
   const [financeSelectedGoalId, setFinanceSelectedGoalId] = useState<string>('g-darurat')
   const [financeNoteInput, setFinanceNoteInput] = useState<string>('')
@@ -7071,6 +7088,9 @@ export default function Page() {
     setUsers((curr) =>
       curr.map((u) => (u.id === currentUser.id ? { ...u, username: prefUsername.trim() } : u))
     )
+    try {
+      localStorage.setItem('solo_finance_fab_style', financeFabStyle)
+    } catch {}
     setIsPreferencesModalOpen(false)
     showToast('Pengaturan Hunter berhasil disimpan!')
   }
@@ -9001,6 +9021,29 @@ export default function Page() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setPrefUsername(currentUser.username)
+                setIsPreferencesModalOpen(true)
+              }}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '9px',
+                width: '30px',
+                height: '30px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#cbd5e1',
+                cursor: 'pointer',
+              }}
+              title="Pengaturan Hunter & Gaya Tombol"
+              aria-label="Pengaturan"
+            >
+              <Settings size={14} />
+            </button>
 
             {isFinanceViewOnly ? (
               <span
@@ -9189,7 +9232,7 @@ export default function Page() {
             borderRadius: '16px',
             background: '#0b1020',
             border: '1px solid rgba(255,255,255,0.1)',
-            marginBottom: '8px',
+            marginBottom: '12px',
           }}
         >
           {(
@@ -9238,59 +9281,6 @@ export default function Page() {
               </button>
             )
           })}
-        </div>
-
-        {/* MORPH BUTTON STYLE SELECTOR (5 OPSI SESUAI PERMINTAAN) */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '6px',
-            marginBottom: '12px',
-            padding: '4px 8px',
-            borderRadius: '12px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            fontSize: '9.5px',
-          }}
-        >
-          <span style={{ color: '#94a3b8', fontWeight: 700, flexShrink: 0 }}>Gaya Tombol:</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflowX: 'auto' }}>
-            {[
-              { id: 'split', label: '#1 Split Liquid' },
-              { id: 'portal', label: '#2 Portal Orb' },
-              { id: 'mecha', label: '#3 Mecha Wing' },
-              { id: 'island', label: '#4 Island' },
-              { id: 'arc', label: '#5 Thumb Arc' },
-            ].map((st) => {
-              const isSelected = financeFabStyle === st.id
-              return (
-                <button
-                  key={st.id}
-                  type="button"
-                  onClick={() => {
-                    setFinanceFabStyle(st.id as any)
-                    setIsFinanceFabOpen(false)
-                  }}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '7px',
-                    border: isSelected ? `1px solid ${currentRankTier.primaryColor}` : '1px solid transparent',
-                    background: isSelected ? rankTint : 'transparent',
-                    color: isSelected ? currentRankTier.highlightColor : '#94a3b8',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    fontSize: '9px',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {st.label}
-                </button>
-              )
-            })}
-          </div>
         </div>
 
         {/* SUB-TAB 1: TARGET TABUNGAN (LIQUID-FILL GLASS CARDS) */}
@@ -21604,6 +21594,56 @@ export default function Page() {
                   <Bell size={13} color="#a78bfa" />
                   <span>Test Animasi &amp; Suara Pop-Up Quest</span>
                 </button>
+              </div>
+
+              <label className="modal-label">GAYA TOMBOL FINANCE VAULT</label>
+              <div
+                style={{
+                  background: '#0d091a',
+                  border: '1px solid #342452',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ fontSize: '11px', color: '#a79abf', marginBottom: '2px' }}>
+                  Pilih gaya tombol morphing di Finance Vault:
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                  {[
+                    { id: 'portal', label: '1. Portal Orb (Aktif)' },
+                    { id: 'split', label: '2. Split Liquid Pill' },
+                    { id: 'mecha', label: '3. Mecha Wing' },
+                    { id: 'island', label: '4. Dynamic Island' },
+                    { id: 'arc', label: '5. Thumb Arc' },
+                  ].map((st) => {
+                    const isSelected = financeFabStyle === st.id
+                    return (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => updateFinanceFabStyle(st.id as any)}
+                        style={{
+                          padding: '7px 9px',
+                          borderRadius: '8px',
+                          border: isSelected ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.1)',
+                          background: isSelected ? 'rgba(168, 85, 247, 0.22)' : 'rgba(255,255,255,0.03)',
+                          color: isSelected ? '#f3e8ff' : '#94a3b8',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {st.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               <div className="modal-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
