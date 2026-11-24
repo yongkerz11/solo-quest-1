@@ -4,6 +4,10 @@ import { DEFAULT_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_URL } from './supabase'
 
 export const PUSH_SUB_CATEGORY = '__system_push_sub__'
 export const PUSH_SUB_ID_PREFIX = '__push_sub__:'
+export const PUSH_SENT_CATEGORY = '__system_push_sent__'
+export const PUSH_SENT_ID_PREFIX = '__push_sent__:'
+export const PUSH_WF_CATEGORY = '__system_push_wf__'
+export const PUSH_WF_ID_PREFIX = '__push_wf__:'
 
 const DAY_CODES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
@@ -241,6 +245,57 @@ export function parseHHMM(targetTime?: string): number | null {
   return h * 60 + m
 }
 
+export function makePushLockId(prefix: string, rawKey: string): string {
+  const hash = crypto.createHash('sha256').update(rawKey).digest('hex').slice(0, 24)
+  return `${prefix}${hash}`
+}
+
+/**
+ * Atomic cross-invocation lock backed by the PRIMARY KEY (`id`) of `user_quests`.
+ * Returns `true` only for the single caller that wins the INSERT (HTTP 201).
+ * Concurrent callers receive HTTP 409 Conflict and return `false`.
+ */
+export async function claimAtomicPushLock(
+  lockId: string,
+  category: string,
+  title: string
+): Promise<boolean> {
+  const res = await supabaseRest('user_quests', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({
+      id: lockId,
+      user_id: '__system__',
+      username: '',
+      title,
+      category,
+      xp: 0,
+      icon: '',
+      done: true,
+      schedule: [],
+      completed_dates: [],
+      updated_at: new Date().toISOString(),
+    }),
+  })
+
+  if (res.ok) return true
+  if (res.status === 409) return false
+
+  // Check if Postgres returned duplicate key error with another status
+  const txt = await res.text().catch(() => '')
+  if (txt.includes('23505') || txt.toLowerCase().includes('duplicate')) {
+    return false
+  }
+  console.error('claimAtomicPushLock unexpected error:', res.status, txt)
+  return false
+}
+
+export async function releaseAtomicPushLock(lockId: string): Promise<void> {
+  await supabaseRest(`user_quests?id=eq.${encodeURIComponent(lockId)}`, {
+    method: 'DELETE',
+  }).catch(() => {})
+}
+
 export async function dispatchDueQuestNotifications(): Promise<{
   checkedSubscriptions: number
   checkedQuests: number
@@ -250,7 +305,7 @@ export async function dispatchDueQuestNotifications(): Promise<{
   configureWebPush()
 
   const res = await supabaseRest(
-    'user_quests?select=id,user_id,username,title,category,xp,schedule,completed_dates,workout_exercises'
+    `user_quests?category=not.in.(${PUSH_SENT_CATEGORY},${PUSH_WF_CATEGORY})&select=id,user_id,username,title,category,xp,schedule,completed_dates,workout_exercises`
   )
   if (!res.ok) {
     throw new Error(`Supabase fetch failed: ${res.status} ${await res.text()}`)
@@ -269,12 +324,23 @@ export async function dispatchDueQuestNotifications(): Promise<{
   }>
 
   const subscriptions: StoredPushSubscription[] = []
+  const seenEndpoints = new Set<string>()
   const quests: typeof rows = []
 
   for (const row of rows) {
+    if (
+      row.category === PUSH_SENT_CATEGORY ||
+      row.category === PUSH_WF_CATEGORY ||
+      row.id.startsWith(PUSH_SENT_ID_PREFIX) ||
+      row.id.startsWith(PUSH_WF_ID_PREFIX)
+    ) {
+      continue
+    }
     if (row.category === PUSH_SUB_CATEGORY || row.id.startsWith(PUSH_SUB_ID_PREFIX)) {
       const meta = Array.isArray(row.workout_exercises) ? row.workout_exercises[0] : null
       if (meta?.subscription?.endpoint && meta?.subscription?.keys?.p256dh) {
+        if (seenEndpoints.has(meta.subscription.endpoint)) continue
+        seenEndpoints.add(meta.subscription.endpoint)
         const tzTag = (Array.isArray(row.schedule) ? row.schedule : []).find((s) =>
           typeof s === 'string' && s.startsWith('tz:')
         )
@@ -287,7 +353,7 @@ export async function dispatchDueQuestNotifications(): Promise<{
           sentKeys: Array.isArray(row.completed_dates) ? row.completed_dates : [],
         })
       }
-    } else {
+    } else if (!String(row.category || '').startsWith('__system_')) {
       quests.push(row)
     }
   }
@@ -298,10 +364,9 @@ export async function dispatchDueQuestNotifications(): Promise<{
 
   for (const sub of subscriptions) {
     const { isoDate, dayCode, minutesNow } = getLocalClockInTimeZone(sub.timezone, now)
-    const sentSet = new Set(
+    const legacySentSet = new Set(
       sub.sentKeys.filter((k) => typeof k === 'string' && k.startsWith(`sent:${isoDate}:`))
     )
-    let sentSetChanged = false
 
     const userQuests = quests.filter(
       (q) =>
@@ -343,7 +408,12 @@ export async function dispatchDueQuestNotifications(): Promise<{
       if (isSkippedToday) continue
 
       const sentKey = `sent:${isoDate}:${q.id}:${targetTime}`
-      if (sentSet.has(sentKey)) continue
+      if (legacySentSet.has(sentKey)) continue
+
+      // Atomic lock BEFORE sending Web Push: prevents race conditions across Cron, Workflow, and /api/push/schedule
+      const lockId = makePushLockId(PUSH_SENT_ID_PREFIX, `${sub.rowId}|${isoDate}|${q.id}|${targetTime}`)
+      const claimed = await claimAtomicPushLock(lockId, PUSH_SENT_CATEGORY, sentKey)
+      if (!claimed) continue
 
       const result = await sendWebPush(sub.subscription, {
         title: q.title,
@@ -355,30 +425,13 @@ export async function dispatchDueQuestNotifications(): Promise<{
 
       if (result === 'sent') {
         notificationsSent++
-        sentSet.add(sentKey)
-        sentSetChanged = true
       } else if (result === 'expired') {
         expiredRemoved++
         subExpired = true
+      } else {
+        // Temporary network failure -> release lock so next cron can retry
+        await releaseAtomicPushLock(lockId)
       }
-    }
-
-    if (!subExpired && sentSetChanged) {
-      const preservedWfKeys = sub.sentKeys.filter(
-        (k) => typeof k === 'string' && k.startsWith('wf:')
-      )
-      const nextCompletedDates = Array.from(
-        new Set([...preservedWfKeys, ...Array.from(sentSet)])
-      ).slice(-80)
-
-      await supabaseRest(`user_quests?id=eq.${encodeURIComponent(sub.rowId)}`, {
-        method: 'PATCH',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          completed_dates: nextCompletedDates,
-          updated_at: new Date().toISOString(),
-        }),
-      }).catch(() => {})
     }
   }
 

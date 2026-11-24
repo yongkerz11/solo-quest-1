@@ -97,8 +97,8 @@ export async function fetchCloudQuests(
     return data
       .filter(
         (row: any) =>
-          row.category !== '__system_push_sub__' &&
-          !(typeof row.id === 'string' && row.id.startsWith('__push_sub__:'))
+          !(typeof row.category === 'string' && row.category.startsWith('__system_')) &&
+          !(typeof row.id === 'string' && row.id.startsWith('__push_'))
       )
       .map((row: any) => {
       const rawSchedule = Array.isArray(row.schedule) ? row.schedule : []

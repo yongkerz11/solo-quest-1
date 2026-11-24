@@ -4021,8 +4021,11 @@ export default function Page() {
         setIsQuestAlertSealed(true)
         setArrivedQuestAlert(newlyArrived)
       }
+      // Hanya kirim fallback Notification lokal jika background Web Push TIDAK aktif
+      // agar tidak terjadi duplikasi dengan push server dari Service Worker.
       if (
         prefNotification &&
+        pushStatus !== 'active' &&
         typeof window !== 'undefined' &&
         'Notification' in window &&
         Notification.permission === 'granted'
@@ -4030,13 +4033,14 @@ export default function Page() {
         try {
           new Notification(newlyArrived.title, {
             body: `${newlyArrived.targetTime} • ${newlyArrived.category} (+${newlyArrived.xp} XP)`,
+            tag: `quest-${todayIso}-${newlyArrived.id}`,
           })
         } catch {}
       }
     } else {
       setPendingQuestAlertCount(0)
     }
-  }, [timeTick, mounted, todayPersonalTasks, arrivedQuestAlert, prefNotification, prefSound])
+  }, [timeTick, mounted, todayPersonalTasks, arrivedQuestAlert, prefNotification, prefSound, pushStatus])
 
   const getPushEnvironmentInfo = (): 'ready' | 'needs-pwa' | 'unsupported' => {
     if (typeof window === 'undefined') return 'unsupported'
@@ -6660,7 +6664,7 @@ export default function Page() {
       <div
         style={{
           position: 'fixed',
-          top: '18px',
+          top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 9998,
@@ -7857,7 +7861,10 @@ export default function Page() {
           <div
             style={{
               position: 'fixed',
-              top: activeWorkoutQuest && showFloatingTimer ? '104px' : '26px',
+              top:
+                activeWorkoutQuest && showFloatingTimer
+                  ? 'calc(env(safe-area-inset-top, 0px) + 102px)'
+                  : 'calc(env(safe-area-inset-top, 0px) + 12px)',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 9999,

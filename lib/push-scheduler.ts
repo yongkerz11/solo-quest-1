@@ -1,11 +1,18 @@
 import { start } from 'workflow/api'
 import { scheduledQuestPushWorkflow } from '@/workflows/quest-push'
 import {
+  PUSH_SENT_CATEGORY,
+  PUSH_SENT_ID_PREFIX,
   PUSH_SUB_CATEGORY,
   PUSH_SUB_ID_PREFIX,
+  PUSH_WF_CATEGORY,
+  PUSH_WF_ID_PREFIX,
+  claimAtomicPushLock,
   computeUtcMsForLocalDateTime,
   getLocalClockInTimeZone,
+  makePushLockId,
   parseHHMM,
+  releaseAtomicPushLock,
   supabaseRest,
 } from './push-dispatcher'
 
@@ -23,6 +30,8 @@ interface QuestScheduleRow {
 /**
  * Schedules exact-time Vercel Workflow wakeups for upcoming timed quests
  * within `lookaheadMinutes` (default 24 hours on user save/subscribe, 60m on cron).
+ * Deduplicates globally per (isoDate, targetTime, timeZone) via an atomic DB lock so
+ * multiple subscriptions or concurrent cron/save calls never spawn duplicate workflows.
  */
 export async function scheduleUpcomingQuestWorkflows(options?: {
   userId?: string
@@ -31,7 +40,7 @@ export async function scheduleUpcomingQuestWorkflows(options?: {
 }): Promise<{ workflowsStarted: number; checkedSubscriptions: number }> {
   const lookaheadMinutes = options?.lookaheadMinutes ?? 24 * 60
   const res = await supabaseRest(
-    'user_quests?select=id,user_id,username,title,category,schedule,completed_dates,workout_exercises'
+    `user_quests?category=not.in.(${PUSH_SENT_CATEGORY},${PUSH_WF_CATEGORY})&select=id,user_id,username,title,category,schedule,completed_dates,workout_exercises`
   )
   if (!res.ok) {
     throw new Error(`Supabase fetch failed: ${res.status} ${await res.text()}`)
@@ -42,9 +51,17 @@ export async function scheduleUpcomingQuestWorkflows(options?: {
   const questRows: QuestScheduleRow[] = []
 
   for (const r of rows) {
+    if (
+      r.category === PUSH_SENT_CATEGORY ||
+      r.category === PUSH_WF_CATEGORY ||
+      r.id.startsWith(PUSH_SENT_ID_PREFIX) ||
+      r.id.startsWith(PUSH_WF_ID_PREFIX)
+    ) {
+      continue
+    }
     if (r.category === PUSH_SUB_CATEGORY || r.id.startsWith(PUSH_SUB_ID_PREFIX)) {
       subRows.push(r)
-    } else {
+    } else if (!String(r.category || '').startsWith('__system_')) {
       questRows.push(r)
     }
   }
@@ -61,6 +78,9 @@ export async function scheduleUpcomingQuestWorkflows(options?: {
   const maxWakeMs = nowMs + lookaheadMinutes * 60_000
   let workflowsStarted = 0
 
+  // Deduplicate wakeups globally across all subscriptions by (isoDate, targetTime, timeZone)
+  const uniqueWakeups = new Map<string, { wakeAtMs: number; label: string }>()
+
   for (const subRow of targetSubs) {
     const meta = Array.isArray(subRow.workout_exercises) ? subRow.workout_exercises[0] : null
     if (!meta?.subscription?.endpoint) continue
@@ -69,13 +89,6 @@ export async function scheduleUpcomingQuestWorkflows(options?: {
       (s) => typeof s === 'string' && s.startsWith('tz:')
     )
     const timeZone = tzTag ? tzTag.replace('tz:', '') : meta.timezone || 'Asia/Jakarta'
-
-    const existingKeys = new Set(
-      (Array.isArray(subRow.completed_dates) ? subRow.completed_dates : []).filter(
-        (k) => typeof k === 'string' && (k.startsWith('sent:') || k.startsWith('wf:'))
-      )
-    )
-    let keysChanged = false
 
     const userQuests = questRows.filter(
       (q) =>
@@ -119,32 +132,30 @@ export async function scheduleUpcomingQuestWorkflows(options?: {
         const wakeAtMs = computeUtcMsForLocalDateTime(dayInfo.isoDate, targetTime, timeZone)
         if (!wakeAtMs || wakeAtMs <= nowMs - 30_000 || wakeAtMs > maxWakeMs) continue
 
-        const wfKey = `wf:${dayInfo.isoDate}:${targetTime}`
-        if (existingKeys.has(wfKey)) continue
-
-        try {
-          // Small +2s cushion ensures wall clock in timezone has definitely crossed HH:MM
-          await start(scheduledQuestPushWorkflow, [
-            { wakeAtMs: Math.max(wakeAtMs + 2000, nowMs + 1000), label: `${dayInfo.isoDate} ${targetTime}` },
-          ])
-          existingKeys.add(wfKey)
-          keysChanged = true
-          workflowsStarted++
-        } catch (err) {
-          console.error('Failed to start scheduledQuestPushWorkflow:', err)
+        const globalKey = `${dayInfo.isoDate}|${targetTime}|${timeZone}`
+        if (!uniqueWakeups.has(globalKey)) {
+          uniqueWakeups.set(globalKey, {
+            wakeAtMs: Math.max(wakeAtMs + 2000, nowMs + 1000),
+            label: `${dayInfo.isoDate} ${targetTime} (${timeZone})`,
+          })
         }
       }
     }
+  }
 
-    if (keysChanged) {
-      await supabaseRest(`user_quests?id=eq.${encodeURIComponent(subRow.id)}`, {
-        method: 'PATCH',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          completed_dates: Array.from(existingKeys).slice(-80),
-          updated_at: new Date().toISOString(),
-        }),
-      }).catch(() => {})
+  for (const [globalKey, wakeup] of uniqueWakeups.entries()) {
+    const wfLockId = makePushLockId(PUSH_WF_ID_PREFIX, globalKey)
+    const claimed = await claimAtomicPushLock(wfLockId, PUSH_WF_CATEGORY, `wf:${globalKey}`)
+    if (!claimed) continue
+
+    try {
+      await start(scheduledQuestPushWorkflow, [
+        { wakeAtMs: wakeup.wakeAtMs, label: wakeup.label },
+      ])
+      workflowsStarted++
+    } catch (err) {
+      console.error('Failed to start scheduledQuestPushWorkflow:', err)
+      await releaseAtomicPushLock(wfLockId)
     }
   }
 

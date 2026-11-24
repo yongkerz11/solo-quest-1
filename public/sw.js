@@ -33,7 +33,7 @@ self.addEventListener('push', (event) => {
     icon: data.icon || '/icon-192x192.png',
     badge: data.badge || '/icon-192x192.png',
     tag: data.tag || 'solo-quest-alert',
-    renotify: true,
+    renotify: false,
     requireInteraction: false,
     vibrate: [120, 60, 160],
     data: {
