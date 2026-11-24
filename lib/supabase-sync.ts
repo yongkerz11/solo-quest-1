@@ -303,3 +303,128 @@ export async function saveCloudProfile(profile: UserProfile): Promise<boolean> {
   }
 }
 
+export interface FinanceBudgetBucket {
+  id: string
+  name: string
+  category: 'kebutuhan' | 'hiburan' | 'tabungan' | 'cicilan'
+  targetMonthly: number
+  color?: string
+}
+
+export interface FinanceSavingGoal {
+  id: string
+  title: string
+  targetAmount: number
+  savedAmount: number
+  deadlineDate?: string
+  note?: string
+}
+
+export interface FinanceLogItem {
+  id: string
+  type: 'saving' | 'expense' | 'income'
+  amount: number
+  bucketId?: string
+  goalId?: string
+  note: string
+  dateIso: string
+  createdAt: number
+}
+
+export interface FinanceVaultState {
+  monthlyIncome: number
+  buckets: FinanceBudgetBucket[]
+  goals: FinanceSavingGoal[]
+  logs: FinanceLogItem[]
+  updatedAt: number
+}
+
+export const DEFAULT_FINANCE_VAULT: FinanceVaultState = {
+  monthlyIncome: 3500000,
+  buckets: [
+    { id: 'b-kebutuhan', name: 'Kebutuhan & Makan', category: 'kebutuhan', targetMonthly: 1500000, color: '#38bdf8' },
+    { id: 'b-transport', name: 'Transport & Tagihan', category: 'kebutuhan', targetMonthly: 500000, color: '#a855f7' },
+    { id: 'b-hiburan', name: 'Hiburan & Jajan', category: 'hiburan', targetMonthly: 500000, color: '#f59e0b' },
+    { id: 'b-tabungan', name: 'Alokasi Tabungan Wajib', category: 'tabungan', targetMonthly: 1000000, color: '#10b981' },
+  ],
+  goals: [
+    { id: 'g-darurat', title: 'Dana Darurat Hunter', targetAmount: 5000000, savedAmount: 1250000, note: 'Benteng pertahanan keuangan' },
+    { id: 'g-gear', title: 'Target Impian / Upgrade Gear', targetAmount: 3500000, savedAmount: 700000, note: 'Alat kerja & self-reward' },
+  ],
+  logs: [],
+  updatedAt: 0,
+}
+
+/**
+ * Fetch Finance Vault configuration & logs from Supabase Cloud
+ */
+export async function fetchCloudFinanceVault(
+  userId: string
+): Promise<FinanceVaultState | null> {
+  if (!isSupabaseConfigured || !supabase || !userId) return null
+
+  try {
+    const docId = `__finance_vault__:${userId}`
+    const { data, error } = await supabase
+      .from('user_quests')
+      .select('workout_exercises, updated_at')
+      .eq('id', docId)
+      .maybeSingle()
+
+    if (error || !data) return null
+    const rawArr = Array.isArray(data.workout_exercises) ? data.workout_exercises : []
+    const payload = rawArr[0]
+    if (!payload || typeof payload !== 'object') return null
+
+    return {
+      monthlyIncome: typeof payload.monthlyIncome === 'number' ? payload.monthlyIncome : DEFAULT_FINANCE_VAULT.monthlyIncome,
+      buckets: Array.isArray(payload.buckets) ? payload.buckets : DEFAULT_FINANCE_VAULT.buckets,
+      goals: Array.isArray(payload.goals) ? payload.goals : DEFAULT_FINANCE_VAULT.goals,
+      logs: Array.isArray(payload.logs) ? payload.logs : [],
+      updatedAt: typeof payload.updatedAt === 'number' ? payload.updatedAt : Date.parse(data.updated_at || '') || 0,
+    }
+  } catch (err) {
+    console.error('fetchCloudFinanceVault exception:', err)
+    return null
+  }
+}
+
+/**
+ * Save Finance Vault configuration & logs to Supabase Cloud
+ */
+export async function saveCloudFinanceVault(
+  userId: string,
+  username: string | undefined,
+  vault: FinanceVaultState
+): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase || !userId) return false
+
+  try {
+    const payload = {
+      id: `__finance_vault__:${userId}`,
+      user_id: userId,
+      username: username || '',
+      title: 'Finance Vault',
+      category: '__system_finance_vault__',
+      xp: 0,
+      icon: '💰',
+      done: false,
+      schedule: [],
+      completed_dates: [],
+      workout_exercises: [vault],
+      updated_at: new Date().toISOString(),
+    }
+
+    const { error } = await supabase.from('user_quests').upsert(payload)
+    if (error) {
+      console.warn('Gagal menyimpan Finance Vault ke cloud:', error.message)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('saveCloudFinanceVault exception:', err)
+    return false
+  }
+}
+
+

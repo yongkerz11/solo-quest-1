@@ -69,6 +69,13 @@ import {
   saveAllCloudQuests,
   fetchCloudProfile,
   saveCloudProfile,
+  fetchCloudFinanceVault,
+  saveCloudFinanceVault,
+  DEFAULT_FINANCE_VAULT,
+  type FinanceBudgetBucket,
+  type FinanceSavingGoal,
+  type FinanceLogItem,
+  type FinanceVaultState,
 } from '@/lib/supabase-sync'
 import {
   GYM_MUSCLE_CATEGORIES,
@@ -839,9 +846,11 @@ function QuestCard({
   completedCount,
   totalMembers,
   isGym,
+  isFinance,
   xp,
   heroCard = false,
   onOpenWorkout,
+  onOpenFinance,
   onToggle,
   onSkip,
   onSeal,
@@ -867,9 +876,11 @@ function QuestCard({
   completedCount?: number
   totalMembers?: number
   isGym?: boolean
+  isFinance?: boolean
   xp?: number
   heroCard?: boolean
   onOpenWorkout?: () => void
+  onOpenFinance?: () => void
   onToggle: () => void
   onSkip?: () => void
   onSeal?: () => void
@@ -897,7 +908,7 @@ function QuestCard({
     setIsMenuOpen(true)
   }
 
-  const hasMenuOptions = Boolean(onInfo || onSkip || onSeal || (isGym && onOpenWorkout) || (canManage && (onEdit || onDelete)))
+  const hasMenuOptions = Boolean(onInfo || onSkip || onSeal || (isGym && onOpenWorkout) || (isFinance && onOpenFinance) || (canManage && (onEdit || onDelete)))
 
   const handleClearHold = () => {
     if (timerRef.current) {
@@ -1397,6 +1408,32 @@ function QuestCard({
                     <Eye size={11} color="#c084fc" />
                     <span>Lihat Gerakan</span>
                   </button>
+                ) : isFinance && onOpenFinance ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onOpenFinance()
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '5px 10px',
+                      borderRadius: '8px',
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      background: 'rgba(16, 185, 129, 0.18)',
+                      border: '1px solid rgba(52, 211, 153, 0.45)',
+                      color: '#a7f3d0',
+                      cursor: 'pointer',
+                    }}
+                    title="Lihat Finance Vault (Mode Hanya Lihat)"
+                    aria-label="Lihat Finance Vault"
+                  >
+                    <Eye size={11} color="#34d399" />
+                    <span>Lihat Vault</span>
+                  </button>
                 ) : (
                   <span
                     style={{
@@ -1446,6 +1483,35 @@ function QuestCard({
                     >
                       <Play size={10} fill="#ffffff" />
                       <span>Start</span>
+                    </button>
+                  )}
+
+                  {isFinance && onOpenFinance && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onOpenFinance()
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '6px 11px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        background: 'linear-gradient(135deg, #059669 0%, #0284c7 100%)',
+                        border: '1px solid rgba(52, 211, 153, 0.6)',
+                        color: '#ffffff',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 12px rgba(16, 185, 129, 0.35)',
+                      }}
+                      title="Buka Finance Vault"
+                      aria-label="Buka Finance Vault"
+                    >
+                      <Wallet size={10} />
+                      <span>Vault</span>
                     </button>
                   )}
 
@@ -1697,6 +1763,33 @@ function QuestCard({
                 <Eye size={11} color="#c084fc" />
                 <span>Lihat Gerakan</span>
               </button>
+            ) : isFinance && onOpenFinance ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onOpenFinance()
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '5px 9px',
+                  borderRadius: '7px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  background: 'rgba(16, 185, 129, 0.16)',
+                  border: '1px solid rgba(52, 211, 153, 0.45)',
+                  color: '#a7f3d0',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Lihat Finance Vault (Mode Hanya Lihat)"
+                aria-label="Lihat Finance Vault"
+              >
+                <Eye size={11} color="#34d399" />
+                <span>Lihat Vault</span>
+              </button>
             ) : (
               <span
                 style={{
@@ -1747,6 +1840,36 @@ function QuestCard({
                 >
                   <Play size={10} fill="#ffffff" />
                   <span>Start</span>
+                </button>
+              )}
+
+              {isFinance && onOpenFinance && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenFinance()
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '5px 10px',
+                    borderRadius: '7px',
+                    fontSize: '10.5px',
+                    fontWeight: 800,
+                    background: 'linear-gradient(135deg, #059669 0%, #0284c7 100%)',
+                    border: '1px solid rgba(52, 211, 153, 0.6)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Buka Finance Vault"
+                  aria-label="Buka Finance Vault"
+                >
+                  <Wallet size={10} />
+                  <span>Vault</span>
                 </button>
               )}
 
@@ -2039,6 +2162,36 @@ function QuestCard({
               >
                 <Dumbbell size={14} color="#38bdf8" />
                 <span>{viewOnly ? 'Lihat Daftar Gerakan' : 'Buka Halaman Workout'}</span>
+              </button>
+            )}
+
+            {/* Opsi Khusus Keuangan: Buka Finance Vault */}
+            {isFinance && onOpenFinance && (
+              <button
+                type="button"
+                onClick={() => {
+                  closeMenu()
+                  onOpenFinance()
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 10px',
+                  borderRadius: '8px',
+                  background: 'rgba(16, 185, 129, 0.14)',
+                  border: '1px solid rgba(52, 211, 153, 0.3)',
+                  color: '#34d399',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  marginBottom: '6px',
+                }}
+              >
+                <Wallet size={14} color="#34d399" />
+                <span>{viewOnly ? 'Lihat Finance Vault' : 'Buka Finance Vault'}</span>
               </button>
             )}
 
@@ -2363,6 +2516,33 @@ export default function Page() {
     dataUrl: string
     createdAt: number
   }>>([])
+
+  // Finance Vault State (Keuangan Hub: Penghasilan, Pos Pengeluaran, Saving Goals & Log Harian)
+  const [activeFinanceQuest, setActiveFinanceQuest] = useState<{
+    id: string
+    dateIso?: string
+    viewOnly?: boolean
+  } | null>(null)
+  const [financeVault, setFinanceVault] = useState<FinanceVaultState>(DEFAULT_FINANCE_VAULT)
+  const [financeTab, setFinanceTab] = useState<'quick' | 'budget' | 'goals'>('quick')
+  const [financeLogType, setFinanceLogType] = useState<'saving' | 'expense' | 'income'>('saving')
+  const [financeAmountInput, setFinanceAmountInput] = useState<string>('50000')
+  const [financeSelectedBucketId, setFinanceSelectedBucketId] = useState<string>('b-kebutuhan')
+  const [financeSelectedGoalId, setFinanceSelectedGoalId] = useState<string>('g-darurat')
+  const [financeNoteInput, setFinanceNoteInput] = useState<string>('')
+  const [isEditingMonthlyIncome, setIsEditingMonthlyIncome] = useState<boolean>(false)
+  const [monthlyIncomeDraft, setMonthlyIncomeDraft] = useState<string>('3500000')
+  const [isAddingFinanceBucket, setIsAddingFinanceBucket] = useState<boolean>(false)
+  const [newBucketName, setNewBucketName] = useState<string>('')
+  const [newBucketCategory, setNewBucketCategory] = useState<'kebutuhan' | 'hiburan' | 'tabungan' | 'cicilan'>('kebutuhan')
+  const [newBucketTarget, setNewBucketTarget] = useState<string>('300000')
+  const [editingBucketId, setEditingBucketId] = useState<string | null>(null)
+  const [editingBucketTargetDraft, setEditingBucketTargetDraft] = useState<string>('')
+  const [isAddingFinanceGoal, setIsAddingFinanceGoal] = useState<boolean>(false)
+  const [newGoalTitle, setNewGoalTitle] = useState<string>('')
+  const [newGoalTarget, setNewGoalTarget] = useState<string>('2000000')
+  const [newGoalSaved, setNewGoalSaved] = useState<string>('0')
+  const [newGoalNote, setNewGoalNote] = useState<string>('')
   const [photoUploadDate, setPhotoUploadDate] = useState<string>(() => getLocalIsoDate())
   const [timelapseSpeedMs, setTimelapseSpeedMs] = useState<number>(250)
   const [isGeneratingTimelapse, setIsGeneratingTimelapse] = useState<boolean>(false)
@@ -3746,10 +3926,29 @@ export default function Page() {
     if (!currentUser || !isSupabaseConfigured) return
     setCloudSyncStatus('syncing')
     try {
-      const [cloudQuests, cloudProfile] = await Promise.all([
+      const [cloudQuests, cloudProfile, cloudVault] = await Promise.all([
         fetchCloudQuests(currentUser.id, currentUser.username),
         fetchCloudProfile(currentUser.id, currentUser.username),
+        fetchCloudFinanceVault(currentUser.id),
       ])
+
+      // Sinkronisasi Finance Vault Cloud <-> Local
+      try {
+        const userKey = `solo_finance_vault_v1_${currentUser.id}`
+        const localRaw = typeof window !== 'undefined' ? localStorage.getItem(userKey) : null
+        const localVault: FinanceVaultState | null = localRaw ? JSON.parse(localRaw) : null
+        if (cloudVault && (!localVault || (cloudVault.updatedAt || 0) >= (localVault.updatedAt || 0))) {
+          setFinanceVault(cloudVault)
+          setMonthlyIncomeDraft(String(cloudVault.monthlyIncome))
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(userKey, JSON.stringify(cloudVault))
+          }
+        } else if (localVault && (localVault.updatedAt || 0) > (cloudVault?.updatedAt || 0)) {
+          saveCloudFinanceVault(currentUser.id, currentUser.username, localVault)
+        }
+      } catch (vaultSyncErr) {
+        console.warn('Finance Vault sync notice:', vaultSyncErr)
+      }
 
       if (cloudProfile) {
         setUsers((prev) =>
@@ -3842,6 +4041,36 @@ export default function Page() {
       console.error(e)
     }
   }, [gymProgressPhotos, mounted])
+
+  // Load Finance Vault per-user from localStorage
+  useEffect(() => {
+    if (!mounted || !currentUser?.id) return
+    try {
+      const userKey = `solo_finance_vault_v1_${currentUser.id}`
+      const savedVault = localStorage.getItem(userKey) || localStorage.getItem('solo_finance_vault_v1')
+      if (savedVault) {
+        const parsed = JSON.parse(savedVault)
+        if (parsed && typeof parsed === 'object') {
+          const normalized: FinanceVaultState = {
+            monthlyIncome: typeof parsed.monthlyIncome === 'number' ? parsed.monthlyIncome : DEFAULT_FINANCE_VAULT.monthlyIncome,
+            buckets: Array.isArray(parsed.buckets) && parsed.buckets.length > 0 ? parsed.buckets : DEFAULT_FINANCE_VAULT.buckets,
+            goals: Array.isArray(parsed.goals) ? parsed.goals : DEFAULT_FINANCE_VAULT.goals,
+            logs: Array.isArray(parsed.logs) ? parsed.logs : [],
+            updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0,
+          }
+          setFinanceVault(normalized)
+          setMonthlyIncomeDraft(String(normalized.monthlyIncome))
+          if (normalized.buckets[0]) setFinanceSelectedBucketId(normalized.buckets[0].id)
+          if (normalized.goals[0]) setFinanceSelectedGoalId(normalized.goals[0].id)
+          return
+        }
+      }
+      setFinanceVault(DEFAULT_FINANCE_VAULT)
+      setMonthlyIncomeDraft(String(DEFAULT_FINANCE_VAULT.monthlyIncome))
+    } catch (e) {
+      console.error(e)
+    }
+  }, [mounted, currentUser?.id])
 
   // Lenis smooth inertial scrolling + real-time 60fps scroll-linked morph header & 3D card uncurl
   useEffect(() => {
@@ -4296,6 +4525,10 @@ export default function Page() {
     ? activeWorkoutQuest.type === 'personal'
       ? personalTasks.find((t) => t.id === activeWorkoutQuest.id)
       : clanQuests.find((cq) => cq.id === activeWorkoutQuest.id)
+    : null
+
+  const currentFinanceQuest = activeFinanceQuest
+    ? personalTasks.find((t) => t.id === activeFinanceQuest.id) || null
     : null
 
   const isWorkoutViewOnly = Boolean(
@@ -5425,6 +5658,283 @@ export default function Page() {
     } finally {
       setIsGeneratingTimelapse(false)
     }
+  }
+
+  // ============================================================================
+  // FINANCE VAULT HANDLERS (PENGHASILAN, BUDGET POS & SAVING GOALS)
+  // ============================================================================
+
+  const formatRupiah = (amount: number): string => {
+    return `Rp ${Math.round(amount || 0).toLocaleString('id-ID')}`
+  }
+
+  const formatRupiahCompact = (amount: number): string => {
+    const val = Math.round(amount || 0)
+    if (val >= 1000000) {
+      const jt = val / 1000000
+      return `Rp ${Number.isInteger(jt) ? jt : jt.toFixed(1).replace('.', ',')} Jt`
+    }
+    if (val >= 1000) {
+      return `Rp ${Math.round(val / 1000)} Rb`
+    }
+    return formatRupiah(val)
+  }
+
+  const persistFinanceVault = (nextVault: FinanceVaultState) => {
+    const stamped: FinanceVaultState = { ...nextVault, updatedAt: Date.now() }
+    setFinanceVault(stamped)
+    if (typeof window !== 'undefined' && currentUser?.id) {
+      try {
+        localStorage.setItem(`solo_finance_vault_v1_${currentUser.id}`, JSON.stringify(stamped))
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    if (currentUser?.id && isSupabaseConfigured) {
+      saveCloudFinanceVault(currentUser.id, currentUser.username, stamped)
+    }
+  }
+
+  const handleSaveMonthlyIncome = (newAmountRaw: number) => {
+    const amount = Math.max(0, Math.round(Number(newAmountRaw) || 0))
+    if (amount <= 0) {
+      showToast('Masukkan target penghasilan yang valid (> 0)')
+      return
+    }
+    persistFinanceVault({
+      ...financeVault,
+      monthlyIncome: amount,
+    })
+    setMonthlyIncomeDraft(String(amount))
+    setIsEditingMonthlyIncome(false)
+    showToast(`Penghasilan bulanan diatur: ${formatRupiah(amount)}`)
+  }
+
+  const handleCompleteFinanceQuest = (taskId: string, targetDateIso?: string) => {
+    const dateIso = targetDateIso || getLocalIsoDate()
+    const target = personalTasks.find((t) => t.id === taskId)
+    if (!target) return
+    if (target.completedDates?.includes(dateIso)) {
+      showToast('Quest keuangan hari ini sudah tuntas! (+XP sudah diklaim)')
+      return
+    }
+    handleTogglePersonal(taskId, dateIso)
+  }
+
+  const handleQuickSaveToGoal = (goalId: string, amount: number, questId?: string, dateIso?: string) => {
+    if (amount <= 0) return
+    const targetIso = dateIso || getLocalIsoDate()
+    const goal = financeVault.goals.find((g) => g.id === goalId)
+    if (!goal) return
+
+    const newLog: FinanceLogItem = {
+      id: `flog-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type: 'saving',
+      amount,
+      goalId,
+      note: `Nabung ke ${goal.title}`,
+      dateIso: targetIso,
+      createdAt: Date.now(),
+    }
+
+    const updatedGoals = financeVault.goals.map((g) =>
+      g.id === goalId ? { ...g, savedAmount: g.savedAmount + amount } : g
+    )
+
+    persistFinanceVault({
+      ...financeVault,
+      goals: updatedGoals,
+      logs: [newLog, ...financeVault.logs].slice(0, 120),
+    })
+
+    if (questId) {
+      const q = personalTasks.find((t) => t.id === questId)
+      if (q && !q.completedDates?.includes(targetIso) && targetIso <= getLocalIsoDate()) {
+        handleTogglePersonal(questId, targetIso)
+      }
+    }
+    showToast(`Berhasil menabung +${formatRupiah(amount)} ke ${goal.title}!`)
+  }
+
+  const handleAddFinanceLog = (questId?: string, targetDateIso?: string) => {
+    const parsedAmount = Math.max(0, Math.round(Number(financeAmountInput.replace(/\D/g, '')) || 0))
+    if (parsedAmount <= 0) {
+      showToast('Nominal transaksi harus lebih dari Rp 0')
+      return
+    }
+
+    const dateIso = targetDateIso || getLocalIsoDate()
+    const selectedGoal = financeVault.goals.find((g) => g.id === financeSelectedGoalId) || financeVault.goals[0]
+    const selectedBucket = financeVault.buckets.find((b) => b.id === financeSelectedBucketId) || financeVault.buckets[0]
+
+    const newLog: FinanceLogItem = {
+      id: `flog-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type: financeLogType,
+      amount: parsedAmount,
+      bucketId: financeLogType === 'expense' ? selectedBucket?.id : undefined,
+      goalId: financeLogType === 'saving' ? selectedGoal?.id : undefined,
+      note:
+        financeNoteInput.trim() ||
+        (financeLogType === 'saving'
+          ? `Nabung ke ${selectedGoal?.title || 'Tabungan'}`
+          : financeLogType === 'expense'
+            ? `Pengeluaran ${selectedBucket?.name || 'Harian'}`
+            : 'Pemasukan tambahan'),
+      dateIso,
+      createdAt: Date.now(),
+    }
+
+    const updatedGoals =
+      financeLogType === 'saving' && selectedGoal
+        ? financeVault.goals.map((g) =>
+            g.id === selectedGoal.id ? { ...g, savedAmount: g.savedAmount + parsedAmount } : g
+          )
+        : financeVault.goals
+
+    persistFinanceVault({
+      ...financeVault,
+      goals: updatedGoals,
+      logs: [newLog, ...financeVault.logs].slice(0, 120),
+    })
+
+    setFinanceNoteInput('')
+
+    let completedNow = false
+    if (questId) {
+      const q = personalTasks.find((t) => t.id === questId)
+      if (q && !q.completedDates?.includes(dateIso) && dateIso <= getLocalIsoDate()) {
+        handleTogglePersonal(questId, dateIso)
+        completedNow = true
+      }
+    }
+
+    if (completedNow) {
+      showToast(`Tercatat ${formatRupiah(parsedAmount)} & Quest Keuangan Tuntas!`)
+    } else {
+      showToast(
+        financeLogType === 'saving'
+          ? `Tabungan +${formatRupiah(parsedAmount)} disimpan ke Vault!`
+          : financeLogType === 'expense'
+            ? `Pengeluaran ${formatRupiah(parsedAmount)} tercatat.`
+            : `Pemasukan +${formatRupiah(parsedAmount)} tercatat.`
+      )
+    }
+  }
+
+  const handleDeleteFinanceLog = (logId: string) => {
+    const targetLog = financeVault.logs.find((l) => l.id === logId)
+    if (!targetLog) return
+    const updatedGoals =
+      targetLog.type === 'saving' && targetLog.goalId
+        ? financeVault.goals.map((g) =>
+            g.id === targetLog.goalId
+              ? { ...g, savedAmount: Math.max(0, g.savedAmount - targetLog.amount) }
+              : g
+          )
+        : financeVault.goals
+
+    persistFinanceVault({
+      ...financeVault,
+      goals: updatedGoals,
+      logs: financeVault.logs.filter((l) => l.id !== logId),
+    })
+    showToast('Catatan transaksi dihapus.')
+  }
+
+  const handleAddFinanceBucket = () => {
+    const name = newBucketName.trim()
+    const target = Math.max(0, Math.round(Number(newBucketTarget.replace(/\D/g, '')) || 0))
+    if (!name || target <= 0) {
+      showToast('Isi nama pos dan target bulanan (> Rp 0)')
+      return
+    }
+    const colorMap: Record<FinanceBudgetBucket['category'], string> = {
+      kebutuhan: '#38bdf8',
+      hiburan: '#f59e0b',
+      tabungan: '#10b981',
+      cicilan: '#f43f5e',
+    }
+    const newBucket: FinanceBudgetBucket = {
+      id: `fbucket-${Date.now()}`,
+      name,
+      category: newBucketCategory,
+      targetMonthly: target,
+      color: colorMap[newBucketCategory],
+    }
+    persistFinanceVault({
+      ...financeVault,
+      buckets: [...financeVault.buckets, newBucket],
+    })
+    setFinanceSelectedBucketId(newBucket.id)
+    setNewBucketName('')
+    setNewBucketTarget('300000')
+    setIsAddingFinanceBucket(false)
+    showToast(`Pos anggaran "${name}" ditambahkan!`)
+  }
+
+  const handleUpdateFinanceBucketTarget = (bucketId: string, nextTarget: number) => {
+    const clean = Math.max(50000, Math.round(nextTarget))
+    persistFinanceVault({
+      ...financeVault,
+      buckets: financeVault.buckets.map((b) => (b.id === bucketId ? { ...b, targetMonthly: clean } : b)),
+    })
+    setEditingBucketId(null)
+  }
+
+  const handleDeleteFinanceBucket = (bucketId: string) => {
+    if (financeVault.buckets.length <= 1) {
+      showToast('Minimal harus ada 1 pos anggaran')
+      return
+    }
+    const nextBuckets = financeVault.buckets.filter((b) => b.id !== bucketId)
+    persistFinanceVault({
+      ...financeVault,
+      buckets: nextBuckets,
+    })
+    if (financeSelectedBucketId === bucketId && nextBuckets[0]) {
+      setFinanceSelectedBucketId(nextBuckets[0].id)
+    }
+    showToast('Pos anggaran dihapus.')
+  }
+
+  const handleAddFinanceGoal = () => {
+    const title = newGoalTitle.trim()
+    const target = Math.max(0, Math.round(Number(newGoalTarget.replace(/\D/g, '')) || 0))
+    const saved = Math.max(0, Math.round(Number(newGoalSaved.replace(/\D/g, '')) || 0))
+    if (!title || target <= 0) {
+      showToast('Isi nama target tabungan & nominal target (> Rp 0)')
+      return
+    }
+    const newGoal: FinanceSavingGoal = {
+      id: `fgoal-${Date.now()}`,
+      title,
+      targetAmount: target,
+      savedAmount: saved,
+      note: newGoalNote.trim() || undefined,
+    }
+    persistFinanceVault({
+      ...financeVault,
+      goals: [...financeVault.goals, newGoal],
+    })
+    setFinanceSelectedGoalId(newGoal.id)
+    setNewGoalTitle('')
+    setNewGoalTarget('2000000')
+    setNewGoalSaved('0')
+    setNewGoalNote('')
+    setIsAddingFinanceGoal(false)
+    showToast(`Target tabungan "${title}" dibuat!`)
+  }
+
+  const handleDeleteFinanceGoal = (goalId: string) => {
+    const nextGoals = financeVault.goals.filter((g) => g.id !== goalId)
+    persistFinanceVault({
+      ...financeVault,
+      goals: nextGoals,
+    })
+    if (financeSelectedGoalId === goalId && nextGoals[0]) {
+      setFinanceSelectedGoalId(nextGoals[0].id)
+    }
+    showToast('Target tabungan dihapus.')
   }
 
   // ============================================================================
@@ -7590,6 +8100,1287 @@ export default function Page() {
     )
   }
 
+  const renderFinanceVaultPage = () => {
+    if (!activeFinanceQuest || !currentFinanceQuest) return null
+
+    const targetDateIso = activeFinanceQuest.dateIso || getLocalIsoDate()
+    const isFinanceViewOnly = Boolean(activeFinanceQuest.viewOnly || targetDateIso > todayIsoStr)
+    const isQuestDoneOnDate = Boolean(currentFinanceQuest.completedDates?.includes(targetDateIso))
+    const activeMonthPrefix = targetDateIso.slice(0, 7)
+
+    const monthLogs = financeVault.logs.filter((l) => l.dateIso.startsWith(activeMonthPrefix))
+    const monthlyExtraIncome = monthLogs
+      .filter((l) => l.type === 'income')
+      .reduce((acc, l) => acc + l.amount, 0)
+    const monthlyExpenseTotal = monthLogs
+      .filter((l) => l.type === 'expense')
+      .reduce((acc, l) => acc + l.amount, 0)
+    const monthlySavedTotal = monthLogs
+      .filter((l) => l.type === 'saving')
+      .reduce((acc, l) => acc + l.amount, 0)
+
+    const totalBudgetPool = financeVault.monthlyIncome + monthlyExtraIncome
+    const totalAllocatedMonthly = financeVault.buckets.reduce((acc, b) => acc + b.targetMonthly, 0)
+    const unallocatedBalance = totalBudgetPool - totalAllocatedMonthly
+    const sisaCashflowBulanIni = totalBudgetPool - monthlyExpenseTotal - monthlySavedTotal
+    const cashflowRatioPct =
+      totalBudgetPool > 0
+        ? Math.max(0, Math.min(100, Math.round(((monthlyExpenseTotal + monthlySavedTotal) / totalBudgetPool) * 100)))
+        : 0
+
+    const totalGoalsSaved = financeVault.goals.reduce((acc, g) => acc + g.savedAmount, 0)
+    const totalGoalsTarget = financeVault.goals.reduce((acc, g) => acc + g.targetAmount, 0)
+    const monthlyMandatorySavingTarget =
+      financeVault.buckets
+        .filter((b) => b.category === 'tabungan')
+        .reduce((acc, b) => acc + b.targetMonthly, 0) || 1000000
+    const dailyPaceEstimate = Math.max(10000, Math.round(monthlyMandatorySavingTarget / 30))
+
+    return (
+      <div style={{ animation: 'fadeIn 0.2s ease-in-out', paddingBottom: '36px' }}>
+        {/* TOPBAR FINANCE VAULT */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            marginBottom: '14px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <button
+              type="button"
+              onClick={() => setActiveFinanceQuest(null)}
+              style={{
+                background: '#171226',
+                border: '1px solid #32254a',
+                borderRadius: '10px',
+                width: '34px',
+                height: '34px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#d5beff',
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+              title="Kembali"
+              aria-label="Kembali"
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    fontSize: '9.5px',
+                    fontWeight: 800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: '#34d399',
+                  }}
+                >
+                  FINANCE VAULT
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    fontWeight: 800,
+                    padding: '1px 6px',
+                    borderRadius: '999px',
+                    background: 'rgba(16, 185, 129, 0.16)',
+                    border: '1px solid rgba(52, 211, 153, 0.35)',
+                    color: '#6ee7b7',
+                  }}
+                >
+                  +{currentFinanceQuest.xp} XP
+                </span>
+              </div>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: '15px',
+                  fontWeight: 800,
+                  color: '#f5f2ff',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {currentFinanceQuest.title}
+              </h2>
+            </div>
+          </div>
+
+          {isFinanceViewOnly ? (
+            <span
+              style={{
+                padding: '6px 10px',
+                borderRadius: '9px',
+                background: 'rgba(148, 163, 184, 0.12)',
+                border: '1px solid rgba(148, 163, 184, 0.25)',
+                color: '#cbd5e1',
+                fontSize: '10px',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0,
+              }}
+            >
+              <Lock size={10} />
+              Lihat Saja
+            </span>
+          ) : isQuestDoneOnDate ? (
+            <span
+              style={{
+                padding: '6px 10px',
+                borderRadius: '9px',
+                background: 'rgba(16, 185, 129, 0.18)',
+                border: '1px solid rgba(52, 211, 153, 0.45)',
+                color: '#6ee7b7',
+                fontSize: '10px',
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0,
+              }}
+            >
+              <CheckCircle2 size={12} />
+              Tuntas
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleCompleteFinanceQuest(currentFinanceQuest.id, targetDateIso)}
+              style={{
+                padding: '6px 11px',
+                borderRadius: '9px',
+                background: 'linear-gradient(135deg, #059669 0%, #0284c7 100%)',
+                border: '1px solid rgba(52, 211, 153, 0.6)',
+                color: '#ffffff',
+                fontSize: '10.5px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0,
+              }}
+            >
+              <Check size={12} strokeWidth={3} />
+              Selesaikan
+            </button>
+          )}
+        </div>
+
+        {/* HERO CARD: TARGET PENGHASILAN & CASHFLOW BULAN INI */}
+        <div
+          style={{
+            borderRadius: '16px',
+            padding: '14px',
+            marginBottom: '12px',
+            background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.14) 0%, rgba(15, 12, 28, 0.96) 55%, rgba(14, 116, 144, 0.14) 100%)',
+            border: '1px solid rgba(52, 211, 153, 0.34)',
+            boxShadow: '0 8px 26px rgba(0, 0, 0, 0.4)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
+            <div>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Target Penghasilan ({activeMonthPrefix})
+              </span>
+              <div style={{ fontSize: '21px', fontWeight: 900, color: '#ffffff', marginTop: '2px', letterSpacing: '-0.02em' }}>
+                {formatRupiah(financeVault.monthlyIncome)}
+              </div>
+              {monthlyExtraIncome > 0 && (
+                <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 700 }}>
+                  + {formatRupiah(monthlyExtraIncome)} pemasukan ekstra bulan ini
+                </span>
+              )}
+            </div>
+            {!isFinanceViewOnly && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMonthlyIncomeDraft(String(financeVault.monthlyIncome))
+                  setIsEditingMonthlyIncome((v) => !v)
+                }}
+                style={{
+                  padding: '5px 9px',
+                  borderRadius: '8px',
+                  background: 'rgba(15, 23, 42, 0.72)',
+                  border: '1px solid rgba(52, 211, 153, 0.35)',
+                  color: '#a7f3d0',
+                  fontSize: '10.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <Pencil size={10} />
+                {isEditingMonthlyIncome ? 'Tutup' : 'Atur Gaji'}
+              </button>
+            )}
+          </div>
+
+          {isEditingMonthlyIncome && !isFinanceViewOnly && (
+            <div
+              style={{
+                padding: '10px',
+                borderRadius: '11px',
+                background: 'rgba(10, 10, 20, 0.78)',
+                border: '1px solid rgba(52, 211, 153, 0.25)',
+                marginBottom: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="number"
+                  value={monthlyIncomeDraft}
+                  onChange={(e) => setMonthlyIncomeDraft(e.target.value)}
+                  placeholder="Contoh: 3500000"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    background: '#130f21',
+                    border: '1px solid #32254a',
+                    color: '#ffffff',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleSaveMonthlyIncome(Number(monthlyIncomeDraft))}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    background: '#10b981',
+                    border: 'none',
+                    color: '#06281e',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Simpan
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                {[2500000, 3500000, 5000000, 7500000, 10000000].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handleSaveMonthlyIncome(preset)}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: '7px',
+                      background: financeVault.monthlyIncome === preset ? 'rgba(16, 185, 129, 0.24)' : 'rgba(255, 255, 255, 0.05)',
+                      border: financeVault.monthlyIncome === preset ? '1px solid rgba(52, 211, 153, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+                      color: '#d5beff',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {formatRupiahCompact(preset)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3 KPI BOXES */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '7px', marginBottom: '10px' }}>
+            <div
+              style={{
+                padding: '8px 9px',
+                borderRadius: '10px',
+                background: 'rgba(15, 12, 28, 0.72)',
+                border: '1px solid rgba(168, 85, 247, 0.22)',
+              }}
+            >
+              <span style={{ display: 'block', fontSize: '9px', color: '#b8add1', fontWeight: 700 }}>Dialokasikan</span>
+              <strong style={{ fontSize: '11.5px', color: unallocatedBalance < 0 ? '#fca5a5' : '#e9d5ff' }}>
+                {formatRupiahCompact(totalAllocatedMonthly)}
+              </strong>
+            </div>
+            <div
+              style={{
+                padding: '8px 9px',
+                borderRadius: '10px',
+                background: 'rgba(15, 12, 28, 0.72)',
+                border: '1px solid rgba(245, 158, 11, 0.22)',
+              }}
+            >
+              <span style={{ display: 'block', fontSize: '9px', color: '#b8add1', fontWeight: 700 }}>Terpakai</span>
+              <strong style={{ fontSize: '11.5px', color: '#fcd34d' }}>
+                {formatRupiahCompact(monthlyExpenseTotal)}
+              </strong>
+            </div>
+            <div
+              style={{
+                padding: '8px 9px',
+                borderRadius: '10px',
+                background: 'rgba(15, 12, 28, 0.72)',
+                border: '1px solid rgba(52, 211, 153, 0.25)',
+              }}
+            >
+              <span style={{ display: 'block', fontSize: '9px', color: '#b8add1', fontWeight: 700 }}>Ditabung</span>
+              <strong style={{ fontSize: '11.5px', color: '#6ee7b7' }}>
+                {formatRupiahCompact(monthlySavedTotal)}
+              </strong>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#cbd5e1', marginBottom: '4px', fontWeight: 700 }}>
+              <span>Sisa Cashflow Bulan Ini</span>
+              <span style={{ color: sisaCashflowBulanIni >= 0 ? '#6ee7b7' : '#f87171' }}>
+                {formatRupiah(sisaCashflowBulanIni)}
+              </span>
+            </div>
+            <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${cashflowRatioPct}%`,
+                  height: '100%',
+                  borderRadius: '999px',
+                  background: sisaCashflowBulanIni < 0 ? '#ef4444' : 'linear-gradient(90deg, #10b981, #38bdf8)',
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 3 SUB-TAB NAVIGATION */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '6px',
+            padding: '4px',
+            borderRadius: '12px',
+            background: '#120e1f',
+            border: '1px solid #2a2140',
+            marginBottom: '12px',
+          }}
+        >
+          {(
+            [
+              { id: 'quick', label: 'Catat Harian' },
+              { id: 'budget', label: `Budget (${financeVault.buckets.length})` },
+              { id: 'goals', label: `Goals (${financeVault.goals.length})` },
+            ] as const
+          ).map((tab) => {
+            const isActive = financeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFinanceTab(tab.id)}
+                style={{
+                  padding: '8px 6px',
+                  borderRadius: '9px',
+                  border: 'none',
+                  background: isActive ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(56, 189, 248, 0.2))' : 'transparent',
+                  color: isActive ? '#a7f3d0' : '#b8add1',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* SUB-TAB 1: QUICK LOG HARIAN */}
+        {financeTab === 'quick' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {!isFinanceViewOnly && (
+              <div
+                style={{
+                  borderRadius: '14px',
+                  padding: '13px',
+                  background: '#130f22',
+                  border: '1px solid #2b2242',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                {/* MODE SWITCH */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                  {(
+                    [
+                      { id: 'saving', label: '+ Nabung', activeBg: 'rgba(16, 185, 129, 0.22)', border: '#34d399', color: '#6ee7b7' },
+                      { id: 'expense', label: '- Jajan/Keluar', activeBg: 'rgba(245, 158, 11, 0.2)', border: '#fbbf24', color: '#fde68a' },
+                      { id: 'income', label: '+ Ekstra', activeBg: 'rgba(56, 189, 248, 0.2)', border: '#38bdf8', color: '#7dd3fc' },
+                    ] as const
+                  ).map((m) => {
+                    const active = financeLogType === m.id
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setFinanceLogType(m.id)}
+                        style={{
+                          padding: '7px 6px',
+                          borderRadius: '9px',
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: active ? m.activeBg : 'rgba(255,255,255,0.03)',
+                          border: active ? `1px solid ${m.border}` : '1px solid rgba(255,255,255,0.08)',
+                          color: active ? m.color : '#b8add1',
+                        }}
+                      >
+                        {m.label}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* INPUT NOMINAL & PRESETS */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: '#b8add1', marginBottom: '5px' }}>
+                    Nominal (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    value={financeAmountInput}
+                    onChange={(e) => setFinanceAmountInput(e.target.value)}
+                    placeholder="50000"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      background: '#0b0816',
+                      border: '1px solid #32254a',
+                      color: '#ffffff',
+                      fontSize: '15px',
+                      fontWeight: 800,
+                    }}
+                  />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '7px' }}>
+                    {[20000, 50000, 100000, 250000, 500000].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setFinanceAmountInput(String(val))}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '7px',
+                          background: Number(financeAmountInput) === val ? 'rgba(52, 211, 153, 0.2)' : 'rgba(168, 85, 247, 0.1)',
+                          border: Number(financeAmountInput) === val ? '1px solid rgba(52, 211, 153, 0.5)' : '1px solid rgba(168, 85, 247, 0.22)',
+                          color: Number(financeAmountInput) === val ? '#6ee7b7' : '#d8b4fe',
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {formatRupiahCompact(val)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* TARGET GOAL ATAU POS BUCKET */}
+                {financeLogType === 'saving' && financeVault.goals.length > 0 && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: '#b8add1', marginBottom: '5px' }}>
+                      Masukkan ke Target Tabungan
+                    </label>
+                    <select
+                      value={financeSelectedGoalId}
+                      onChange={(e) => setFinanceSelectedGoalId(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '9px 10px',
+                        borderRadius: '10px',
+                        background: '#0b0816',
+                        border: '1px solid #32254a',
+                        color: '#ffffff',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {financeVault.goals.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.title} ({formatRupiahCompact(g.savedAmount)} / {formatRupiahCompact(g.targetAmount)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {financeLogType === 'expense' && financeVault.buckets.length > 0 && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: '#b8add1', marginBottom: '5px' }}>
+                      Ambil dari Pos Pengeluaran
+                    </label>
+                    <select
+                      value={financeSelectedBucketId}
+                      onChange={(e) => setFinanceSelectedBucketId(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '9px 10px',
+                        borderRadius: '10px',
+                        background: '#0b0816',
+                        border: '1px solid #32254a',
+                        color: '#ffffff',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {financeVault.buckets.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name} (Target {formatRupiahCompact(b.targetMonthly)}/bln)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <input
+                    type="text"
+                    value={financeNoteInput}
+                    onChange={(e) => setFinanceNoteInput(e.target.value)}
+                    placeholder="Catatan singkat (opsional, misal: Makan siang / Sisih gaji)"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '9px',
+                      background: '#0b0816',
+                      border: '1px solid #2b2242',
+                      color: '#f5f2ff',
+                      fontSize: '11.5px',
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddFinanceLog(currentFinanceQuest.id, targetDateIso)}
+                  style={{
+                    width: '100%',
+                    padding: '11px',
+                    borderRadius: '11px',
+                    border: 'none',
+                    background:
+                      financeLogType === 'saving'
+                        ? 'linear-gradient(135deg, #059669 0%, #0284c7 100%)'
+                        : financeLogType === 'expense'
+                          ? 'linear-gradient(135deg, #d97706 0%, #e11d48 100%)'
+                          : 'linear-gradient(135deg, #0284c7 0%, #6366f1 100%)',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.25)',
+                  }}
+                >
+                  {isQuestDoneOnDate
+                    ? 'Catat Transaksi ke Vault'
+                    : `Catat & Selesaikan Quest (+${currentFinanceQuest.xp} XP)`}
+                </button>
+              </div>
+            )}
+
+            {/* RIWAYAT TRANSAKSI TERKINI */}
+            <div
+              style={{
+                borderRadius: '14px',
+                padding: '12px',
+                background: '#110d1e',
+                border: '1px solid #28213a',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <strong style={{ fontSize: '12px', color: '#f5f2ff' }}>Riwayat Catatan Keuangan</strong>
+                <span style={{ fontSize: '10px', color: '#b8add1' }}>{monthLogs.length} catatan bulan ini</span>
+              </div>
+
+              {financeVault.logs.length === 0 ? (
+                <div
+                  style={{
+                    padding: '16px 10px',
+                    textAlign: 'center',
+                    fontSize: '11px',
+                    color: '#b8add1',
+                    borderRadius: '10px',
+                    border: '1px dashed #2e2444',
+                  }}
+                >
+                  Belum ada catatan. Mulai catat tabungan atau pengeluaran pertamamu di atas!
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  {financeVault.logs.slice(0, 15).map((log) => {
+                    const isSaving = log.type === 'saving'
+                    const isIncome = log.type === 'income'
+                    const badgeColor = isSaving ? '#6ee7b7' : isIncome ? '#7dd3fc' : '#fcd34d'
+                    const sign = log.type === 'expense' ? '-' : '+'
+                    return (
+                      <div
+                        key={log.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          padding: '8px 10px',
+                          borderRadius: '10px',
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#f5f2ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {log.note}
+                          </div>
+                          <div style={{ fontSize: '9.5px', color: '#b8add1', marginTop: '2px' }}>
+                            {log.dateIso} • {isSaving ? 'Tabungan' : isIncome ? 'Ekstra' : 'Pengeluaran'}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}>
+                          <strong style={{ fontSize: '11.5px', color: badgeColor }}>
+                            {sign}
+                            {formatRupiah(log.amount)}
+                          </strong>
+                          {!isFinanceViewOnly && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFinanceLog(log.id)}
+                              title="Hapus catatan"
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                border: '1px solid rgba(239, 68, 68, 0.28)',
+                                borderRadius: '6px',
+                                padding: '4px',
+                                color: '#fca5a5',
+                                cursor: 'pointer',
+                                display: 'flex',
+                              }}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* SUB-TAB 2: BUDGET & POS PENGELUARAN */}
+        {financeTab === 'budget' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: '12px',
+                background: unallocatedBalance < 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(56, 189, 248, 0.1)',
+                border: unallocatedBalance < 0 ? '1px solid rgba(248, 113, 113, 0.4)' : '1px solid rgba(56, 189, 248, 0.3)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: '#f5f2ff' }}>
+                  {unallocatedBalance >= 0 ? 'Sisa Belum Dialokasikan' : 'Melebihi Target Penghasilan!'}
+                </div>
+                <div style={{ fontSize: '10px', color: '#b8add1' }}>
+                  Total pos: {formatRupiah(totalAllocatedMonthly)} / {formatRupiah(totalBudgetPool)}
+                </div>
+              </div>
+              <strong style={{ fontSize: '12px', color: unallocatedBalance < 0 ? '#fca5a5' : '#67e8f9' }}>
+                {unallocatedBalance < 0 ? `-${formatRupiah(Math.abs(unallocatedBalance))}` : formatRupiah(unallocatedBalance)}
+              </strong>
+            </div>
+
+            {financeVault.buckets.map((bucket) => {
+              const isSavingBucket = bucket.category === 'tabungan'
+              const usedAmount = isSavingBucket
+                ? monthlySavedTotal
+                : monthLogs
+                    .filter((l) => l.type === 'expense' && l.bucketId === bucket.id)
+                    .reduce((acc, l) => acc + l.amount, 0)
+              const pct = bucket.targetMonthly > 0 ? Math.min(100, Math.round((usedAmount / bucket.targetMonthly) * 100)) : 0
+              const isOver = !isSavingBucket && usedAmount > bucket.targetMonthly
+              const accent = bucket.color || '#a855f7'
+
+              return (
+                <div
+                  key={bucket.id}
+                  style={{
+                    borderRadius: '13px',
+                    padding: '12px',
+                    background: '#130f22',
+                    border: `1px solid ${isOver ? 'rgba(248, 113, 113, 0.5)' : '#2b2242'}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <strong style={{ fontSize: '12.5px', color: '#ffffff' }}>{bucket.name}</strong>
+                        <span
+                          style={{
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            padding: '1px 6px',
+                            borderRadius: '999px',
+                            background: 'rgba(255,255,255,0.06)',
+                            color: accent,
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {bucket.category}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '10.5px', color: '#b8add1', marginTop: '2px' }}>
+                        {isSavingBucket ? 'Tersimpan' : 'Terpakai'} {formatRupiah(usedAmount)} / {formatRupiah(bucket.targetMonthly)} ({pct}%)
+                      </div>
+                    </div>
+
+                    {!isFinanceViewOnly && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editingBucketId === bucket.id) {
+                              setEditingBucketId(null)
+                            } else {
+                              setEditingBucketId(bucket.id)
+                              setEditingBucketTargetDraft(String(bucket.targetMonthly))
+                            }
+                          }}
+                          style={{
+                            padding: '4px 7px',
+                            borderRadius: '7px',
+                            background: 'rgba(168, 85, 247, 0.14)',
+                            border: '1px solid rgba(168, 85, 247, 0.3)',
+                            color: '#e9d5ff',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Edit
+                        </button>
+                        {financeVault.buckets.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFinanceBucket(bucket.id)}
+                            style={{
+                              padding: '5px',
+                              borderRadius: '7px',
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              color: '#fca5a5',
+                              cursor: 'pointer',
+                              display: 'flex',
+                            }}
+                            title="Hapus pos"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {editingBucketId === bucket.id && !isFinanceViewOnly && (
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                      <input
+                        type="number"
+                        value={editingBucketTargetDraft}
+                        onChange={(e) => setEditingBucketTargetDraft(e.target.value)}
+                        style={{
+                          flex: 1,
+                          padding: '6px 9px',
+                          borderRadius: '8px',
+                          background: '#0b0816',
+                          border: '1px solid #32254a',
+                          color: '#ffffff',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateFinanceBucketTarget(bucket.id, Number(editingBucketTargetDraft))}
+                        style={{
+                          padding: '6px 11px',
+                          borderRadius: '8px',
+                          background: '#10b981',
+                          border: 'none',
+                          color: '#052e16',
+                          fontSize: '10.5px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Simpan
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${pct}%`,
+                        height: '100%',
+                        borderRadius: '999px',
+                        background: isOver ? '#ef4444' : accent,
+                        transition: 'width 0.3s ease',
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+
+            {!isFinanceViewOnly && (
+              isAddingFinanceBucket ? (
+                <div
+                  style={{
+                    borderRadius: '13px',
+                    padding: '12px',
+                    background: '#151026',
+                    border: '1px solid rgba(56, 189, 248, 0.35)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                  }}
+                >
+                  <strong style={{ fontSize: '12px', color: '#7dd3fc' }}>Pos Anggaran Baru</strong>
+                  <input
+                    type="text"
+                    value={newBucketName}
+                    onChange={(e) => setNewBucketName(e.target.value)}
+                    placeholder="Nama pos (misal: Kos / Internet / Investasi)"
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      background: '#0b0816',
+                      border: '1px solid #32254a',
+                      color: '#ffffff',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+                    <select
+                      value={newBucketCategory}
+                      onChange={(e) => setNewBucketCategory(e.target.value as FinanceBudgetBucket['category'])}
+                      style={{
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: '#0b0816',
+                        border: '1px solid #32254a',
+                        color: '#ffffff',
+                        fontSize: '11.5px',
+                      }}
+                    >
+                      <option value="kebutuhan">Kebutuhan</option>
+                      <option value="hiburan">Hiburan</option>
+                      <option value="tabungan">Tabungan</option>
+                      <option value="cicilan">Cicilan</option>
+                    </select>
+                    <input
+                      type="number"
+                      value={newBucketTarget}
+                      onChange={(e) => setNewBucketTarget(e.target.value)}
+                      placeholder="Target Rp"
+                      style={{
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: '#0b0816',
+                        border: '1px solid #32254a',
+                        color: '#ffffff',
+                        fontSize: '11.5px',
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '7px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingFinanceBucket(false)}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        color: '#d5beff',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddFinanceBucket}
+                      style={{
+                        flex: 2,
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, #059669, #0284c7)',
+                        border: 'none',
+                        color: '#ffffff',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Simpan Pos
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingFinanceBucket(true)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '11px',
+                    background: 'rgba(168, 85, 247, 0.12)',
+                    border: '1px dashed rgba(168, 85, 247, 0.45)',
+                    color: '#e9d5ff',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Plus size={14} />
+                  Tambah Pos Pengeluaran / Alokasi
+                </button>
+              )
+            )}
+          </div>
+        )}
+
+        {/* SUB-TAB 3: SAVING GOALS */}
+        {financeTab === 'goals' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: '12px',
+                background: 'rgba(16, 185, 129, 0.12)',
+                border: '1px solid rgba(52, 211, 153, 0.35)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: '#6ee7b7' }}>Total Tabungan Impian</div>
+                <div style={{ fontSize: '10px', color: '#cbd5e1' }}>
+                  Estimasi pace: {formatRupiahCompact(dailyPaceEstimate)}/hari
+                </div>
+              </div>
+              <strong style={{ fontSize: '12px', color: '#ffffff' }}>
+                {formatRupiahCompact(totalGoalsSaved)} / {formatRupiahCompact(totalGoalsTarget)}
+              </strong>
+            </div>
+
+            {financeVault.goals.length === 0 ? (
+              <div
+                style={{
+                  padding: '18px 12px',
+                  borderRadius: '12px',
+                  background: '#130f22',
+                  border: '1px dashed #32254a',
+                  textAlign: 'center',
+                  fontSize: '11px',
+                  color: '#b8add1',
+                }}
+              >
+                Belum ada Saving Goal. Buat target tabungan pertamamu di bawah!
+              </div>
+            ) : (
+              financeVault.goals.map((goal) => {
+                const pct = goal.targetAmount > 0 ? Math.min(100, Math.round((goal.savedAmount / goal.targetAmount) * 100)) : 0
+                const remaining = Math.max(0, goal.targetAmount - goal.savedAmount)
+                const estDaysLeft = remaining > 0 ? Math.ceil(remaining / dailyPaceEstimate) : 0
+                const isGoalDone = remaining === 0
+
+                return (
+                  <div
+                    key={goal.id}
+                    style={{
+                      borderRadius: '13px',
+                      padding: '12px',
+                      background: '#130f22',
+                      border: `1px solid ${isGoalDone ? 'rgba(52, 211, 153, 0.55)' : '#2b2242'}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <strong style={{ fontSize: '12.5px', color: '#ffffff' }}>{goal.title}</strong>
+                          {isGoalDone && (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontWeight: 800,
+                                padding: '1px 6px',
+                                borderRadius: '999px',
+                                background: 'rgba(16, 185, 129, 0.22)',
+                                color: '#6ee7b7',
+                              }}
+                            >
+                              TERCAPAI!
+                            </span>
+                          )}
+                        </div>
+                        {goal.note && (
+                          <div style={{ fontSize: '10px', color: '#b8add1', marginTop: '1px' }}>{goal.note}</div>
+                        )}
+                      </div>
+                      {!isFinanceViewOnly && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFinanceGoal(goal.id)}
+                          style={{
+                            padding: '5px',
+                            borderRadius: '7px',
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            color: '#fca5a5',
+                            cursor: 'pointer',
+                            display: 'flex',
+                          }}
+                          title="Hapus target"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '5px' }}>
+                      <span style={{ color: '#6ee7b7', fontWeight: 800 }}>{formatRupiah(goal.savedAmount)}</span>
+                      <span style={{ color: '#cbd5e1', fontWeight: 700 }}>
+                        {pct}% dari {formatRupiahCompact(goal.targetAmount)}
+                      </span>
+                    </div>
+
+                    <div style={{ height: '7px', borderRadius: '999px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: '7px' }}>
+                      <div
+                        style={{
+                          width: `${pct}%`,
+                          height: '100%',
+                          borderRadius: '999px',
+                          background: 'linear-gradient(90deg, #10b981 0%, #38bdf8 100%)',
+                          transition: 'width 0.3s ease',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                      <span style={{ fontSize: '10px', color: '#b8add1' }}>
+                        {isGoalDone
+                          ? 'Target dana sudah terpenuhi sepenuhnya!'
+                          : `Kurang ${formatRupiah(remaining)} • Est. ±${estDaysLeft} hari lagi`}
+                      </span>
+                      {!isFinanceViewOnly && !isGoalDone && (
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {[20000, 50000, 100000].map((amt) => (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => handleQuickSaveToGoal(goal.id, amt, currentFinanceQuest.id, targetDateIso)}
+                              style={{
+                                padding: '4px 7px',
+                                borderRadius: '7px',
+                                background: 'rgba(16, 185, 129, 0.16)',
+                                border: '1px solid rgba(52, 211, 153, 0.4)',
+                                color: '#6ee7b7',
+                                fontSize: '9.5px',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              +{amt / 1000}rb
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
+            )}
+
+            {!isFinanceViewOnly && (
+              isAddingFinanceGoal ? (
+                <div
+                  style={{
+                    borderRadius: '13px',
+                    padding: '12px',
+                    background: '#151026',
+                    border: '1px solid rgba(52, 211, 153, 0.35)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                  }}
+                >
+                  <strong style={{ fontSize: '12px', color: '#6ee7b7' }}>Target Tabungan Baru</strong>
+                  <input
+                    type="text"
+                    value={newGoalTitle}
+                    onChange={(e) => setNewGoalTitle(e.target.value)}
+                    placeholder="Nama target (misal: Laptop Kerja / Dana Darurat / Liburan)"
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      background: '#0b0816',
+                      border: '1px solid #32254a',
+                      color: '#ffffff',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+                    <input
+                      type="number"
+                      value={newGoalTarget}
+                      onChange={(e) => setNewGoalTarget(e.target.value)}
+                      placeholder="Target Rp"
+                      style={{
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: '#0b0816',
+                        border: '1px solid #32254a',
+                        color: '#ffffff',
+                        fontSize: '11.5px',
+                      }}
+                    />
+                    <input
+                      type="number"
+                      value={newGoalSaved}
+                      onChange={(e) => setNewGoalSaved(e.target.value)}
+                      placeholder="Saldo awal Rp"
+                      style={{
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: '#0b0816',
+                        border: '1px solid #32254a',
+                        color: '#ffffff',
+                        fontSize: '11.5px',
+                      }}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={newGoalNote}
+                    onChange={(e) => setNewGoalNote(e.target.value)}
+                    placeholder="Catatan singkat (opsional)"
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      background: '#0b0816',
+                      border: '1px solid #32254a',
+                      color: '#ffffff',
+                      fontSize: '11.5px',
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: '7px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingFinanceGoal(false)}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        color: '#d5beff',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddFinanceGoal}
+                      style={{
+                        flex: 2,
+                        padding: '8px',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, #059669, #0284c7)',
+                        border: 'none',
+                        color: '#ffffff',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Simpan Target
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingFinanceGoal(true)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '11px',
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    border: '1px dashed rgba(52, 211, 153, 0.45)',
+                    color: '#6ee7b7',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Plus size={14} />
+                  Buat Target Tabungan Baru
+                </button>
+              )
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <main
       className="app-shell"
@@ -7640,6 +9431,7 @@ export default function Page() {
                 type="button"
                 onClick={() => {
                   setActiveWorkoutQuest(null)
+                  setActiveFinanceQuest(null)
                   setActiveExerciseId(null)
                   setIsHistoryPageOpen(false)
                   setIsMasteryPageOpen(false)
@@ -7888,6 +9680,7 @@ export default function Page() {
                 type="button"
                 onClick={() => {
                   setActiveWorkoutQuest(null)
+                  setActiveFinanceQuest(null)
                   setActiveExerciseId(null)
                   setIsHistoryPageOpen(false)
                   setIsMasteryPageOpen(false)
@@ -11153,6 +12946,8 @@ export default function Page() {
               </div>
             )}
           </div>
+        ) : activeFinanceQuest && currentFinanceQuest ? (
+          renderFinanceVaultPage()
         ) : isPersonalModalOpen ? (
           /* ================================================================
              HALAMAN PENUH: TAMBAH / EDIT QUEST PRIBADI (MINIMALIS 1 KARTU)
@@ -11434,6 +13229,60 @@ export default function Page() {
                     </div>
                   )
                 })()}
+
+                {/* PRESET QUEST KEUANGAN & INFO FINANCE VAULT */}
+                {questCategory.toLowerCase() === 'keuangan' && (
+                  <div
+                    style={{
+                      marginTop: '8px',
+                      padding: '10px 11px',
+                      borderRadius: '11px',
+                      background: 'rgba(16, 185, 129, 0.08)',
+                      border: '1px solid rgba(52, 211, 153, 0.28)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '7px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#6ee7b7', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <Wallet size={12} color="#34d399" />
+                        Preset Quest Keuangan (Opsional)
+                      </span>
+                      <span style={{ fontSize: '9.5px', color: '#b8add1' }}>Terhubung ke Finance Vault</span>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {[
+                        'Nabung Harian ke Target Goal',
+                        'Kontrol & Catat Pengeluaran Hari Ini',
+                        'Alokasi Budget & Evaluasi Keuangan',
+                      ].map((presetTitle) => {
+                        const isPicked = questTitle.trim() === presetTitle
+                        return (
+                          <button
+                            key={presetTitle}
+                            type="button"
+                            onClick={() => setQuestTitle(presetTitle)}
+                            style={{
+                              padding: '5px 9px',
+                              borderRadius: '8px',
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              background: isPicked ? 'rgba(16, 185, 129, 0.24)' : 'rgba(15, 23, 42, 0.65)',
+                              border: isPicked
+                                ? '1px solid rgba(52, 211, 153, 0.6)'
+                                : '1px solid rgba(148, 163, 184, 0.22)',
+                              color: isPicked ? '#a7f3d0' : '#d5beff',
+                            }}
+                          >
+                            {presetTitle}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 3. JADWAL HARI (1 BARIS 7 HARI + PILL EVERYDAY) */}
@@ -13311,6 +15160,7 @@ export default function Page() {
                           {(() => {
                             const renderDayQuestRow = (task: PersonalTask) => {
                               const isGym = task.category.toLowerCase() === 'gym'
+                              const isFinance = task.category.toLowerCase() === 'keuangan'
                               const isDoneOnDay = isTaskDoneOnDay(task)
                               const isSkipped = isTaskSkippedOnDay(task)
                               const isUpcomingTime = isTaskUpcomingTimeOnDay(task)
@@ -13544,6 +15394,35 @@ export default function Page() {
                                           <Eye size={10} color="#c084fc" />
                                           <span>Lihat</span>
                                         </button>
+                                      ) : isFinance ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setFinanceTab('quick')
+                                            setActiveFinanceQuest({
+                                              id: task.id,
+                                              dateIso: activeScheduleDayObj.isoDate,
+                                              viewOnly: true,
+                                            })
+                                          }}
+                                          style={{
+                                            padding: '4px 7px',
+                                            borderRadius: '6px',
+                                            background: 'rgba(16, 185, 129, 0.16)',
+                                            border: '1px solid rgba(52, 211, 153, 0.45)',
+                                            color: '#a7f3d0',
+                                            fontSize: '9.5px',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                          }}
+                                          title="Lihat Finance Vault (Mode Hanya Lihat)"
+                                        >
+                                          <Eye size={10} color="#34d399" />
+                                          <span>Lihat</span>
+                                        </button>
                                       ) : (
                                         <span
                                           style={{
@@ -13595,6 +15474,36 @@ export default function Page() {
                                           >
                                             <Play size={8} fill="currentColor" />
                                             <span>Start</span>
+                                          </button>
+                                        )}
+
+                                        {isFinance && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setFinanceTab('quick')
+                                              setActiveFinanceQuest({
+                                                id: task.id,
+                                                dateIso: activeScheduleDayObj.isoDate,
+                                              })
+                                            }}
+                                            style={{
+                                              padding: '4px 8px',
+                                              borderRadius: '6px',
+                                              background: 'linear-gradient(135deg, #059669, #0284c7)',
+                                              border: 'none',
+                                              color: '#ffffff',
+                                              fontSize: '9.5px',
+                                              fontWeight: 800,
+                                              cursor: 'pointer',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '3px',
+                                            }}
+                                            title="Buka Finance Vault"
+                                          >
+                                            <Wallet size={9} />
+                                            <span>Vault</span>
                                           </button>
                                         )}
 
@@ -14634,12 +16543,20 @@ export default function Page() {
                         canManage={true}
                         viewOnly={questScheduleTab === 'upcoming'}
                         isGym={task.category.toLowerCase() === 'gym'}
+                        isFinance={task.category.toLowerCase() === 'keuangan'}
                         xp={task.xp}
                         heroCard={useHeroCard}
                         onOpenWorkout={() => {
                           setWorkoutSubPage('overview')
                           setActiveWorkoutQuest({
                             type: 'personal',
+                            id: task.id,
+                            viewOnly: questScheduleTab === 'upcoming',
+                          })
+                        }}
+                        onOpenFinance={() => {
+                          setFinanceTab('quick')
+                          setActiveFinanceQuest({
                             id: task.id,
                             viewOnly: questScheduleTab === 'upcoming',
                           })
@@ -17653,7 +19570,7 @@ export default function Page() {
     )}
 
         {/* BOTTOM NAVIGATION (DOCKED 5-SLOT PORTAL RING FOOTER PERSIS PREVIEW) */}
-        {!activeWorkoutQuest && (() => {
+        {!activeWorkoutQuest && !activeFinanceQuest && (() => {
           const switchTab = (tabKey: typeof activeTab) => {
             setIsHistoryPageOpen(false)
             setIsMasteryPageOpen(false)
