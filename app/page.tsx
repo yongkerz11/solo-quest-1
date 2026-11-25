@@ -16564,8 +16564,8 @@ export default function Page() {
                       const growthPct = lastWeekTotal > 0 ? Math.round((deltaXp / lastWeekTotal) * 100) : 0
 
                       const maxVal = Math.max(80, ...dayXps, ...lastWeekSeries)
-                      const baseY = 54
-                      const topY = 12
+                      const baseY = 78
+                      const topY = 14
                       const span = baseY - topY
 
                       const toPts = (vals: number[]) =>
@@ -16600,22 +16600,22 @@ export default function Page() {
                               alignItems: 'center',
                               justifyContent: 'space-between',
                               gap: '8px',
-                              marginBottom: '6px',
+                              marginBottom: '12px',
                             }}
                           >
                             <div>
-                              <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#ffffff' }}>
+                              <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#ffffff' }}>
                                 Tren XP Mingguan
                               </div>
-                              <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '1px' }}>
+                              <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>
                                 Solid: minggu ini ({thisWeekTotal} XP) • Putus-putus: lalu
                               </div>
                             </div>
                             <span
                               style={{
-                                padding: '2px 8px',
+                                padding: '4px 10px',
                                 borderRadius: '999px',
-                                fontSize: '9.5px',
+                                fontSize: '10.5px',
                                 fontWeight: 900,
                                 fontVariantNumeric: 'tabular-nums',
                                 background:
@@ -16633,7 +16633,7 @@ export default function Page() {
                             </span>
                           </div>
 
-                          <svg viewBox="0 0 320 60" style={{ width: '100%', height: '56px', overflow: 'visible', display: 'block' }}>
+                          <svg viewBox="0 0 320 90" style={{ width: '100%', height: '86px', overflow: 'visible', display: 'block' }}>
                             <defs>
                               <linearGradient id="waveAreaDualApp" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor={currentRankTier.primaryColor} stopOpacity="0.34" />
@@ -16839,11 +16839,11 @@ export default function Page() {
                             position: 'relative',
                             display: 'grid',
                             gridTemplateColumns: 'repeat(7, 1fr)',
-                            padding: '2px',
-                            borderRadius: '12px',
+                            padding: '4px',
+                            borderRadius: '14px',
                             background: 'rgba(255, 255, 255, 0.03)',
                             border: '1px solid rgba(255, 255, 255, 0.06)',
-                            marginBottom: '10px',
+                            marginBottom: '13px',
                           }}
                         >
                           <div
@@ -16852,11 +16852,11 @@ export default function Page() {
                             style={{
                               pointerEvents: 'none',
                               position: 'absolute',
-                              top: '2px',
-                              bottom: '2px',
-                              left: '2px',
-                              width: 'calc(14.2857% - 1px)',
-                              borderRadius: '10px',
+                              top: '4px',
+                              bottom: '4px',
+                              left: '4px',
+                              width: 'calc(14.2857% - 1.2px)',
+                              borderRadius: '11px',
                               border: '1px solid rgba(255, 255, 255, 0.25)',
                               transform: `translateX(${selectedDayIdx * 100}%)`,
                               background: `linear-gradient(160deg, rgba(${currentRankTier.primaryRgb}, 0.14), rgba(255, 255, 255, 0.06))`,
@@ -16877,7 +16877,7 @@ export default function Page() {
                                 style={{
                                   position: 'relative',
                                   zIndex: 1,
-                                  padding: '6px 0',
+                                  padding: '9px 0',
                                   background: 'transparent',
                                   border: 0,
                                   display: 'flex',
@@ -16999,8 +16999,8 @@ export default function Page() {
                       return (
                         <div
                           style={{
-                            padding: '9px 10px',
-                            borderRadius: '12px',
+                            padding: '13px 12px',
+                            borderRadius: '14px',
                             background: 'rgba(7, 5, 17, 0.85)',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
                           }}
@@ -17834,7 +17834,7 @@ export default function Page() {
                             const finTask = personalTasks.find((t) => t.category.toLowerCase() === 'keuangan')
 
                             return (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '13px' }}>
                                 {/* 1. TARGET PRIORITAS SPOTLIGHT CARD */}
                                 <div
                                   onClick={() => {
@@ -17848,15 +17848,15 @@ export default function Page() {
                                   style={{
                                     position: 'relative',
                                     overflow: 'hidden',
-                                    padding: '13px 14px',
-                                    borderRadius: '15px',
+                                    padding: '17px 16px',
+                                    borderRadius: '16px',
                                     background:
                                       'linear-gradient(155deg, rgba(16, 185, 129, 0.14) 0%, rgba(8, 13, 28, 0.96) 65%)',
                                     border: '1px solid rgba(52, 211, 153, 0.38)',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    gap: '8px',
+                                    gap: '11px',
                                   }}
                                 >
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
@@ -17963,29 +17963,29 @@ export default function Page() {
                                 </div>
 
                                 {/* 2. MINI WALLET SUMMARY (DOMPET • TABUNGAN • KELUAR) */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                                  <div style={{ padding: '8px 9px', borderRadius: '11px', background: 'rgba(7, 10, 22, 0.85)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-                                    <span style={{ display: 'block', fontSize: '8.5px', color: '#94a3b8', fontWeight: 700 }}>Dompet</span>
-                                    <strong style={{ fontSize: '11px', color: currentRankTier.primaryColor, fontVariantNumeric: 'tabular-nums' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                                  <div style={{ padding: '12px 10px', borderRadius: '13px', background: 'rgba(7, 10, 22, 0.85)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                                    <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', fontWeight: 700, marginBottom: '3px' }}>Dompet</span>
+                                    <strong style={{ fontSize: '12px', color: currentRankTier.primaryColor, fontVariantNumeric: 'tabular-nums' }}>
                                       {formatRupiah(flipDompet)}
                                     </strong>
                                   </div>
-                                  <div style={{ padding: '8px 9px', borderRadius: '11px', background: 'rgba(7, 10, 22, 0.85)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-                                    <span style={{ display: 'block', fontSize: '8.5px', color: '#94a3b8', fontWeight: 700 }}>Tabungan</span>
-                                    <strong style={{ fontSize: '11px', color: '#6ee7b7', fontVariantNumeric: 'tabular-nums' }}>
+                                  <div style={{ padding: '12px 10px', borderRadius: '13px', background: 'rgba(7, 10, 22, 0.85)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                                    <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', fontWeight: 700, marginBottom: '3px' }}>Tabungan</span>
+                                    <strong style={{ fontSize: '12px', color: '#6ee7b7', fontVariantNumeric: 'tabular-nums' }}>
                                       {formatRupiah(flipTotalGoalsSaved)}
                                     </strong>
                                   </div>
-                                  <div style={{ padding: '8px 9px', borderRadius: '11px', background: 'rgba(7, 10, 22, 0.85)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-                                    <span style={{ display: 'block', fontSize: '8.5px', color: '#94a3b8', fontWeight: 700 }}>Keluar Bln Ini</span>
-                                    <strong style={{ fontSize: '11px', color: '#fcd34d', fontVariantNumeric: 'tabular-nums' }}>
+                                  <div style={{ padding: '12px 10px', borderRadius: '13px', background: 'rgba(7, 10, 22, 0.85)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                                    <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', fontWeight: 700, marginBottom: '3px' }}>Keluar Bln Ini</span>
+                                    <strong style={{ fontSize: '12px', color: '#fcd34d', fontVariantNumeric: 'tabular-nums' }}>
                                       {formatRupiah(flipExpenseTotal)}
                                     </strong>
                                   </div>
                                 </div>
 
                                 {/* 3. QUICK ACTIONS */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -17995,21 +17995,21 @@ export default function Page() {
                                       setActiveFinanceSheet('log')
                                     }}
                                     style={{
-                                      padding: '9px 10px',
-                                      borderRadius: '11px',
+                                      padding: '12px 12px',
+                                      borderRadius: '13px',
                                       border: '1px solid rgba(52, 211, 153, 0.45)',
                                       background: 'rgba(16, 185, 129, 0.16)',
                                       color: '#a7f3d0',
-                                      fontSize: '10.5px',
+                                      fontSize: '11.5px',
                                       fontWeight: 800,
                                       cursor: 'pointer',
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      gap: '5px',
+                                      gap: '6px',
                                     }}
                                   >
-                                    <Plus size={12} strokeWidth={2.6} />
+                                    <Plus size={13} strokeWidth={2.6} />
                                     <span>Nabung Sekarang</span>
                                   </button>
                                   <button
@@ -18023,21 +18023,21 @@ export default function Page() {
                                       })
                                     }}
                                     style={{
-                                      padding: '9px 10px',
-                                      borderRadius: '11px',
+                                      padding: '12px 12px',
+                                      borderRadius: '13px',
                                       border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.4)`,
                                       background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
                                       color: currentRankTier.highlightColor,
-                                      fontSize: '10.5px',
+                                      fontSize: '11.5px',
                                       fontWeight: 800,
                                       cursor: 'pointer',
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      gap: '5px',
+                                      gap: '6px',
                                     }}
                                   >
-                                    <Wallet size={12} />
+                                    <Wallet size={13} />
                                     <span>Kelola di Vault</span>
                                   </button>
                                 </div>
