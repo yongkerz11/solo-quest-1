@@ -2564,6 +2564,7 @@ export default function Page() {
   const [newBucketCategory, setNewBucketCategory] = useState<'kebutuhan' | 'hiburan' | 'tabungan' | 'cicilan'>('kebutuhan')
   const [newBucketTarget, setNewBucketTarget] = useState<string>('300.000')
   const [editingBucketId, setEditingBucketId] = useState<string | null>(null)
+  const [editingBucketNameDraft, setEditingBucketNameDraft] = useState<string>('')
   const [editingBucketTargetDraft, setEditingBucketTargetDraft] = useState<string>('')
   const [isAddingFinanceGoal, setIsAddingFinanceGoal] = useState<boolean>(false)
   const [newGoalTitle, setNewGoalTitle] = useState<string>('')
@@ -6017,15 +6018,24 @@ export default function Page() {
     showToast(`Pos pengeluaran "${name}" ditambahkan!`)
   }
 
-  const handleUpdateFinanceBucketTarget = (bucketId: string, nextTarget: number) => {
+  const handleUpdateFinanceBucketTarget = (bucketId: string, nextTarget: number, nextName?: string) => {
+    const trimmedName = (nextName ?? '').trim()
+    if (nextName !== undefined && !trimmedName) {
+      showToast('Nama pos tidak boleh kosong')
+      return
+    }
     const clean = Math.max(10000, Math.round(nextTarget))
     persistFinanceVault({
       ...financeVault,
-      buckets: financeVault.buckets.map((b) => (b.id === bucketId ? { ...b, targetMonthly: clean } : b)),
+      buckets: financeVault.buckets.map((b) =>
+        b.id === bucketId
+          ? { ...b, name: trimmedName || b.name, targetMonthly: clean }
+          : b
+      ),
     })
     setEditingBucketId(null)
     setActiveFinanceSheet(null)
-    showToast(`Batas pos diperbarui: ${formatRupiah(clean)}`)
+    showToast(`Pos "${trimmedName || 'anggaran'}" diperbarui: ${formatRupiah(clean)}`)
   }
 
   const handleDeleteFinanceBucket = (bucketId: string) => {
@@ -10110,9 +10120,35 @@ export default function Page() {
               <strong style={{ fontSize: '12px', color: '#ffffff' }}>
                 Pos Pengeluaran ({financeVault.buckets.length})
               </strong>
-              <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>
-                Kelola via tombol di bawah
-              </span>
+              {!isFinanceViewOnly ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceTargetDraftType('bucket')
+                    setActiveFinanceSheet('target')
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '5px 10px',
+                    borderRadius: '999px',
+                    background: 'rgba(251, 191, 36, 0.14)',
+                    border: '1px solid rgba(251, 191, 36, 0.35)',
+                    color: '#fde68a',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Plus size={11} />
+                  <span>Tambah Pos</span>
+                </button>
+              ) : (
+                <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>
+                  Mode lihat saja
+                </span>
+              )}
             </div>
 
             {financeVault.buckets.map((bucket) => {
@@ -10197,10 +10233,11 @@ export default function Page() {
                             type="button"
                             onClick={() => {
                               setEditingBucketId(bucket.id)
+                              setEditingBucketNameDraft(bucket.name)
                               setEditingBucketTargetDraft(formatDigitsWithDots(bucket.targetMonthly))
                               setActiveFinanceSheet('editBucket')
                             }}
-                            title="Edit batas pos"
+                            title="Edit pos"
                             style={{
                               width: '26px',
                               height: '26px',
@@ -10970,7 +11007,7 @@ export default function Page() {
                 {activeFinanceSheet === 'editBucket' && editingBucketId && (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Edit Batas Pos Pengeluaran</strong>
+                      <strong style={{ fontSize: '14px', fontWeight: 900, color: '#ffffff' }}>Edit Pos Pengeluaran</strong>
                       <button
                         type="button"
                         onClick={() => setActiveFinanceSheet(null)}
@@ -10979,19 +11016,40 @@ export default function Page() {
                         Tutup
                       </button>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 900, color: '#fbbf24' }}>Rp</span>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Nama Pos</span>
                       <input
                         type="text"
-                        inputMode="numeric"
-                        value={formatDigitsWithDots(editingBucketTargetDraft)}
-                        onChange={(e) => setEditingBucketTargetDraft(formatDigitsWithDots(e.target.value))}
-                        style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '16px', fontWeight: 900 }}
+                        value={editingBucketNameDraft}
+                        onChange={(e) => setEditingBucketNameDraft(e.target.value)}
+                        placeholder="Nama pos (misal: Kebutuhan & Makan)"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '12px',
+                          background: '#04060e',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          color: '#ffffff',
+                          fontSize: '12.5px',
+                        }}
                       />
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Batas Anggaran Bulanan</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 900, color: '#fbbf24' }}>Rp</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatDigitsWithDots(editingBucketTargetDraft)}
+                          onChange={(e) => setEditingBucketTargetDraft(formatDigitsWithDots(e.target.value))}
+                          style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '16px', fontWeight: 900 }}
+                        />
+                      </div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleUpdateFinanceBucketTarget(editingBucketId, parseFormattedDigits(editingBucketTargetDraft))}
+                      onClick={() => handleUpdateFinanceBucketTarget(editingBucketId, parseFormattedDigits(editingBucketTargetDraft), editingBucketNameDraft)}
                       style={{
                         width: '100%',
                         padding: '11px',
@@ -11004,7 +11062,7 @@ export default function Page() {
                         cursor: 'pointer',
                       }}
                     >
-                      Simpan Batas Pos
+                      Simpan Perubahan Pos
                     </button>
                   </>
                 )}
