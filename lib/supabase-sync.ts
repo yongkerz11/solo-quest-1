@@ -316,6 +316,8 @@ export interface FinanceSavingGoal {
   title: string
   targetAmount: number
   savedAmount: number
+  monthlyTarget?: number
+  isPriority?: boolean
   deadlineDate?: string
   note?: string
 }
@@ -345,11 +347,10 @@ export const DEFAULT_FINANCE_VAULT: FinanceVaultState = {
     { id: 'b-kebutuhan', name: 'Kebutuhan & Makan', category: 'kebutuhan', targetMonthly: 1500000, color: '#38bdf8' },
     { id: 'b-transport', name: 'Transport & Tagihan', category: 'kebutuhan', targetMonthly: 500000, color: '#a855f7' },
     { id: 'b-hiburan', name: 'Hiburan & Jajan', category: 'hiburan', targetMonthly: 500000, color: '#f59e0b' },
-    { id: 'b-tabungan', name: 'Alokasi Tabungan Wajib', category: 'tabungan', targetMonthly: 1000000, color: '#10b981' },
   ],
   goals: [
-    { id: 'g-darurat', title: 'Dana Darurat Hunter', targetAmount: 5000000, savedAmount: 0, note: 'Benteng pertahanan keuangan' },
-    { id: 'g-gear', title: 'Target Impian / Upgrade Gear', targetAmount: 3500000, savedAmount: 0, note: 'Alat kerja & self-reward' },
+    { id: 'g-darurat', title: 'Dana Darurat Hunter', targetAmount: 5000000, savedAmount: 0, monthlyTarget: 1000000, isPriority: true, note: 'Benteng pertahanan keuangan' },
+    { id: 'g-gear', title: 'Target Impian / Upgrade Gear', targetAmount: 3500000, savedAmount: 0, monthlyTarget: 500000, isPriority: false, note: 'Alat kerja & self-reward' },
   ],
   logs: [],
   updatedAt: 0,

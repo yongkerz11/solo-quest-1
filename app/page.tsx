@@ -848,6 +848,7 @@ function QuestCard({
   totalMembers,
   isGym,
   isFinance,
+  financeSummary,
   xp,
   heroCard = false,
   onOpenWorkout,
@@ -878,6 +879,13 @@ function QuestCard({
   totalMembers?: number
   isGym?: boolean
   isFinance?: boolean
+  financeSummary?: {
+    goalTitle: string
+    targetLabel: string
+    remainingLabel: string
+    pct: number
+    isReached: boolean
+  }
   xp?: number
   heroCard?: boolean
   onOpenWorkout?: () => void
@@ -999,6 +1007,10 @@ function QuestCard({
     }
     if (isMenuOpen) {
       closeMenu()
+      return
+    }
+    if (isFinance && onOpenFinance) {
+      onOpenFinance()
       return
     }
     // Saat quest card ditekan, buka/tutup dropdown konsistensi untuk quest tersebut
@@ -1290,94 +1302,139 @@ function QuestCard({
                 gap: '8px',
               }}
             >
-            {/* Left: Checkbox + Schedule & Target Time */}
+            {/* Left: Checkbox (or Finance Target Summary) + Schedule & Target Time */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0, flex: 1 }}>
-              <span
-                className={`check-box ${done ? 'completed' : isSkipped ? 'skipped' : ''}`}
-                style={
-                  viewOnly
-                    ? {
-                        borderColor: 'rgba(148, 163, 184, 0.28)',
-                        background: 'rgba(15, 11, 26, 0.8)',
-                        cursor: 'not-allowed',
-                      }
-                    : isSkipped && !done
-                    ? {
-                        borderColor: 'rgba(239, 68, 68, 0.65)',
-                        background: 'rgba(239, 68, 68, 0.2)',
-                        cursor: 'pointer',
-                      }
-                    : undefined
-                }
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (!disabled && !viewOnly) onToggle()
-                }}
-                role={viewOnly ? undefined : 'button'}
-                aria-label={viewOnly ? 'Belum saatnya dikerjakan (Hanya Lihat)' : 'Toggle status'}
-                title={
-                  viewOnly
-                    ? 'Belum saatnya (Hanya Lihat)'
-                    : done
-                    ? 'Batalkan centang selesai'
-                    : 'Centang selesai (+XP)'
-                }
-              >
-                {viewOnly ? (
-                  <Lock size={12} color="#9a8fb2" />
-                ) : done ? (
-                  <Check size={15} strokeWidth={3} />
-                ) : isSkipped ? (
-                  <FastForward size={13} color="#f87171" strokeWidth={2.5} />
-                ) : null}
-              </span>
+              {!isFinance && (
+                <span
+                  className={`check-box ${done ? 'completed' : isSkipped ? 'skipped' : ''}`}
+                  style={
+                    viewOnly
+                      ? {
+                          borderColor: 'rgba(148, 163, 184, 0.28)',
+                          background: 'rgba(15, 11, 26, 0.8)',
+                          cursor: 'not-allowed',
+                        }
+                      : isSkipped && !done
+                      ? {
+                          borderColor: 'rgba(239, 68, 68, 0.65)',
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          cursor: 'pointer',
+                        }
+                      : undefined
+                  }
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!disabled && !viewOnly) onToggle()
+                  }}
+                  role={viewOnly ? undefined : 'button'}
+                  aria-label={viewOnly ? 'Belum saatnya dikerjakan (Hanya Lihat)' : 'Toggle status'}
+                  title={
+                    viewOnly
+                      ? 'Belum saatnya (Hanya Lihat)'
+                      : done
+                      ? 'Batalkan centang selesai'
+                      : 'Centang selesai (+XP)'
+                  }
+                >
+                  {viewOnly ? (
+                    <Lock size={12} color="#9a8fb2" />
+                  ) : done ? (
+                    <Check size={15} strokeWidth={3} />
+                  ) : isSkipped ? (
+                    <FastForward size={13} color="#f87171" strokeWidth={2.5} />
+                  ) : null}
+                </span>
+              )}
 
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  columnGap: '6px',
-                  rowGap: '2px',
-                  fontSize: '11px',
-                  lineHeight: 1.3,
-                  color: isSkipped && !done ? '#fca5a5' : '#b8add1',
-                  minWidth: 0,
-                }}
-              >
-                {isSkipped && !done ? (
-                  <span>Dilewati hari ini • 0 XP</span>
-                ) : (
-                  <>
-                    {scheduleDisplay && (
-                      <span style={{ fontWeight: 600, color: '#c4b5de' }}>{scheduleDisplay}</span>
-                    )}
-                    {targetTime && (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          color: '#7dd3fc',
-                          fontWeight: 700,
-                          background: 'rgba(56, 189, 248, 0.1)',
-                          border: '1px solid rgba(56, 189, 248, 0.24)',
-                          padding: '1.5px 6px',
-                          borderRadius: '6px',
-                          fontSize: '10.5px',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Clock size={10} /> {targetTime}
-                      </span>
-                    )}
-                    {!scheduleDisplay && !targetTime && (
-                      <span style={{ color: '#9a8fb2' }}>Daily Quest</span>
-                    )}
-                  </>
-                )}
-              </div>
+              {isFinance && financeSummary ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '11px' }}>
+                    <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{financeSummary.targetLabel}</span>
+                    <span
+                      style={{
+                        padding: '1.5px 7px',
+                        borderRadius: '999px',
+                        background: financeSummary.isReached ? 'rgba(16, 185, 129, 0.22)' : 'rgba(56, 189, 248, 0.18)',
+                        border: financeSummary.isReached ? '1px solid rgba(52, 211, 153, 0.5)' : '1px solid rgba(56, 189, 248, 0.4)',
+                        color: financeSummary.isReached ? '#6ee7b7' : '#7dd3fc',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                      }}
+                    >
+                      {financeSummary.remainingLabel}
+                    </span>
+                  </div>
+                  <div style={{ width: '100%', maxWidth: '210px', height: '4px', borderRadius: '999px', background: 'rgba(255,255,255,0.12)', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        width: `${financeSummary.pct}%`,
+                        height: '100%',
+                        borderRadius: '999px',
+                        background: 'linear-gradient(90deg, #10b981, #38bdf8)',
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    columnGap: '6px',
+                    rowGap: '2px',
+                    fontSize: '11px',
+                    lineHeight: 1.3,
+                    color: isSkipped && !done ? '#fca5a5' : '#b8add1',
+                    minWidth: 0,
+                  }}
+                >
+                  {isFinance && financeSummary ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
+                <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{financeSummary.targetLabel}</span>
+                <span
+                  style={{
+                    color: financeSummary.isReached ? '#6ee7b7' : '#7dd3fc',
+                    fontWeight: 800,
+                  }}
+                >
+                  • {financeSummary.remainingLabel}
+                </span>
+              </span>
+            ) : isSkipped && !done ? (
+                    <span>Dilewati hari ini • 0 XP</span>
+                  ) : (
+                    <>
+                      {scheduleDisplay && (
+                        <span style={{ fontWeight: 600, color: '#c4b5de' }}>{scheduleDisplay}</span>
+                      )}
+                      {targetTime && (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            color: '#7dd3fc',
+                            fontWeight: 700,
+                            background: 'rgba(56, 189, 248, 0.1)',
+                            border: '1px solid rgba(56, 189, 248, 0.24)',
+                            padding: '1.5px 6px',
+                            borderRadius: '6px',
+                            fontSize: '10.5px',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Clock size={10} /> {targetTime}
+                        </span>
+                      )}
+                      {!scheduleDisplay && !targetTime && (
+                        <span style={{ color: '#9a8fb2' }}>Daily Quest</span>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Right: Action Buttons */}
@@ -1516,7 +1573,7 @@ function QuestCard({
                     </button>
                   )}
 
-                  {!done && onSkip && (
+                  {!isFinance && !done && onSkip && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1590,46 +1647,48 @@ function QuestCard({
             }
           }}
         >
-        <span
-          className={`check-box ${done ? 'completed' : isSkipped ? 'skipped' : ''}`}
-          style={
-            viewOnly
-              ? {
-                  borderColor: 'rgba(148, 163, 184, 0.25)',
-                  background: 'rgba(15, 11, 26, 0.7)',
-                  cursor: 'not-allowed',
-                }
-              : isSkipped && !done
-              ? {
-                  borderColor: 'rgba(239, 68, 68, 0.65)',
-                  background: 'rgba(239, 68, 68, 0.2)',
-                  cursor: 'pointer',
-                }
-              : undefined
-          }
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation()
-            if (!disabled && !viewOnly) onToggle()
-          }}
-          role={viewOnly ? undefined : 'button'}
-          aria-label={viewOnly ? 'Belum saatnya dikerjakan (Hanya Lihat)' : 'Toggle status'}
-          title={
-            viewOnly
-              ? 'Belum saatnya (Hanya Lihat)'
-              : done
-              ? 'Batalkan centang selesai'
-              : 'Centang selesai (+XP)'
-          }
-        >
-          {viewOnly ? (
-            <Lock size={12} color="#9a8fb2" />
-          ) : done ? (
-            <Check size={15} strokeWidth={3} />
-          ) : isSkipped ? (
-            <FastForward size={13} color="#f87171" strokeWidth={2.5} />
-          ) : null}
-        </span>
+        {!isFinance && (
+          <span
+            className={`check-box ${done ? 'completed' : isSkipped ? 'skipped' : ''}`}
+            style={
+              viewOnly
+                ? {
+                    borderColor: 'rgba(148, 163, 184, 0.25)',
+                    background: 'rgba(15, 11, 26, 0.7)',
+                    cursor: 'not-allowed',
+                  }
+                : isSkipped && !done
+                ? {
+                    borderColor: 'rgba(239, 68, 68, 0.65)',
+                    background: 'rgba(239, 68, 68, 0.2)',
+                    cursor: 'pointer',
+                  }
+                : undefined
+            }
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!disabled && !viewOnly) onToggle()
+            }}
+            role={viewOnly ? undefined : 'button'}
+            aria-label={viewOnly ? 'Belum saatnya dikerjakan (Hanya Lihat)' : 'Toggle status'}
+            title={
+              viewOnly
+                ? 'Belum saatnya (Hanya Lihat)'
+                : done
+                ? 'Batalkan centang selesai'
+                : 'Centang selesai (+XP)'
+            }
+          >
+            {viewOnly ? (
+              <Lock size={12} color="#9a8fb2" />
+            ) : done ? (
+              <Check size={15} strokeWidth={3} />
+            ) : isSkipped ? (
+              <FastForward size={13} color="#f87171" strokeWidth={2.5} />
+            ) : null}
+          </span>
+        )}
         <span
           className="task-symbol"
           style={{
@@ -1694,7 +1753,19 @@ function QuestCard({
               color: isSkipped && !done ? '#fca5a5' : '#b8add1',
             }}
           >
-            {isSkipped && !done ? (
+            {isFinance && financeSummary ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
+                <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{financeSummary.targetLabel}</span>
+                <span
+                  style={{
+                    color: financeSummary.isReached ? '#6ee7b7' : '#7dd3fc',
+                    fontWeight: 800,
+                  }}
+                >
+                  • {financeSummary.remainingLabel}
+                </span>
+              </span>
+            ) : isSkipped && !done ? (
               <span>Dilewati hari ini • 0 XP</span>
             ) : (
               <>
@@ -1874,7 +1945,7 @@ function QuestCard({
                 </button>
               )}
 
-              {!done && onSkip && (
+              {!isFinance && !done && onSkip && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -2569,11 +2640,13 @@ export default function Page() {
   const [isAddingFinanceGoal, setIsAddingFinanceGoal] = useState<boolean>(false)
   const [newGoalTitle, setNewGoalTitle] = useState<string>('')
   const [newGoalTarget, setNewGoalTarget] = useState<string>('')
+  const [newGoalMonthlyTarget, setNewGoalMonthlyTarget] = useState<string>('')
   const [newGoalSaved, setNewGoalSaved] = useState<string>('0')
   const [newGoalNote, setNewGoalNote] = useState<string>('')
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
   const [editingGoalTitleDraft, setEditingGoalTitleDraft] = useState<string>('')
   const [editingGoalTargetDraft, setEditingGoalTargetDraft] = useState<string>('')
+  const [editingGoalMonthlyDraft, setEditingGoalMonthlyDraft] = useState<string>('')
   const [editingGoalSavedDraft, setEditingGoalSavedDraft] = useState<string>('')
   const [editingLogId, setEditingLogId] = useState<string | null>(null)
   const [editingLogNoteDraft, setEditingLogNoteDraft] = useState<string>('')
@@ -6057,16 +6130,20 @@ export default function Page() {
   const handleAddFinanceGoal = () => {
     const title = newGoalTitle.trim()
     const target = parseFormattedDigits(newGoalTarget)
+    const monthlyTarget = parseFormattedDigits(newGoalMonthlyTarget)
     const saved = parseFormattedDigits(newGoalSaved)
     if (!title || target <= 0) {
       showToast('Isi nama target tabungan & nominal target (> Rp 0)')
       return
     }
+    const hasPriority = financeVault.goals.some((g) => g.isPriority)
     const newGoal: FinanceSavingGoal = {
       id: `fgoal-${Date.now()}`,
       title,
       targetAmount: target,
       savedAmount: saved,
+      monthlyTarget: monthlyTarget > 0 ? monthlyTarget : undefined,
+      isPriority: !hasPriority,
       note: newGoalNote.trim() || undefined,
     }
     persistFinanceVault({
@@ -6076,6 +6153,7 @@ export default function Page() {
     setFinanceSelectedGoalId(newGoal.id)
     setNewGoalTitle('')
     setNewGoalTarget('')
+    setNewGoalMonthlyTarget('')
     setNewGoalSaved('0')
     setNewGoalNote('')
     setIsAddingFinanceGoal(false)
@@ -6085,9 +6163,24 @@ export default function Page() {
     showToast(`Target tabungan "${title}" dibuat!`)
   }
 
+  const handleSetPriorityGoal = (goalId: string) => {
+    const targetGoal = financeVault.goals.find((g) => g.id === goalId)
+    if (!targetGoal) return
+    persistFinanceVault({
+      ...financeVault,
+      goals: financeVault.goals.map((g) => ({
+        ...g,
+        isPriority: g.id === goalId,
+      })),
+    })
+    setFinanceSelectedGoalId(goalId)
+    showToast(`★ "${targetGoal.title}" dijadikan Target Prioritas!`)
+  }
+
   const handleUpdateFinanceGoal = (goalId: string) => {
     const title = editingGoalTitleDraft.trim()
     const target = parseFormattedDigits(editingGoalTargetDraft)
+    const monthlyTarget = parseFormattedDigits(editingGoalMonthlyDraft)
     const saved = parseFormattedDigits(editingGoalSavedDraft)
     if (!title || target <= 0) {
       showToast('Nama target dan nominal target harus valid (> Rp 0)')
@@ -6096,7 +6189,15 @@ export default function Page() {
     persistFinanceVault({
       ...financeVault,
       goals: financeVault.goals.map((g) =>
-        g.id === goalId ? { ...g, title, targetAmount: target, savedAmount: saved } : g
+        g.id === goalId
+          ? {
+              ...g,
+              title,
+              targetAmount: target,
+              savedAmount: saved,
+              monthlyTarget: monthlyTarget > 0 ? monthlyTarget : undefined,
+            }
+          : g
       ),
     })
     setEditingGoalId(null)
@@ -9289,29 +9390,26 @@ export default function Page() {
                 }}
               >
                 <CheckCircle2 size={11} />
-                Tuntas
+                +15 XP Hari Ini
               </span>
             ) : (
-              <button
-                type="button"
-                onClick={() => handleCompleteFinanceQuest(currentFinanceQuest.id, targetDateIso)}
+              <span
                 style={{
                   padding: '5px 10px',
                   borderRadius: '9px',
-                  background: currentRankTier.primaryColor,
-                  border: 'none',
-                  color: '#030712',
+                  background: 'rgba(16, 185, 129, 0.14)',
+                  border: '1px solid rgba(52, 211, 153, 0.35)',
+                  color: '#6ee7b7',
                   fontSize: '10px',
-                  fontWeight: 900,
-                  cursor: 'pointer',
+                  fontWeight: 800,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '3px',
+                  gap: '4px',
                 }}
               >
-                <Check size={11} strokeWidth={3} />
-                Selesaikan
-              </button>
+                <Target size={11} />
+                Nabung = +15 XP
+              </span>
             )}
           </div>
         </div>
@@ -9543,9 +9641,21 @@ export default function Page() {
                 Belum ada Target Tabungan. Klik &quot;+ Add Goals&quot; untuk membuat target pertamamu!
               </div>
             ) : (
-              financeVault.goals.map((goal) => {
+              financeVault.goals.map((goal, gIdx) => {
                 const pct = goal.targetAmount > 0 ? Math.min(100, Math.round((goal.savedAmount / goal.targetAmount) * 100)) : 0
                 const isDoneGoal = goal.savedAmount >= goal.targetAmount
+                const isPriorityGoal = Boolean(
+                  goal.isPriority || (!financeVault.goals.some((g) => g.isPriority) && gIdx === 0)
+                )
+                const totalRem = Math.max(0, goal.targetAmount - goal.savedAmount)
+                const goalMonthlySaved = monthLogs
+                  .filter((l) => l.type === 'saving' && (!l.goalId || l.goalId === goal.id))
+                  .reduce((acc, l) => acc + l.amount, 0)
+                const goalMonthlyTarget = goal.monthlyTarget || 0
+                const goalMonthlyRem = Math.max(0, goalMonthlyTarget - goalMonthlySaved)
+                const goalMonthlyPct =
+                  goalMonthlyTarget > 0 ? Math.min(100, Math.round((goalMonthlySaved / goalMonthlyTarget) * 100)) : 0
+
                 return (
                   <div
                     key={goal.id}
@@ -9553,9 +9663,16 @@ export default function Page() {
                       position: 'relative',
                       overflow: 'hidden',
                       borderRadius: '16px',
-                      border: `1px solid ${isDoneGoal ? `rgba(${currentRankTier.primaryRgb}, 0.45)` : 'rgba(255,255,255,0.1)'}`,
+                      border: `1px solid ${
+                        isPriorityGoal
+                          ? `rgba(${currentRankTier.primaryRgb}, 0.55)`
+                          : isDoneGoal
+                          ? 'rgba(52, 211, 153, 0.45)'
+                          : 'rgba(255,255,255,0.1)'
+                      }`,
                       background: '#080d1c',
                       padding: '12px',
+                      boxShadow: isPriorityGoal ? `0 8px 24px -10px ${currentRankTier.glowColor}` : 'none',
                     }}
                   >
                     {/* Liquid-Fill Backdrop */}
@@ -9579,16 +9696,16 @@ export default function Page() {
                         position: 'relative',
                         zIndex: 2,
                         display: 'flex',
-                        alignItems: 'center',
+                        alignItems: 'flex-start',
                         justifyContent: 'space-between',
                         gap: '8px',
                       }}
                     >
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
                           <strong
                             style={{
-                              fontSize: '12px',
+                              fontSize: '12.5px',
                               color: '#ffffff',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
@@ -9600,10 +9717,92 @@ export default function Page() {
                           <span style={{ fontSize: '9.5px', fontWeight: 900, color: currentRankTier.primaryColor, flexShrink: 0 }}>
                             {pct}%
                           </span>
+                          {isPriorityGoal ? (
+                            <span
+                              style={{
+                                padding: '2px 7px',
+                                borderRadius: '999px',
+                                background: `rgba(${currentRankTier.primaryRgb}, 0.2)`,
+                                border: `1px solid ${currentRankTier.primaryColor}`,
+                                color: currentRankTier.highlightColor,
+                                fontSize: '8.5px',
+                                fontWeight: 900,
+                                letterSpacing: '0.03em',
+                              }}
+                            >
+                              ★ PRIORITAS
+                            </span>
+                          ) : !isFinanceViewOnly ? (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPriorityGoal(goal.id)}
+                              style={{
+                                padding: '2px 7px',
+                                borderRadius: '999px',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.14)',
+                                color: '#94a3b8',
+                                fontSize: '8.5px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                              title="Tampilkan target ini di Card Dashboard"
+                            >
+                              ☆ Set Prioritas
+                            </button>
+                          ) : null}
                         </div>
-                        <div style={{ fontSize: '10.5px', color: '#e2e8f0', marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
-                          {formatRupiah(goal.savedAmount)} / {formatRupiah(goal.targetAmount)}
+
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '10.5px', color: '#e2e8f0', marginTop: '4px', fontVariantNumeric: 'tabular-nums' }}>
+                          <span>Total: {formatRupiah(goal.savedAmount)} / {formatRupiah(goal.targetAmount)}</span>
+                          <span
+                            style={{
+                              color: totalRem > 0 ? '#7dd3fc' : '#6ee7b7',
+                              fontWeight: 800,
+                            }}
+                          >
+                            • {totalRem > 0 ? `Kurang ${formatRupiah(totalRem)} lagi` : '✓ Target Tercapai!'}
+                          </span>
                         </div>
+
+                        {goalMonthlyTarget > 0 && (
+                          <div
+                            style={{
+                              marginTop: '6px',
+                              padding: '5px 8px',
+                              borderRadius: '10px',
+                              background: 'rgba(3, 7, 18, 0.55)',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '4px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px', fontSize: '9.5px', fontVariantNumeric: 'tabular-nums' }}>
+                              <span style={{ color: '#cbd5e1', fontWeight: 700 }}>
+                                Target Bln Ini: {formatRupiah(goalMonthlySaved)} / {formatRupiah(goalMonthlyTarget)}
+                              </span>
+                              <span
+                                style={{
+                                  color: goalMonthlyRem > 0 ? '#fcd34d' : '#6ee7b7',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {goalMonthlyRem > 0 ? `Kurang ${formatRupiah(goalMonthlyRem)} bln ini` : '✓ Target Bulan Ini Tercapai!'}
+                              </span>
+                            </div>
+                            <div style={{ width: '100%', height: '3.5px', borderRadius: '999px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                              <div
+                                style={{
+                                  width: `${goalMonthlyPct}%`,
+                                  height: '100%',
+                                  borderRadius: '999px',
+                                  background: goalMonthlyRem > 0 ? 'linear-gradient(90deg, #f59e0b, #38bdf8)' : '#10b981',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {!isFinanceViewOnly && (
@@ -9632,6 +9831,7 @@ export default function Page() {
                               setEditingGoalId(goal.id)
                               setEditingGoalTitleDraft(goal.title)
                               setEditingGoalTargetDraft(formatDigitsWithDots(goal.targetAmount))
+                              setEditingGoalMonthlyDraft(goal.monthlyTarget ? formatDigitsWithDots(goal.monthlyTarget) : '')
                               setEditingGoalSavedDraft(formatDigitsWithDots(goal.savedAmount))
                               setActiveFinanceSheet('editGoal')
                             }}
@@ -10314,19 +10514,22 @@ export default function Page() {
                             fontSize: '12.5px',
                           }}
                         />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 900, color: currentRankTier.primaryColor }}>Rp</span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={formatDigitsWithDots(newGoalTarget)}
-                            onChange={(e) => setNewGoalTarget(formatDigitsWithDots(e.target.value))}
-                            placeholder="1.000.000"
-                            style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '15px', fontWeight: 900 }}
-                          />
+                        <div>
+                          <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Total Target Tabungan</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 900, color: currentRankTier.primaryColor }}>Rp</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatDigitsWithDots(newGoalTarget)}
+                              onChange={(e) => setNewGoalTarget(formatDigitsWithDots(e.target.value))}
+                              placeholder="10.000.000"
+                              style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '15px', fontWeight: 900 }}
+                            />
+                          </div>
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          {[500000, 1000000, 2500000, 5000000].map((v) => (
+                          {[1000000, 2500000, 5000000, 10000000].map((v) => (
                             <button
                               key={v}
                               type="button"
@@ -10345,6 +10548,20 @@ export default function Page() {
                               {formatRupiah(v)}
                             </button>
                           ))}
+                        </div>
+                        <div>
+                          <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Target Nabung Per Bulan (Komitmen Bulanan)</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', borderRadius: '12px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 900, color: '#34d399' }}>Rp</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatDigitsWithDots(newGoalMonthlyTarget)}
+                              onChange={(e) => setNewGoalMonthlyTarget(formatDigitsWithDots(e.target.value))}
+                              placeholder="1.000.000 / bulan"
+                              style={{ flex: 1, minWidth: 0, padding: '10px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '14px', fontWeight: 800 }}
+                            />
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -10568,6 +10785,20 @@ export default function Page() {
                             style={{ flex: 1, minWidth: 0, padding: '9px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '12.5px', fontWeight: 800 }}
                           />
                         </div>
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: '4px' }}>Target Nabung Per Bulan (Rp)</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 10px', borderRadius: '11px', background: '#04060e', border: '1px solid rgba(255,255,255,0.15)' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 900, color: '#fcd34d' }}>Rp</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatDigitsWithDots(editingGoalMonthlyDraft)}
+                          onChange={(e) => setEditingGoalMonthlyDraft(formatDigitsWithDots(e.target.value))}
+                          placeholder="1.000.000"
+                          style={{ flex: 1, minWidth: 0, padding: '9px 0', border: 'none', outline: 'none', background: 'transparent', color: '#ffffff', fontSize: '12.5px', fontWeight: 800 }}
+                        />
                       </div>
                     </div>
                     <button
@@ -16563,6 +16794,7 @@ export default function Page() {
                       const isTaskDoneOnDay = (t: PersonalTask) =>
                         Boolean(t.completedDates?.includes(activeScheduleDayObj.isoDate))
                       const isTaskSkippedOnDay = (t: PersonalTask) => {
+                        if (t.category.toLowerCase() === 'keuangan') return false
                         if (isFutureDay || isTaskDoneOnDay(t)) return false
                         if (isPastDay) {
                           return !t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
@@ -16575,6 +16807,7 @@ export default function Page() {
                       }
 
                       const isTaskUpcomingTimeOnDay = (t: PersonalTask) => {
+                        if (t.category.toLowerCase() === 'keuangan') return false
                         if (isPastDay || isFutureDay || isTaskDoneOnDay(t) || isTaskSkippedOnDay(t)) return false
                         return isQuestTimeUpcoming(t.targetTime, false, t.schedule)
                       }
@@ -16586,8 +16819,10 @@ export default function Page() {
                       const completedDayCount = totalDayTasks - remainingDayTasks.length
                       const skippedDayCount = remainingDayTasks.filter((t) => isTaskSkippedOnDay(t)).length
                       const upcomingTimedDayCount = remainingDayTasks.filter((t) => isTaskUpcomingTimeOnDay(t)).length
-                      const activePendingDayTasks = remainingDayTasks.filter(
-                        (t) => !isTaskSkippedOnDay(t) && !isTaskUpcomingTimeOnDay(t)
+                      const activePendingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
+                        (t) =>
+                          t.category.toLowerCase() === 'keuangan' ||
+                          (!isTaskDoneOnDay(t) && !isTaskSkippedOnDay(t) && !isTaskUpcomingTimeOnDay(t))
                       )
                       const activeRemainingDayCount = activePendingDayTasks.length
                       const hiddenDayTasks = activeScheduleDayObj.scheduledTasks.filter(
@@ -16666,6 +16901,47 @@ export default function Page() {
                           </div>
 
                           {(() => {
+                            const priorityGoalForDay =
+                              financeVault.goals.find((g) => g.isPriority) || financeVault.goals[0] || null
+                            const dayMonthPrefix = activeScheduleDayObj.isoDate.slice(0, 7)
+                            const priorityMonthlySaved = priorityGoalForDay
+                              ? financeVault.logs
+                                  .filter(
+                                    (l) =>
+                                      l.type === 'saving' &&
+                                      l.dateIso.startsWith(dayMonthPrefix) &&
+                                      (!l.goalId || l.goalId === priorityGoalForDay.id)
+                                  )
+                                  .reduce((acc, l) => acc + l.amount, 0)
+                              : 0
+                            const hasPriorityMonthly = Boolean(
+                              priorityGoalForDay && priorityGoalForDay.monthlyTarget && priorityGoalForDay.monthlyTarget > 0
+                            )
+                            const finTargetVal = priorityGoalForDay
+                              ? hasPriorityMonthly
+                                ? priorityGoalForDay.monthlyTarget || 0
+                                : priorityGoalForDay.targetAmount
+                              : 0
+                            const finSavedVal = priorityGoalForDay
+                              ? hasPriorityMonthly
+                                ? priorityMonthlySaved
+                                : priorityGoalForDay.savedAmount
+                              : 0
+                            const finRemVal = Math.max(0, finTargetVal - finSavedVal)
+                            const finPct = finTargetVal > 0 ? Math.min(100, Math.round((finSavedVal / finTargetVal) * 100)) : 0
+                            const finTargetText = priorityGoalForDay
+                              ? hasPriorityMonthly
+                                ? `Bln ini: ${formatRupiah(finSavedVal)} / ${formatRupiah(finTargetVal)}`
+                                : `Target: ${formatRupiah(finSavedVal)} / ${formatRupiah(finTargetVal)}`
+                              : 'Belum ada target prioritas'
+                            const finRemText = priorityGoalForDay
+                              ? finRemVal > 0
+                                ? `Kurang ${formatRupiah(finRemVal)} lagi`
+                                : hasPriorityMonthly
+                                ? '✓ Target Bln Ini Tercapai!'
+                                : '✓ Target Tercapai!'
+                              : 'Atur target di Vault'
+
                             const renderDayQuestRow = (task: PersonalTask) => {
                               const isGym = task.category.toLowerCase() === 'gym'
                               const isFinance = task.category.toLowerCase() === 'keuangan'
@@ -16685,93 +16961,115 @@ export default function Page() {
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, x: 26, scale: 0.93 }}
                                   transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+                                  onClick={() => {
+                                    if (isFinance) {
+                                      setFinanceTab('goals')
+                                      setActiveFinanceSheet(null)
+                                      setActiveFinanceQuest({
+                                        id: task.id,
+                                        dateIso: activeScheduleDayObj.isoDate,
+                                        viewOnly: isFutureDay,
+                                      })
+                                    }
+                                  }}
                                   style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     gap: '8px',
-                                    padding: '7px 9px',
+                                    padding: '8px 10px',
                                     borderRadius: '11px',
                                     opacity: isFutureDay ? 0.8 : 1,
-                                    background: isSkipped && !isDoneOnDay ? 'rgba(69, 10, 26, 0.45)' : 'rgba(18, 14, 33, 0.92)',
-                                    border: isSkipped && !isDoneOnDay
-                                      ? '1px solid rgba(244, 63, 94, 0.35)'
-                                      : '1px solid rgba(255, 255, 255, 0.1)',
+                                    cursor: isFinance ? 'pointer' : 'default',
+                                    background:
+                                      isSkipped && !isDoneOnDay
+                                        ? 'rgba(69, 10, 26, 0.45)'
+                                        : isFinance
+                                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(18, 14, 33, 0.95))'
+                                        : 'rgba(18, 14, 33, 0.92)',
+                                    border:
+                                      isSkipped && !isDoneOnDay
+                                        ? '1px solid rgba(244, 63, 94, 0.35)'
+                                        : isFinance
+                                        ? '1px solid rgba(52, 211, 153, 0.32)'
+                                        : '1px solid rgba(255, 255, 255, 0.1)',
                                   }}
                                 >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                    <span
-                                      className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
-                                      onClick={() => {
-                                        if (!isFutureDay) {
-                                          handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                                    {!isFinance && (
+                                      <span
+                                        className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
+                                        onClick={() => {
+                                          if (!isFutureDay) {
+                                            handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
+                                          }
+                                        }}
+                                        role={isFutureDay ? undefined : 'button'}
+                                        tabIndex={isFutureDay ? undefined : 0}
+                                        style={{
+                                          width: '20px',
+                                          height: '20px',
+                                          borderRadius: '6px',
+                                          border: isFutureDay
+                                            ? '1px solid rgba(148, 163, 184, 0.3)'
+                                            : isDoneOnDay
+                                              ? '1px solid #38bdf8'
+                                              : isSkipped
+                                                ? '1px solid #ef4444'
+                                                : '1px solid rgba(168, 85, 247, 0.5)',
+                                          background: isFutureDay
+                                            ? 'rgba(15, 11, 26, 0.75)'
+                                            : isDoneOnDay
+                                              ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
+                                              : isSkipped
+                                                ? 'rgba(239, 68, 68, 0.2)'
+                                                : 'rgba(255, 255, 255, 0.04)',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          cursor: isFutureDay ? 'not-allowed' : 'pointer',
+                                          flexShrink: 0,
+                                          color: isFutureDay
+                                            ? '#9a8fb2'
+                                            : isDoneOnDay
+                                              ? '#67e8f9'
+                                              : isSkipped
+                                                ? '#f87171'
+                                                : 'transparent',
+                                          transition: 'all 0.15s ease',
+                                        }}
+                                        title={
+                                          isFutureDay
+                                            ? 'Belum saatnya dikerjakan (Hanya Lihat)'
+                                            : isDoneOnDay
+                                              ? 'Batalkan selesai'
+                                              : 'Centang selesai (+XP)'
                                         }
-                                      }}
-                                      role={isFutureDay ? undefined : 'button'}
-                                      tabIndex={isFutureDay ? undefined : 0}
-                                      style={{
-                                        width: '20px',
-                                        height: '20px',
-                                        borderRadius: '6px',
-                                        border: isFutureDay
-                                          ? '1px solid rgba(148, 163, 184, 0.3)'
-                                          : isDoneOnDay
-                                            ? '1px solid #38bdf8'
-                                            : isSkipped
-                                              ? '1px solid #ef4444'
-                                              : '1px solid rgba(168, 85, 247, 0.5)',
-                                        background: isFutureDay
-                                          ? 'rgba(15, 11, 26, 0.75)'
-                                          : isDoneOnDay
-                                            ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
-                                            : isSkipped
-                                              ? 'rgba(239, 68, 68, 0.2)'
-                                              : 'rgba(255, 255, 255, 0.04)',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: isFutureDay ? 'not-allowed' : 'pointer',
-                                        flexShrink: 0,
-                                        color: isFutureDay
-                                          ? '#9a8fb2'
-                                          : isDoneOnDay
-                                            ? '#67e8f9'
-                                            : isSkipped
-                                              ? '#f87171'
-                                              : 'transparent',
-                                        transition: 'all 0.15s ease',
-                                      }}
-                                      title={
-                                        isFutureDay
-                                          ? 'Belum saatnya dikerjakan (Hanya Lihat)'
-                                          : isDoneOnDay
-                                            ? 'Batalkan selesai'
-                                            : 'Centang selesai (+XP)'
-                                      }
-                                      aria-label={
-                                        isFutureDay
-                                          ? 'Belum saatnya dikerjakan (Hanya Lihat)'
-                                          : isDoneOnDay
-                                            ? 'Batalkan selesai'
-                                            : 'Centang selesai (+XP)'
-                                      }
-                                    >
-                                      {isFutureDay ? (
-                                        <Lock size={10} color="#9a8fb2" />
-                                      ) : isDoneOnDay ? (
-                                        <Check size={13} strokeWidth={3} />
-                                      ) : isSkipped ? (
-                                        <FastForward size={11} color="#f87171" strokeWidth={2.5} />
-                                      ) : null}
-                                    </span>
+                                        aria-label={
+                                          isFutureDay
+                                            ? 'Belum saatnya dikerjakan (Hanya Lihat)'
+                                            : isDoneOnDay
+                                              ? 'Batalkan selesai'
+                                              : 'Centang selesai (+XP)'
+                                        }
+                                      >
+                                        {isFutureDay ? (
+                                          <Lock size={10} color="#9a8fb2" />
+                                        ) : isDoneOnDay ? (
+                                          <Check size={13} strokeWidth={3} />
+                                        ) : isSkipped ? (
+                                          <FastForward size={11} color="#f87171" strokeWidth={2.5} />
+                                        ) : null}
+                                      </span>
+                                    )}
                                     <span
                                       style={{
-                                        width: '25px',
-                                        height: '25px',
+                                        width: '26px',
+                                        height: '26px',
                                         borderRadius: '8px',
-                                        background: 'rgba(168, 85, 247, 0.14)',
-                                        border: '1px solid rgba(168, 85, 247, 0.3)',
-                                        color: '#d8b4fe',
+                                        background: isFinance ? 'rgba(16, 185, 129, 0.16)' : 'rgba(168, 85, 247, 0.14)',
+                                        border: isFinance ? '1px solid rgba(52, 211, 153, 0.38)' : '1px solid rgba(168, 85, 247, 0.3)',
+                                        color: isFinance ? '#6ee7b7' : '#d8b4fe',
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -16780,7 +17078,7 @@ export default function Page() {
                                     >
                                       {renderCategoryIcon(task.category, 14)}
                                     </span>
-                                    <div style={{ minWidth: 0 }}>
+                                    <div style={{ minWidth: 0, flex: 1 }}>
                                       <strong
                                         style={{
                                           display: 'flex',
@@ -16788,14 +17086,32 @@ export default function Page() {
                                           gap: '5px',
                                           fontSize: '11.5px',
                                           color: '#ffffff',
-                                          textDecoration: isDoneOnDay ? 'line-through' : 'none',
+                                          textDecoration: !isFinance && isDoneOnDay ? 'line-through' : 'none',
                                           whiteSpace: 'nowrap',
                                           overflow: 'hidden',
                                           textOverflow: 'ellipsis',
                                         }}
                                       >
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</span>
-                                        {isArrivedActive && (
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                          {isFinance && priorityGoalForDay ? priorityGoalForDay.title : task.title}
+                                        </span>
+                                        {isFinance && (
+                                          <span
+                                            style={{
+                                              fontSize: '7.5px',
+                                              color: '#6ee7b7',
+                                              background: 'rgba(16, 185, 129, 0.16)',
+                                              border: '1px solid rgba(52, 211, 153, 0.38)',
+                                              padding: '1px 5px',
+                                              borderRadius: '999px',
+                                              fontWeight: 800,
+                                              flexShrink: 0,
+                                            }}
+                                          >
+                                            ★ PRIORITAS
+                                          </span>
+                                        )}
+                                        {!isFinance && isArrivedActive && (
                                           <span
                                             style={{
                                               fontSize: '8px',
@@ -16811,7 +17127,7 @@ export default function Page() {
                                             TERBUKA
                                           </span>
                                         )}
-                                        {isUpcomingTime && (
+                                        {!isFinance && isUpcomingTime && (
                                           <span
                                             style={{
                                               fontSize: '8px',
@@ -16827,7 +17143,7 @@ export default function Page() {
                                             JAM {task.targetTime}
                                           </span>
                                         )}
-                                        {isSkipped && !isDoneOnDay && (
+                                        {!isFinance && isSkipped && !isDoneOnDay && (
                                           <span
                                             style={{
                                               fontSize: '7.5px',
@@ -16843,30 +17159,58 @@ export default function Page() {
                                           </span>
                                         )}
                                       </strong>
-                                      <span
-                                        style={{
-                                          fontSize: '9px',
-                                          color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1',
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '4px',
-                                          flexWrap: 'wrap',
-                                        }}
-                                      >
-                                        <span>
-                                          {task.category}
-                                          {isSkipped && !isDoneOnDay
-                                            ? isPastDay
-                                              ? ' • (Skip)'
-                                              : ' • (Dilewati)'
-                                            : ` • +${task.xp} XP`}
-                                        </span>
-                                        {task.targetTime && (
-                                          <span style={{ color: '#7dd3fc', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                            • <Clock size={9} /> {task.targetTime}
+                                      {isFinance ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '2px' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '5px', fontSize: '9.5px', fontVariantNumeric: 'tabular-nums' }}>
+                                            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{finTargetText}</span>
+                                            <span
+                                              style={{
+                                                color: finRemVal > 0 ? '#7dd3fc' : '#6ee7b7',
+                                                fontWeight: 800,
+                                              }}
+                                            >
+                                              • {finRemText}
+                                            </span>
+                                          </div>
+                                          {priorityGoalForDay && (
+                                            <div style={{ width: '100%', maxWidth: '190px', height: '3.5px', borderRadius: '999px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                              <div
+                                                style={{
+                                                  width: `${finPct}%`,
+                                                  height: '100%',
+                                                  borderRadius: '999px',
+                                                  background: 'linear-gradient(90deg, #10b981, #38bdf8)',
+                                                }}
+                                              />
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span
+                                          style={{
+                                            fontSize: '9px',
+                                            color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            flexWrap: 'wrap',
+                                          }}
+                                        >
+                                          <span>
+                                            {task.category}
+                                            {isSkipped && !isDoneOnDay
+                                              ? isPastDay
+                                                ? ' • (Skip)'
+                                                : ' • (Dilewati)'
+                                              : ` • +${task.xp} XP`}
                                           </span>
-                                        )}
-                                      </span>
+                                          {task.targetTime && (
+                                            <span style={{ color: '#7dd3fc', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                              • <Clock size={9} /> {task.targetTime}
+                                            </span>
+                                          )}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
 
@@ -17017,7 +17361,7 @@ export default function Page() {
                                           </button>
                                         )}
 
-                                        {!isDoneOnDay && (
+                                        {!isFinance && !isDoneOnDay && (
                                           <>
                                             <button
                                               type="button"
@@ -18029,6 +18373,57 @@ export default function Page() {
                         ? enriched.filter((item) => item.isDoneNow || item.isSkipped)
                         : []
 
+                    const priorityGoalForCard =
+                      financeVault.goals.find((g) => g.isPriority) || financeVault.goals[0] || null
+                    const cardMonthPrefix = todayIso.slice(0, 7)
+                    const cardPriorityMonthlySaved = priorityGoalForCard
+                      ? financeVault.logs
+                          .filter(
+                            (l) =>
+                              l.type === 'saving' &&
+                              l.dateIso.startsWith(cardMonthPrefix) &&
+                              (!l.goalId || l.goalId === priorityGoalForCard.id)
+                          )
+                          .reduce((acc, l) => acc + l.amount, 0)
+                      : 0
+                    const cardHasMonthly = Boolean(
+                      priorityGoalForCard && priorityGoalForCard.monthlyTarget && priorityGoalForCard.monthlyTarget > 0
+                    )
+                    const cardTargetVal = priorityGoalForCard
+                      ? cardHasMonthly
+                        ? priorityGoalForCard.monthlyTarget || 0
+                        : priorityGoalForCard.targetAmount
+                      : 0
+                    const cardSavedVal = priorityGoalForCard
+                      ? cardHasMonthly
+                        ? cardPriorityMonthlySaved
+                        : priorityGoalForCard.savedAmount
+                      : 0
+                    const cardRemVal = Math.max(0, cardTargetVal - cardSavedVal)
+                    const cardPct = cardTargetVal > 0 ? Math.min(100, Math.round((cardSavedVal / cardTargetVal) * 100)) : 0
+                    const cardFinanceSummary = priorityGoalForCard
+                      ? {
+                          goalTitle: priorityGoalForCard.title,
+                          targetLabel: cardHasMonthly
+                            ? `Bln ini: ${formatRupiah(cardSavedVal)} / ${formatRupiah(cardTargetVal)}`
+                            : `Target: ${formatRupiah(cardSavedVal)} / ${formatRupiah(cardTargetVal)}`,
+                          remainingLabel:
+                            cardRemVal > 0
+                              ? `Kurang ${formatRupiah(cardRemVal)} lagi`
+                              : cardHasMonthly
+                              ? '✓ Target Bln Ini Tercapai!'
+                              : '✓ Target Tercapai!',
+                          pct: cardPct,
+                          isReached: cardRemVal <= 0,
+                        }
+                      : {
+                          goalTitle: 'Target Tabungan',
+                          targetLabel: 'Belum ada target prioritas',
+                          remainingLabel: 'Atur target di Vault',
+                          pct: 0,
+                          isReached: false,
+                        }
+
                     const renderTaskCard = (
                       {
                         task,
@@ -18042,7 +18437,11 @@ export default function Page() {
                         key={task.id}
                         questId={task.id}
                         colorIndex={globalIdx >= 0 ? globalIdx : 0}
-                        title={task.title}
+                        title={
+                          task.category.toLowerCase() === 'keuangan' && priorityGoalForCard
+                            ? `${task.title} • ★ ${priorityGoalForCard.title}`
+                            : task.title
+                        }
                         meta={task.category}
                         icon={task.icon}
                         done={isDoneNow}
@@ -18054,6 +18453,9 @@ export default function Page() {
                         viewOnly={questScheduleTab === 'upcoming'}
                         isGym={task.category.toLowerCase() === 'gym'}
                         isFinance={task.category.toLowerCase() === 'keuangan'}
+                        financeSummary={
+                          task.category.toLowerCase() === 'keuangan' ? cardFinanceSummary : undefined
+                        }
                         xp={task.xp}
                         heroCard={useHeroCard}
                         onOpenWorkout={() => {
