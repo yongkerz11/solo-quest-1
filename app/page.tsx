@@ -8945,6 +8945,133 @@ export default function Page() {
                   </div>
                 )}
 
+                {/* SMART CALCULATION (PERCENTAGE SAVING FROM DOMPET) — KHUSUS MODE NABUNG */}
+                {financeLogType === 'saving' && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      padding: '10px',
+                      borderRadius: '13px',
+                      background: 'rgba(16, 185, 129, 0.08)',
+                      border: '1px solid rgba(52, 211, 153, 0.24)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <span
+                        style={{
+                          fontSize: '9.5px',
+                          fontWeight: 900,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                          color: '#6ee7b7',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <Sparkles size={11} />
+                        Smart Calculation
+                      </span>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#cbd5e1', fontVariantNumeric: 'tabular-nums' }}>
+                        Dari Dompet: <strong style={{ color: '#ffffff' }}>{formatRupiah(currentDompet)}</strong>
+                      </span>
+                    </div>
+
+                    {/* Preset Persentase (10%, 20%, 30%, 50%, 75%) dengan Nominal Live */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '5px' }}>
+                      {[10, 20, 30, 50, 75].map((pct) => {
+                        const calcAmount = Math.round((currentDompet * pct) / 100)
+                        const isSelected = currentDompet > 0 && parsedQuickAmount === calcAmount && calcAmount > 0
+                        return (
+                          <motion.button
+                            key={pct}
+                            type="button"
+                            whileTap={{ scale: 0.94 }}
+                            disabled={currentDompet <= 0}
+                            onClick={() => {
+                              setFinanceAmountInput(calcAmount > 0 ? formatDigitsWithDots(calcAmount) : '')
+                            }}
+                            style={{
+                              padding: '6px 3px',
+                              borderRadius: '10px',
+                              background: isSelected ? 'rgba(16, 185, 129, 0.25)' : 'rgba(5, 9, 20, 0.65)',
+                              border: isSelected ? '1px solid #34d399' : '1px solid rgba(255, 255, 255, 0.09)',
+                              color: currentDompet <= 0 ? '#64748b' : '#ffffff',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '1px',
+                              cursor: currentDompet <= 0 ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            <span style={{ fontSize: '10.5px', fontWeight: 900, color: isSelected ? '#6ee7b7' : '#34d399' }}>
+                              {pct}%
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '8.5px',
+                                fontWeight: 700,
+                                color: '#cbd5e1',
+                                fontVariantNumeric: 'tabular-nums',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {formatRupiahCompact(calcAmount).replace('Rp ', '')}
+                            </span>
+                          </motion.button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Custom Percentage Slider (0% - 100%) */}
+                    {currentDompet > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '2px' }}>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={Math.min(100, Math.round((parsedQuickAmount / currentDompet) * 100))}
+                          onChange={(e) => {
+                            const pctVal = Number(e.target.value) || 0
+                            const calcVal = Math.round((currentDompet * pctVal) / 100)
+                            setFinanceAmountInput(calcVal > 0 ? formatDigitsWithDots(calcVal) : '')
+                          }}
+                          style={{
+                            flex: 1,
+                            accentColor: '#34d399',
+                            cursor: 'pointer',
+                            height: '4px',
+                          }}
+                          aria-label="Persentase nabung dari dompet"
+                        />
+                        <span
+                          style={{
+                            minWidth: '42px',
+                            textAlign: 'center',
+                            padding: '3px 6px',
+                            borderRadius: '7px',
+                            background: 'rgba(16, 185, 129, 0.2)',
+                            border: '1px solid rgba(52, 211, 153, 0.4)',
+                            color: '#6ee7b7',
+                            fontSize: '10px',
+                            fontWeight: 900,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        >
+                          {Math.min(100, Math.round((parsedQuickAmount / currentDompet) * 100))}%
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '9.5px', color: '#94a3b8', textAlign: 'center' }}>
+                        Isi gaji atau pemasukan terlebih dahulu untuk memakai Smart Calculation.
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Quick Amount Presets Inside Unified Card */}
                 <div
                   style={{
