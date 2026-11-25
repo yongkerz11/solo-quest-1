@@ -3724,7 +3724,7 @@ export default function Page() {
     (t) =>
       t.userId === currentUser.id ||
       (currentUser.username && (t.userId === currentUser.username || t.id.includes(currentUser.username))) ||
-      (!t.userId && currentUser.username === 'yongzz')
+      !t.userId
   )
   const sealedPersonalTasks = userPersonalTasks.filter((t) => Boolean(t.isSealed))
   const activeSchedulePersonalTasks = userPersonalTasks.filter((t) => !t.isSealed)
@@ -3859,6 +3859,45 @@ export default function Page() {
       })
     })
 
+    // Tambahkan setiap transaksi 'saving' (Nabung) dari Finance Vault ke riwayat XP Keuangan
+    // (Hindari duplikasi dengan tanggal yang sudah tercatat di task Keuangan pada hari yang sama untuk log pertama hari itu)
+    const existingFinanceDatesConsumed = new Set<string>()
+    items.forEach((it) => {
+      if (findCategory(it.category).name === 'Keuangan') {
+        existingFinanceDatesConsumed.add(it.isoDate)
+      }
+    })
+    const consumedOncePerDate = new Set<string>()
+    financeVault.logs
+      .filter((l) => l.type === 'saving')
+      .forEach((log) => {
+        if (existingFinanceDatesConsumed.has(log.dateIso) && !consumedOncePerDate.has(log.dateIso)) {
+          consumedOncePerDate.add(log.dateIso)
+          return
+        }
+        const parsed = new Date(`${log.dateIso}T00:00:00`)
+        const dateLabel = !isNaN(parsed.getTime())
+          ? parsed.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+          : todayShort
+        const fullDateLabel = formatFullDateId(log.dateIso)
+        items.push({
+          id: `finlog-${log.id}`,
+          questId: log.goalId || 'finance-vault',
+          title: log.note || 'Menabung di Finance Vault',
+          category: 'Keuangan',
+          icon: 'Wallet',
+          xp: 15,
+          isoDate: log.dateIso,
+          dateLabel,
+          fullDateLabel,
+          timestamp: log.createdAt || (!isNaN(parsed.getTime()) ? parsed.getTime() : Date.now()),
+          isGym: false,
+          exercises: [],
+          totalSets: 0,
+          maxWeight: 0,
+        })
+      })
+
     return items.sort((a, b) => b.timestamp - a.timestamp)
   })()
 
@@ -3866,17 +3905,24 @@ export default function Page() {
   const maxHistoryWeight = userHistoryItems.reduce((acc, item) => Math.max(acc, item.maxWeight), 0)
 
   // Derive Akumulasi XP Valid dari Riwayat Quest, Daily All-Clear Bonus & Clan Challenge
-  const historyTotalXp = userHistoryItems.reduce((acc, item) => acc + findCategory(item.category).xp, 0)
+  const historyTotalXp = userHistoryItems.reduce(
+    (acc, item) => acc + Math.max(Number(item.xp) || 0, findCategory(item.category).xp),
+    0
+  )
   const clanCompletedQuestsList = userJoinedClanQuests.filter(
     (cq) =>
       cq.completedByUserIds.includes(currentUser.id) ||
       (currentUser.username && cq.completedByUserIds.includes(currentUser.username))
   )
-  const clanCompletedTotalXp = clanCompletedQuestsList.reduce((acc, cq) => acc + findCategory(cq.category).xp, 0)
-  const isDailyAllClearEligible = todayPersonalTasks.length >= MIN_QUESTS_FOR_DAILY_BONUS
+  const clanCompletedTotalXp = clanCompletedQuestsList.reduce(
+    (acc, cq) => acc + Math.max(Number(cq.xp) || 0, findCategory(cq.category).xp),
+    0
+  )
+  const checkableTodayTasks = todayPersonalTasks.filter((t) => t.category.toLowerCase() !== 'keuangan')
+  const isDailyAllClearEligible = checkableTodayTasks.length >= MIN_QUESTS_FOR_DAILY_BONUS
   const isDailyAllClearToday =
     isDailyAllClearEligible &&
-    todayPersonalTasks.every((t) => Boolean(t.completedDates?.includes(todayIsoStr)))
+    checkableTodayTasks.every((t) => Boolean(t.completedDates?.includes(todayIsoStr)))
   const userDailyBonusDates = Array.isArray(currentUser.dailyBonusDates) ? currentUser.dailyBonusDates : []
   const effectiveDailyBonusDates = isDailyAllClearToday
     ? Array.from(new Set([...userDailyBonusDates, todayIsoStr]))
@@ -3904,7 +3950,15 @@ export default function Page() {
     const clanTasksInCat = userJoinedClanQuests.filter((cq) => findCategory(cq.category).name === cat.name)
     const totalQuestCount = personalTasksInCat.length + clanTasksInCat.length
     const count = matchingPersonal.length + matchingClan.length
-    const catXp = matchingPersonal.length * cat.xp + matchingClan.length * cat.xp
+    const personalCatXp = matchingPersonal.reduce(
+      (acc, item) => acc + Math.max(Number(item.xp) || 0, cat.xp),
+      0
+    )
+    const clanCatXp = matchingClan.reduce(
+      (acc, cq) => acc + Math.max(Number(cq.xp) || 0, cat.xp),
+      0
+    )
+    const catXp = personalCatXp + clanCatXp
     const rankInfo = getCategoryRankInfo(catXp)
     const hasQuest = totalQuestCount > 0 || count > 0 || catXp > 0
     return {
@@ -18063,12 +18117,13 @@ export default function Page() {
                         'Istirahat & Reset': 'REST',
                       }
 
-                      const displayCats = (topMasteryCategories.length > 0 ? topMasteryCategories : categoryMasteries).slice(0, 4)
+                      const displayCats = (topMasteryCategories.length > 0 ? topMasteryCategories : categoryMasteries).slice(0, 5)
                       const radarSource = [
                         ...topMasteryCategories,
                         ...categoryMasteries.filter((c) => !topMasteryCategories.some((t) => t.name === c.name)),
                       ].slice(0, 5)
-                      const maxCatXp = Math.max(50, ...radarSource.map((c) => c.xp))
+                      const highestCatXp = Math.max(0, ...radarSource.map((c) => c.xp))
+                      const maxCatXp = Math.max(100, Math.ceil((highestCatXp + 60) / 100) * 100)
 
                       const cx = 80
                       const cy = 80
@@ -18163,27 +18218,44 @@ export default function Page() {
                             })}
                           </svg>
 
-                          <div style={{ display: 'grid', gap: '8px', minWidth: 0 }}>
+                          <div style={{ display: 'grid', gap: '7px', minWidth: 0 }}>
                             {displayCats.map((cat, idx) => {
-                              const pct = Math.max(
-                                cat.xp > 0 ? 12 : 4,
-                                Math.min(100, Math.round((cat.xp / maxCatXp) * 100))
-                              )
+                              const isTop = idx === 0 && cat.xp > 0
                               return (
-                                <div key={cat.name} style={{ minWidth: 0 }}>
-                                  <div
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      gap: '6px',
-                                      fontSize: '9.5px',
-                                      fontWeight: 700,
-                                      marginBottom: '3px',
-                                    }}
-                                  >
+                                <div
+                                  key={cat.name}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '8px',
+                                    padding: '6px 10px',
+                                    borderRadius: '10px',
+                                    background: isTop
+                                      ? `rgba(${currentRankTier.primaryRgb}, 0.12)`
+                                      : 'rgba(255, 255, 255, 0.03)',
+                                    border: isTop
+                                      ? `1px solid rgba(${currentRankTier.primaryRgb}, 0.35)`
+                                      : '1px solid rgba(255, 255, 255, 0.07)',
+                                    minWidth: 0,
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                                    <span
+                                      aria-hidden="true"
+                                      style={{
+                                        width: '6px',
+                                        height: '6px',
+                                        borderRadius: '999px',
+                                        flexShrink: 0,
+                                        background: isTop ? currentRankTier.primaryColor : '#a855f7',
+                                        boxShadow: isTop ? `0 0 8px ${currentRankTier.primaryColor}` : 'none',
+                                      }}
+                                    />
                                     <span
                                       style={{
+                                        fontSize: '10.5px',
+                                        fontWeight: 700,
                                         color: '#f1f5f9',
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
@@ -18192,36 +18264,18 @@ export default function Page() {
                                     >
                                       {cat.name}
                                     </span>
-                                    <span
-                                      style={{
-                                        color: idx === 0 && cat.xp > 0 ? currentRankTier.primaryColor : '#c084fc',
-                                        flexShrink: 0,
-                                        fontVariantNumeric: 'tabular-nums',
-                                      }}
-                                    >
-                                      {cat.xp} XP
-                                    </span>
                                   </div>
-                                  <div
+                                  <span
                                     style={{
-                                      height: '5px',
-                                      borderRadius: '999px',
-                                      background: 'rgba(255, 255, 255, 0.1)',
-                                      overflow: 'hidden',
+                                      fontSize: '10.5px',
+                                      fontWeight: 800,
+                                      color: isTop ? currentRankTier.primaryColor : '#c084fc',
+                                      flexShrink: 0,
+                                      fontVariantNumeric: 'tabular-nums',
                                     }}
                                   >
-                                    <div
-                                      style={{
-                                        width: `${pct}%`,
-                                        height: '100%',
-                                        borderRadius: '999px',
-                                        background:
-                                          idx === 0
-                                            ? `linear-gradient(90deg, ${currentRankTier.secondaryColor}, ${currentRankTier.primaryColor})`
-                                            : '#a855f7',
-                                      }}
-                                    />
-                                  </div>
+                                    {cat.xp} XP
+                                  </span>
                                 </div>
                               )
                             })}
