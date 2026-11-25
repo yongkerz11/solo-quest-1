@@ -8909,740 +8909,225 @@ export default function Page() {
     const renderMorphingFab = () => {
       if (isFinanceViewOnly) return null
 
-      const iconLog = <Wallet size={14} strokeWidth={2.4} />
-      const iconTarget = <Target size={14} strokeWidth={2.4} />
-      const iconClose = <X size={15} strokeWidth={2.6} />
+      const iconLog = <Wallet size={15} strokeWidth={2.4} />
+      const iconTarget = <Target size={15} strokeWidth={2.3} />
 
-      if (financeFabStyle === 'portal') {
-        // #1 Rankerz Dual-Ring Orb + Mono Stack
-        return (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 'calc(18px + env(safe-area-inset-bottom, 0px))',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 46,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              pointerEvents: 'none',
-            }}
-          >
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AnimatePresence>
-                {isFinanceFabOpen && (
-                  <motion.div
-                    key="finance-mono-stack"
-                    initial={{ x: '-50%', opacity: 0 }}
-                    animate={{ x: '-50%', opacity: 1 }}
-                    exit={{ x: '-50%', opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{
-                      position: 'absolute',
-                      bottom: 'calc(100% + 22px)',
-                      left: '50%',
-                      x: '-50%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '10px',
-                      zIndex: 65,
-                      pointerEvents: 'auto',
-                    }}
-                  >
-                    {/* Top Pill: Transactions */}
-                    <motion.button
-                      type="button"
-                      initial={{ y: 24, scale: 0.82, opacity: 0 }}
-                      animate={{ y: 0, scale: 1, opacity: 1 }}
-                      exit={{ y: 18, scale: 0.85, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 420, damping: 26, delay: 0.04 }}
-                      whileHover={{ scale: 1.04 }}
-                      whileTap={{ scale: 0.94 }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setIsFinanceFabOpen(false)
-                        setIsTxSubDropdownOpen(false)
-                        setActiveFinanceSheet('log')
-                      }}
-                      style={{
-                        width: '176px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        padding: '10px 18px',
-                        borderRadius: '999px',
-                        border: '1px solid rgba(255, 255, 255, 0.35)',
-                        background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                        color: '#030712',
-                        fontSize: '12px',
-                        fontWeight: 900,
-                        letterSpacing: '0.01em',
-                        boxShadow: `0 12px 28px -6px ${currentRankTier.glowColor}`,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {iconLog}
-                      <span>Transactions</span>
-                    </motion.button>
-
-                    {/* Bottom Pill: Add G/P */}
-                    <motion.button
-                      type="button"
-                      initial={{ y: 14, scale: 0.84, opacity: 0 }}
-                      animate={{ y: 0, scale: 1, opacity: 1 }}
-                      exit={{ y: 10, scale: 0.86, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-                      whileHover={{ scale: 1.04 }}
-                      whileTap={{ scale: 0.94 }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setIsFinanceFabOpen(false)
-                        setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
-                        setActiveFinanceSheet('target')
-                      }}
-                      style={{
-                        width: '176px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        padding: '10px 18px',
-                        borderRadius: '999px',
-                        border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.5)`,
-                        background:
-                          'linear-gradient(168deg, rgba(16, 25, 46, 0.95) 0%, rgba(7, 11, 22, 0.98) 100%)',
-                        backdropFilter: 'blur(20px)',
-                        WebkitBackdropFilter: 'blur(20px)',
-                        color: '#ffffff',
-                        fontSize: '12px',
-                        fontWeight: 800,
-                        letterSpacing: '0.01em',
-                        boxShadow:
-                          '0 14px 32px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      <Target size={15} color={currentRankTier.highlightColor} strokeWidth={2.3} />
-                      <span>Add G/P</span>
-                    </motion.button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Center Rankerz Dual-Ring Orb Trigger */}
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.07 }}
-                whileTap={{ scale: 0.92 }}
-                onClick={() => setIsFinanceFabOpen((prev) => !prev)}
-                aria-label="Aksi Finance Vault"
-                style={{
-                  pointerEvents: 'auto',
-                  position: 'relative',
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '999px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                }}
-              >
-                {/* Outer Pulsing Halo */}
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: 'absolute',
-                    inset: '0px',
-                    borderRadius: '999px',
-                    border: `1.5px dashed rgba(${currentRankTier.primaryRgb}, 0.55)`,
-                    boxShadow: `0 0 22px -6px ${currentRankTier.glowColor}`,
-                    animation: 'spinSlow 14s linear infinite',
-                  }}
-                />
-                {/* Inner Crisp Ring */}
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: 'absolute',
-                    inset: '4px',
-                    borderRadius: '999px',
-                    border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.35)`,
-                    background: 'rgba(6, 10, 22, 0.72)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                  }}
-                />
-                {/* Core Button */}
-                <span
-                  style={{
-                    position: 'relative',
-                    width: '42px',
-                    height: '42px',
-                    borderRadius: '999px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: isFinanceFabOpen
-                      ? 'rgba(9, 14, 28, 0.96)'
-                      : `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                    color: isFinanceFabOpen ? currentRankTier.highlightColor : '#030712',
-                    border: isFinanceFabOpen ? `1.5px solid ${currentRankTier.primaryColor}` : '1px solid rgba(255,255,255,0.45)',
-                    boxShadow: `0 6px 20px -2px ${currentRankTier.glowColor}`,
-                    transition: 'all 0.25s ease',
-                  }}
-                >
-                  <motion.span
-                    animate={{ rotate: isFinanceFabOpen ? 45 : 0 }}
-                    transition={{ type: 'spring', stiffness: 360, damping: 22 }}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <Plus size={20} strokeWidth={2.7} />
-                  </motion.span>
-                </span>
-              </motion.button>
-            </div>
-          </div>
-        )
-      }
-
-      if (financeFabStyle === 'island') {
-        // #4 Dynamic Island Dock
-        return (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 46,
-              pointerEvents: 'auto',
-            }}
-          >
-            <motion.div
-              layout
-              transition={{ type: 'spring', stiffness: 340, damping: 26 }}
-              style={{
-                overflow: 'hidden',
-                borderRadius: isFinanceFabOpen ? '22px' : '999px',
-                width: isFinanceFabOpen ? '300px' : '160px',
-                background: 'rgba(7, 11, 23, 0.96)',
-                border: `1px solid ${isFinanceFabOpen ? currentRankTier.primaryColor : 'rgba(255,255,255,0.18)'}`,
-                boxShadow: `0 14px 34px -10px ${currentRankTier.glowColor}`,
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-              }}
-            >
-              {isFinanceFabOpen ? (
-                <div style={{ padding: '8px 10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '0 4px' }}>
-                    <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: currentRankTier.primaryColor }}>
-                      Aksi Finance Vault
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setIsFinanceFabOpen(false)}
-                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      Tutup ✕
-                    </button>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-                    <motion.button
-                      type="button"
-                      whileTap={{ scale: 0.94 }}
-                      onClick={() => {
-                        setIsFinanceFabOpen(false)
-                        setActiveFinanceSheet('log')
-                      }}
-                      style={{
-                        padding: '8px 10px',
-                        borderRadius: '14px',
-                        border: 'none',
-                        background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                        color: '#030712',
-                        fontSize: '11px',
-                        fontWeight: 900,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '5px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {iconLog}
-                      <span>Transactions</span>
-                    </motion.button>
-                    <motion.button
-                      type="button"
-                      whileTap={{ scale: 0.94 }}
-                      onClick={() => {
-                        setIsFinanceFabOpen(false)
-                        setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
-                        setActiveFinanceSheet('target')
-                      }}
-                      style={{
-                        padding: '8px 10px',
-                        borderRadius: '14px',
-                        background: rankTint,
-                        border: `1px solid ${currentRankTier.primaryColor}`,
-                        color: currentRankTier.highlightColor,
-                        fontSize: '11px',
-                        fontWeight: 900,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '5px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {iconTarget}
-                      <span>Add G/P</span>
-                    </motion.button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsFinanceFabOpen(true)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '999px',
-                      background: currentRankTier.primaryColor,
-                      boxShadow: `0 0 10px ${currentRankTier.primaryColor}`,
-                    }}
-                  />
-                  <span style={{ fontSize: '11.5px', fontWeight: 900, color: '#ffffff' }}>Aksi Vault</span>
-                  <Plus size={13} color={currentRankTier.primaryColor} strokeWidth={2.8} />
-                </button>
-              )}
-            </motion.div>
-          </div>
-        )
-      }
-
-      if (financeFabStyle === 'mecha') {
-        // #3 Mecha Wing Blade
-        return (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 46,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              pointerEvents: 'none',
-            }}
-          >
-            {/* Left Wing */}
-            <motion.button
-              type="button"
-              initial={false}
-              animate={{
-                x: isFinanceFabOpen ? 0 : 36,
-                scale: isFinanceFabOpen ? 1 : 0.6,
-                opacity: isFinanceFabOpen ? 1 : 0,
-              }}
-              transition={{ type: 'spring', stiffness: 360, damping: 25 }}
-              onClick={() => {
-                setIsFinanceFabOpen(false)
-                setActiveFinanceSheet('log')
-              }}
-              style={{
-                pointerEvents: isFinanceFabOpen ? 'auto' : 'none',
-                padding: '9px 14px',
-                borderRadius: '12px 4px 4px 12px',
-                border: 'none',
-                background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                color: '#030712',
-                fontSize: '11px',
-                fontWeight: 900,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                boxShadow: `0 8px 24px -6px ${currentRankTier.glowColor}`,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {iconLog}
-              <span>Transactions</span>
-            </motion.button>
-
-            {/* Center Mecha Core Trigger */}
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.92 }}
-              onClick={() => setIsFinanceFabOpen(!isFinanceFabOpen)}
-              style={{
-                pointerEvents: 'auto',
-                width: '46px',
-                height: '46px',
-                borderRadius: '14px',
-                background: isFinanceFabOpen ? '#090e1c' : `linear-gradient(135deg, ${currentRankTier.secondaryColor}, ${currentRankTier.primaryColor})`,
-                border: `1.5px solid ${currentRankTier.primaryColor}`,
-                color: isFinanceFabOpen ? currentRankTier.primaryColor : '#030712',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                boxShadow: `0 0 24px -4px ${currentRankTier.glowColor}`,
-                transform: 'rotate(45deg)',
-              }}
-            >
-              <motion.span
-                animate={{ rotate: isFinanceFabOpen ? 45 : 0 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 20 }}
-                style={{ transform: 'rotate(-45deg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Plus size={18} strokeWidth={2.8} />
-              </motion.span>
-            </motion.button>
-
-            {/* Right Wing */}
-            <motion.button
-              type="button"
-              initial={false}
-              animate={{
-                x: isFinanceFabOpen ? 0 : -36,
-                scale: isFinanceFabOpen ? 1 : 0.6,
-                opacity: isFinanceFabOpen ? 1 : 0,
-              }}
-              transition={{ type: 'spring', stiffness: 360, damping: 25 }}
-              onClick={() => {
-                setIsFinanceFabOpen(false)
-                setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
-                setActiveFinanceSheet('target')
-              }}
-              style={{
-                pointerEvents: isFinanceFabOpen ? 'auto' : 'none',
-                padding: '9px 14px',
-                borderRadius: '4px 12px 12px 4px',
-                background: '#090e1c',
-                border: `1px solid ${currentRankTier.primaryColor}`,
-                color: currentRankTier.highlightColor,
-                fontSize: '11px',
-                fontWeight: 900,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                boxShadow: `0 8px 24px -8px ${currentRankTier.glowColor}`,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {iconTarget}
-              <span>Add G/P</span>
-            </motion.button>
-          </div>
-        )
-      }
-
-      if (financeFabStyle === 'arc') {
-        // #5 Thumb Arc
-        return (
-          <div
-            style={{
-              position: 'fixed',
-              right: '18px',
-              bottom: 'calc(18px + env(safe-area-inset-bottom, 0px))',
-              zIndex: 46,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              gap: '8px',
-              pointerEvents: 'none',
-            }}
-          >
-            <motion.button
-              type="button"
-              initial={false}
-              animate={{
-                y: isFinanceFabOpen ? 0 : 28,
-                scale: isFinanceFabOpen ? 1 : 0.6,
-                opacity: isFinanceFabOpen ? 1 : 0,
-              }}
-              transition={{ type: 'spring', stiffness: 360, damping: 25 }}
-              onClick={() => {
-                setIsFinanceFabOpen(false)
-                setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
-                setActiveFinanceSheet('target')
-              }}
-              style={{
-                pointerEvents: isFinanceFabOpen ? 'auto' : 'none',
-                padding: '9px 14px',
-                borderRadius: '16px',
-                background: '#090e1c',
-                border: `1px solid ${currentRankTier.primaryColor}`,
-                color: currentRankTier.highlightColor,
-                fontSize: '11px',
-                fontWeight: 900,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                cursor: 'pointer',
-              }}
-            >
-              <span>Add G/P</span>
-              {iconTarget}
-            </motion.button>
-
-            <motion.button
-              type="button"
-              initial={false}
-              animate={{
-                y: isFinanceFabOpen ? 0 : 16,
-                scale: isFinanceFabOpen ? 1 : 0.6,
-                opacity: isFinanceFabOpen ? 1 : 0,
-              }}
-              transition={{ type: 'spring', stiffness: 360, damping: 25 }}
-              onClick={() => {
-                setIsFinanceFabOpen(false)
-                setActiveFinanceSheet('log')
-              }}
-              style={{
-                pointerEvents: isFinanceFabOpen ? 'auto' : 'none',
-                padding: '9px 14px',
-                borderRadius: '16px',
-                border: 'none',
-                background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                color: '#030712',
-                fontSize: '11px',
-                fontWeight: 900,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: `0 8px 24px -6px ${currentRankTier.glowColor}`,
-                cursor: 'pointer',
-              }}
-            >
-              <span>Transactions</span>
-              {iconLog}
-            </motion.button>
-
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.92 }}
-              onClick={() => setIsFinanceFabOpen(!isFinanceFabOpen)}
-              style={{
-                pointerEvents: 'auto',
-                width: '48px',
-                height: '48px',
-                borderRadius: '16px',
-                background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                color: '#030712',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: `0 8px 24px -4px ${currentRankTier.glowColor}`,
-              }}
-            >
-              <motion.span
-                animate={{ rotate: isFinanceFabOpen ? 45 : 0 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 20 }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Plus size={20} strokeWidth={2.8} />
-              </motion.span>
-            </motion.button>
-          </div>
-        )
-      }
-
-      // Default: #2 Split Liquid Pill
+      // Opsi 3: Dynamic Island Pro (Morphing) — Locked 100% inside mobile frame
       return (
         <div
           style={{
-            position: 'fixed',
-            bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 46,
+            position: 'sticky',
+            bottom: 'calc(18px + env(safe-area-inset-bottom, 0px))',
+            marginTop: 'auto',
+            paddingTop: '20px',
+            width: '100%',
             display: 'flex',
             justifyContent: 'center',
-            pointerEvents: 'auto',
+            zIndex: 46,
+            pointerEvents: 'none',
           }}
         >
-          <AnimatePresence mode="wait">
-            {isFinanceFabOpen ? (
-              <motion.div
-                key="split-open"
-                initial={{ scale: 0.88, opacity: 0, y: 12 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.88, opacity: 0, y: 12 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+          <motion.div
+            layout
+            initial={false}
+            animate={{
+              width: isFinanceFabOpen ? 'min(336px, 100%)' : '158px',
+              borderRadius: isFinanceFabOpen ? '26px' : '999px',
+            }}
+            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+            style={{
+              pointerEvents: 'auto',
+              position: 'relative',
+              overflow: 'hidden',
+              background: isFinanceFabOpen
+                ? 'linear-gradient(170deg, rgba(12, 20, 38, 0.98), #050811)'
+                : '#050811',
+              border: `1px solid rgba(${currentRankTier.primaryRgb}, ${isFinanceFabOpen ? 0.55 : 0.38})`,
+              boxShadow: `0 16px 40px rgba(0, 0, 0, 0.92), 0 0 24px -8px ${currentRankTier.glowColor}, inset 0 1px 0 rgba(255, 255, 255, 0.14)`,
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+            }}
+          >
+            {/* Top Horizon Rank Glow Line */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: '22%',
+                right: '22%',
+                height: '1.5px',
+                background: `linear-gradient(90deg, transparent, ${currentRankTier.primaryColor}, transparent)`,
+                pointerEvents: 'none',
+              }}
+            />
+
+            {!isFinanceFabOpen ? (
+              <motion.button
+                key="island-collapsed"
+                type="button"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsFinanceFabOpen(true)}
+                aria-label="Buka menu Finance Vault"
                 style={{
+                  width: '100%',
+                  height: '44px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                {/* Opsi 1: Transaksi */}
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.94 }}
-                  onClick={() => {
-                    setIsFinanceFabOpen(false)
-                    setActiveFinanceSheet('log')
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '10px 16px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                    color: '#030712',
-                    fontSize: '11.5px',
-                    fontWeight: 900,
-                    cursor: 'pointer',
-                    boxShadow: `0 8px 24px -6px ${currentRankTier.glowColor}`,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {iconLog}
-                  <span>Transactions</span>
-                </motion.button>
-
-                {/* Center Close */}
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsFinanceFabOpen(false)}
-                  style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '999px',
-                    background: '#090e1c',
-                    border: '1px solid rgba(255,255,255,0.22)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-                  }}
-                  title="Tutup"
-                >
-                  {iconClose}
-                </motion.button>
-
-                {/* Opsi 2: Add G/P */}
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.94 }}
-                  onClick={() => {
-                    setIsFinanceFabOpen(false)
-                    setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
-                    setActiveFinanceSheet('target')
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '10px 16px',
-                    borderRadius: '999px',
-                    background: '#090e1c',
-                    border: `1px solid ${currentRankTier.primaryColor}`,
-                    color: currentRankTier.highlightColor,
-                    fontSize: '11.5px',
-                    fontWeight: 900,
-                    cursor: 'pointer',
-                    boxShadow: `0 8px 24px -8px ${currentRankTier.glowColor}`,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {iconTarget}
-                  <span>Add G/P</span>
-                </motion.button>
-              </motion.div>
-            ) : (
-              <motion.button
-                key="split-closed"
-                type="button"
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.94 }}
-                onClick={() => setIsFinanceFabOpen(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 22px',
-                  borderRadius: '999px',
-                  border: `1px solid ${currentRankTier.primaryColor}`,
-                  background: `linear-gradient(135deg, ${rankTint}, rgba(8, 13, 28, 0.96))`,
-                  backdropFilter: 'blur(16px)',
-                  WebkitBackdropFilter: 'blur(16px)',
-                  boxShadow: `0 10px 28px -6px ${currentRankTier.glowColor}`,
+                  justifyContent: 'center',
+                  gap: '9px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#ffffff',
                   cursor: 'pointer',
+                  padding: '0 18px',
                 }}
               >
                 <span
+                  aria-hidden="true"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '2.5px' }}
+                >
+                  <i style={{ display: 'block', width: '2.5px', height: '8px', borderRadius: '99px', background: currentRankTier.primaryColor }} />
+                  <i style={{ display: 'block', width: '2.5px', height: '14px', borderRadius: '99px', background: currentRankTier.primaryColor, boxShadow: `0 0 8px ${currentRankTier.primaryColor}` }} />
+                  <i style={{ display: 'block', width: '2.5px', height: '10px', borderRadius: '99px', background: currentRankTier.primaryColor }} />
+                </span>
+                <span
                   style={{
-                    width: '22px',
-                    height: '22px',
-                    borderRadius: '999px',
-                    background: currentRankTier.primaryColor,
-                    color: '#030712',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    fontSize: '11.5px',
                     fontWeight: 900,
-                    fontSize: '13px',
+                    letterSpacing: '0.09em',
+                    textTransform: 'uppercase',
+                    color: '#f8fafc',
                   }}
                 >
-                  +
-                </span>
-                <span style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.02em', color: '#ffffff' }}>
-                  Kelola Vault
+                  Vault
                 </span>
               </motion.button>
+            ) : (
+              <motion.div
+                key="island-expanded"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18, delay: 0.05 }}
+                style={{
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+                  <span
+                    style={{
+                      fontSize: '9.5px',
+                      fontWeight: 900,
+                      letterSpacing: '0.12em',
+                      color: currentRankTier.highlightColor,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    ✦ Finance Vault
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsFinanceFabOpen(false)}
+                    aria-label="Tutup menu Vault"
+                    style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '999px',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: 'none',
+                      color: '#cbd5e1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <X size={12} strokeWidth={2.5} />
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => {
+                      setIsFinanceFabOpen(false)
+                      setIsTxSubDropdownOpen(false)
+                      setActiveFinanceSheet('log')
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '7px',
+                      padding: '13px 10px',
+                      borderRadius: '16px',
+                      border: 'none',
+                      background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
+                      color: '#030712',
+                      fontSize: '12px',
+                      fontWeight: 900,
+                      boxShadow: `0 8px 20px -4px ${currentRankTier.glowColor}`,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {iconLog}
+                    <span>Transactions</span>
+                  </motion.button>
+
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => {
+                      setIsFinanceFabOpen(false)
+                      setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
+                      setActiveFinanceSheet('target')
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '7px',
+                      padding: '13px 10px',
+                      borderRadius: '16px',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.38)`,
+                      color: '#ffffff',
+                      fontSize: '12px',
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {iconTarget}
+                    <span>Add G/P</span>
+                  </motion.button>
+                </div>
+              </motion.div>
             )}
-          </AnimatePresence>
+          </motion.div>
         </div>
       )
     }
-
     return (
-      <div style={{ animation: 'fadeIn 0.2s ease-in-out', paddingBottom: '96px', position: 'relative' }}>
+      <div
+        style={{
+          animation: 'fadeIn 0.2s ease-in-out',
+          paddingBottom: '20px',
+          position: 'relative',
+          minHeight: 'calc(100vh - 110px)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {/* FLOATING PARTICLE BURST LAYER */}
         <div
           aria-hidden="true"
@@ -22634,63 +22119,6 @@ export default function Page() {
                   <Bell size={13} color={currentRankTier.primaryColor} />
                   <span>Test Animasi &amp; Suara Pop-Up Quest</span>
                 </button>
-              </div>
-
-              <label className="modal-label" style={{ color: currentRankTier.primaryColor }}>
-                GAYA TOMBOL FINANCE VAULT
-              </label>
-              <div
-                style={{
-                  background: 'rgba(5, 9, 20, 0.78)',
-                  border: '1px solid rgba(255, 255, 255, 0.10)',
-                  borderRadius: '14px',
-                  padding: '12px',
-                  marginBottom: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                }}
-              >
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '2px' }}>
-                  Pilih gaya tombol morphing di Finance Vault:
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-                  {[
-                    { id: 'portal', label: '1. Portal Orb' },
-                    { id: 'split', label: '2. Split Liquid Pill' },
-                    { id: 'mecha', label: '3. Mecha Wing' },
-                    { id: 'island', label: '4. Dynamic Island' },
-                    { id: 'arc', label: '5. Thumb Arc' },
-                  ].map((st) => {
-                    const isSelected = financeFabStyle === st.id
-                    return (
-                      <button
-                        key={st.id}
-                        type="button"
-                        onClick={() => updateFinanceFabStyle(st.id as any)}
-                        style={{
-                          padding: '8px 9px',
-                          borderRadius: '10px',
-                          border: isSelected
-                            ? `1px solid ${currentRankTier.primaryColor}`
-                            : '1px solid rgba(255,255,255,0.1)',
-                          background: isSelected
-                            ? `rgba(${currentRankTier.primaryRgb}, 0.2)`
-                            : 'rgba(255,255,255,0.03)',
-                          color: isSelected ? currentRankTier.highlightColor : '#cbd5e1',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          textAlign: 'center',
-                          boxShadow: isSelected ? `0 0 14px -6px ${currentRankTier.glowColor}` : 'none',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        {st.label}
-                      </button>
-                    )
-                  })}
-                </div>
               </div>
 
               <div className="modal-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
