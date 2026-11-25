@@ -9500,9 +9500,32 @@ export default function Page() {
               <strong style={{ fontSize: '12px', color: '#ffffff' }}>
                 Target Tabungan ({financeVault.goals.length})
               </strong>
-              <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>
-                Kelola via tombol di bawah
-              </span>
+              {!isFinanceViewOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceTargetDraftType('goal')
+                    setActiveFinanceSheet('target')
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '5px 11px',
+                    borderRadius: '999px',
+                    background: `rgba(${currentRankTier.primaryRgb}, 0.15)`,
+                    border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.42)`,
+                    color: currentRankTier.highlightColor,
+                    fontSize: '10.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: `0 4px 14px -4px ${currentRankTier.glowColor}`,
+                  }}
+                >
+                  <Plus size={12} strokeWidth={2.6} />
+                  <span>Add Goals</span>
+                </button>
+              )}
             </div>
 
             {financeVault.goals.length === 0 ? (
@@ -9517,7 +9540,7 @@ export default function Page() {
                   color: '#cbd5e1',
                 }}
               >
-                Belum ada Target Tabungan. Klik "+ Tambah Target" untuk membuat target pertamamu!
+                Belum ada Target Tabungan. Klik &quot;+ Add Goals&quot; untuk membuat target pertamamu!
               </div>
             ) : (
               financeVault.goals.map((goal) => {
@@ -9664,9 +9687,32 @@ export default function Page() {
               <strong style={{ fontSize: '12px', color: '#ffffff' }}>
                 Pos Pengeluaran ({financeVault.buckets.length})
               </strong>
-              <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>
-                Kelola via tombol di bawah
-              </span>
+              {!isFinanceViewOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinanceTargetDraftType('bucket')
+                    setActiveFinanceSheet('target')
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '5px 11px',
+                    borderRadius: '999px',
+                    background: 'rgba(251, 191, 36, 0.14)',
+                    border: '1px solid rgba(251, 191, 36, 0.38)',
+                    color: '#fde68a',
+                    fontSize: '10.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px -4px rgba(245, 158, 11, 0.35)',
+                  }}
+                >
+                  <Plus size={12} strokeWidth={2.6} />
+                  <span>Add Pos</span>
+                </button>
+              )}
             </div>
 
             {financeVault.buckets.map((bucket) => {
@@ -9805,6 +9851,38 @@ export default function Page() {
         {/* SUB-TAB 3: RIWAYAT PEMASUKAN & PENGELUARAN (POSISI A) */}
         {financeTab === 'history' && (
           <div data-scroll-card style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px' }}>
+              <strong style={{ fontSize: '12px', color: '#ffffff' }}>
+                Riwayat Transaksi ({financeVault.logs.length + (financeVault.monthlyIncome > 0 ? 1 : 0)})
+              </strong>
+              {!isFinanceViewOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTxSubDropdownOpen(false)
+                    setActiveFinanceSheet('log')
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '5px 11px',
+                    borderRadius: '999px',
+                    background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
+                    border: '1px solid rgba(255, 255, 255, 0.35)',
+                    color: '#030712',
+                    fontSize: '10.5px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    boxShadow: `0 4px 14px -4px ${currentRankTier.glowColor}`,
+                  }}
+                >
+                  <Plus size={12} strokeWidth={2.8} />
+                  <span>Transactions</span>
+                </button>
+              )}
+            </div>
+
             {/* Ringkasan Pemasukan vs Pengeluaran */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
               <div
@@ -10116,70 +10194,58 @@ export default function Page() {
           </div>
         )}
 
-        {/* DIM BACKDROP WHEN MORPHING FAB IS OPEN */}
-        <AnimatePresence>
-          {isFinanceFabOpen && !isFinanceViewOnly && (
-            <motion.div
-              data-lenis-prevent
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setIsFinanceFabOpen(false)}
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(2, 5, 14, 0.72)',
-                backdropFilter: 'blur(4px)',
-                WebkitBackdropFilter: 'blur(4px)',
-                touchAction: 'none',
-                zIndex: 44,
-              }}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* 1-TO-2 MORPHING ACTION BUTTON */}
-        {renderMorphingFab()}
-
-        {/* SLIDE-UP BOTTOM SHEETS (TARGET BARU / UBAH GAJI / EDIT) */}
+        {/* TOP SLIDE-DOWN DRAWERS (SCHEDULE GLASS — MATCHING TRANSACTIONS DRAWER) */}
         <AnimatePresence>
           {activeFinanceSheet && activeFinanceSheet !== 'log' && !isFinanceViewOnly && (
             <>
               <motion.div
+                data-lenis-prevent
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: 0.22 }}
                 onClick={() => setActiveFinanceSheet(null)}
                 style={{
                   position: 'fixed',
                   inset: 0,
-                  background: 'rgba(0,0,0,0.68)',
-                  backdropFilter: 'blur(4px)',
-                  zIndex: 58,
+                  background: 'rgba(2, 5, 13, 0.82)',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                  touchAction: 'none',
+                  zIndex: 88,
                 }}
               />
               <motion.div
-                initial={{ y: '100%', opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: '100%', opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+                data-lenis-prevent
+                initial={{ y: '-100%', x: '-50%', opacity: 0 }}
+                animate={{ y: 0, x: '-50%', opacity: 1 }}
+                exit={{ y: '-100%', x: '-50%', opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 360, damping: 30 }}
                 style={{
                   position: 'fixed',
-                  bottom: 0,
+                  top: 0,
                   left: '50%',
                   x: '-50%',
                   width: '100%',
                   maxWidth: '480px',
-                  maxHeight: '85vh',
+                  maxHeight: '88vh',
                   overflowY: 'auto',
-                  borderTopLeftRadius: '24px',
-                  borderTopRightRadius: '24px',
-                  borderTop: '1px solid rgba(255,255,255,0.15)',
-                  background: '#090e1c',
-                  padding: '16px 16px calc(18px + env(safe-area-inset-bottom, 0px))',
-                  zIndex: 60,
-                  boxShadow: '0 -12px 40px rgba(0,0,0,0.85)',
+                  overscrollBehavior: 'contain',
+                  WebkitOverflowScrolling: 'touch',
+                  borderBottomLeftRadius: '28px',
+                  borderBottomRightRadius: '28px',
+                  borderBottom: `1px solid rgba(${currentRankTier.primaryRgb}, 0.34)`,
+                  borderLeft: '1px solid rgba(255, 255, 255, 0.09)',
+                  borderRight: '1px solid rgba(255, 255, 255, 0.09)',
+                  borderTop: 'none',
+                  background:
+                    'linear-gradient(168deg, rgba(16, 25, 46, 0.94) 0%, rgba(8, 13, 26, 0.97) 58%, rgba(5, 9, 19, 0.98) 100%)',
+                  backdropFilter: 'blur(24px) saturate(135%)',
+                  WebkitBackdropFilter: 'blur(24px) saturate(135%)',
+                  padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px 20px',
+                  zIndex: 90,
+                  boxShadow:
+                    '0 26px 65px -10px rgba(0, 0, 0, 0.92), inset 0 1px 0 rgba(255, 255, 255, 0.13)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px',
