@@ -2616,6 +2616,7 @@ export default function Page() {
     return 'portal'
   })
   const [isNavAddMenuOpen, setIsNavAddMenuOpen] = useState<boolean>(false)
+  const [isWeeklyCardFlipped, setIsWeeklyCardFlipped] = useState<boolean>(false)
   const [isTxSubDropdownOpen, setIsTxSubDropdownOpen] = useState<boolean>(false)
   const lenisRef = useRef<Lenis | null>(null)
 
@@ -4660,8 +4661,17 @@ export default function Page() {
       : clanQuests.find((cq) => cq.id === activeWorkoutQuest.id)
     : null
 
-  const currentFinanceQuest = activeFinanceQuest
-    ? personalTasks.find((t) => t.id === activeFinanceQuest.id) || null
+  const currentFinanceQuest: PersonalTask | null = activeFinanceQuest
+    ? personalTasks.find((t) => t.id === activeFinanceQuest.id) ||
+      personalTasks.find((t) => t.category.toLowerCase() === 'keuangan') || {
+        id: activeFinanceQuest.id,
+        title: 'Finance Vault',
+        category: 'Keuangan',
+        xp: 15,
+        icon: 'Wallet',
+        done: false,
+        completedDates: [] as string[],
+      }
     : null
 
   const isWorkoutViewOnly = Boolean(
@@ -16635,12 +16645,17 @@ export default function Page() {
                   viewport={{ once: false, amount: 0.15 }}
                   transition={{ type: 'spring', stiffness: 240, damping: 24 }}
                 >
-                  <section data-scroll-card className="weekly-strip-card" style={{ marginBottom: '12px' }}>
+                  <section
+                    data-scroll-card
+                    className="weekly-strip-card"
+                    style={{ marginBottom: '12px', perspective: '1200px' }}
+                  >
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
+                        gap: '8px',
                         marginBottom: '10px',
                       }}
                     >
@@ -16651,39 +16666,112 @@ export default function Page() {
                             fontWeight: 800,
                             letterSpacing: '0.14em',
                             textTransform: 'uppercase',
-                            color: currentRankTier.primaryColor,
+                            color: isWeeklyCardFlipped ? '#34d399' : currentRankTier.primaryColor,
                             display: 'block',
                           }}
                         >
-                          WEEKLY SCHEDULE
+                          {isWeeklyCardFlipped ? 'FINANCE VAULT • PRIORITAS' : 'WEEKLY SCHEDULE'}
                         </span>
                         <h2 style={{ fontSize: '13.5px', fontWeight: 800, margin: '1px 0 0', color: '#ffffff' }}>
-                          Jadwal Minggu Ini
+                          {isWeeklyCardFlipped ? 'Target & Keuangan' : 'Jadwal Minggu Ini'}
                         </h2>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsConsistencyModalOpen(true)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '5px 10px',
-                          borderRadius: '11px',
-                          border: '1px solid rgba(255, 255, 255, 0.15)',
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          color: '#e2e8f0',
-                          fontSize: '10px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                        title="Lihat Konsistensi Tahunan"
-                      >
-                        <BarChart2 size={11} />
-                        <span>Heatmap</span>
-                      </button>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {/* 3D Flip Toggle Button (Quest <-> Finance) */}
+                        <button
+                          type="button"
+                          onClick={() => setIsWeeklyCardFlipped((prev) => !prev)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '5px 10px',
+                            borderRadius: '11px',
+                            border: isWeeklyCardFlipped
+                              ? `1px solid rgba(${currentRankTier.primaryRgb}, 0.45)`
+                              : '1px solid rgba(52, 211, 153, 0.45)',
+                            background: isWeeklyCardFlipped
+                              ? `rgba(${currentRankTier.primaryRgb}, 0.14)`
+                              : 'rgba(16, 185, 129, 0.14)',
+                            color: isWeeklyCardFlipped ? currentRankTier.highlightColor : '#6ee7b7',
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            transition: 'all 0.18s ease',
+                          }}
+                          title={isWeeklyCardFlipped ? 'Flip kembali ke Jadwal Quest' : 'Flip kartu ke Target & Finance'}
+                        >
+                          {isWeeklyCardFlipped ? <RotateCcw size={11} /> : <Wallet size={11} />}
+                          <span>{isWeeklyCardFlipped ? 'Flip Quest' : 'Flip Finance'}</span>
+                        </button>
+
+                        {!isWeeklyCardFlipped ? (
+                          <button
+                            type="button"
+                            onClick={() => setIsConsistencyModalOpen(true)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '5px 10px',
+                              borderRadius: '11px',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              color: '#e2e8f0',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                            title="Lihat Konsistensi Tahunan"
+                          >
+                            <BarChart2 size={11} />
+                            <span>Heatmap</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const finTask = personalTasks.find((t) => t.category.toLowerCase() === 'keuangan')
+                              setFinanceTab('goals')
+                              setActiveFinanceSheet(null)
+                              setActiveFinanceQuest({
+                                id: finTask?.id || 'vault-direct',
+                                dateIso: getLocalIsoDate(),
+                              })
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              padding: '5px 10px',
+                              borderRadius: '11px',
+                              border: '1px solid rgba(52, 211, 153, 0.45)',
+                              background: 'linear-gradient(135deg, #059669, #0284c7)',
+                              color: '#ffffff',
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                            }}
+                            title="Buka Halaman Finance Vault"
+                          >
+                            <span>Vault</span>
+                            <ChevronRight size={11} />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
+                    <AnimatePresence mode="wait" initial={false}>
+                      {!isWeeklyCardFlipped ? (
+                        <motion.div
+                          key="weekly-card-front-quests"
+                          initial={{ rotateY: -85, opacity: 0, scale: 0.96 }}
+                          animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+                          exit={{ rotateY: 85, opacity: 0, scale: 0.96 }}
+                          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                          style={{ transformStyle: 'preserve-3d' }}
+                        >
                     {/* Magnetic Sliding 7-Day Strip (Sen - Min) */}
                     {(() => {
                       const selectedDayIdx = Math.max(
@@ -16812,27 +16900,28 @@ export default function Page() {
                         return isQuestTimeUpcoming(t.targetTime, false, t.schedule)
                       }
 
-                      const totalDayTasks = activeScheduleDayObj.scheduledTasks.length
-                      const remainingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
+                      const nonFinanceDayTasks = activeScheduleDayObj.scheduledTasks.filter(
+                        (t) => t.category.toLowerCase() !== 'keuangan'
+                      )
+                      const totalDayTasks = nonFinanceDayTasks.length
+                      const remainingDayTasks = nonFinanceDayTasks.filter(
                         (t) => !isTaskDoneOnDay(t)
                       )
                       const completedDayCount = totalDayTasks - remainingDayTasks.length
                       const skippedDayCount = remainingDayTasks.filter((t) => isTaskSkippedOnDay(t)).length
                       const upcomingTimedDayCount = remainingDayTasks.filter((t) => isTaskUpcomingTimeOnDay(t)).length
-                      const activePendingDayTasks = activeScheduleDayObj.scheduledTasks.filter(
-                        (t) =>
-                          t.category.toLowerCase() === 'keuangan' ||
-                          (!isTaskDoneOnDay(t) && !isTaskSkippedOnDay(t) && !isTaskUpcomingTimeOnDay(t))
+                      const activePendingDayTasks = remainingDayTasks.filter(
+                        (t) => !isTaskSkippedOnDay(t) && !isTaskUpcomingTimeOnDay(t)
                       )
                       const activeRemainingDayCount = activePendingDayTasks.length
-                      const hiddenDayTasks = activeScheduleDayObj.scheduledTasks.filter(
+                      const hiddenDayTasks = nonFinanceDayTasks.filter(
                         (t) => !activePendingDayTasks.some((p) => p.id === t.id)
                       )
                       const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
                       const hasExpandableDayQuests =
                         completedDayCount > 0 || skippedDayCount > 0 || upcomingTimedDayCount > 0
                       const primaryVisibleTasks = isFutureDay
-                        ? activeScheduleDayObj.scheduledTasks
+                        ? nonFinanceDayTasks
                         : activePendingDayTasks
 
                       const headerBadgeText = allDoneForDay
@@ -17629,6 +17718,280 @@ export default function Page() {
                       )
                     })()}
                     {renderSealedQuestsDrawer(true)}
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="weekly-card-back-finance"
+                          initial={{ rotateY: 85, opacity: 0, scale: 0.96 }}
+                          animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+                          exit={{ rotateY: -85, opacity: 0, scale: 0.96 }}
+                          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                          style={{ transformStyle: 'preserve-3d' }}
+                        >
+                          {(() => {
+                            const flipMonthPrefix = getLocalIsoDate().slice(0, 7)
+                            const flipMonthLogs = financeVault.logs.filter((l) => l.dateIso.startsWith(flipMonthPrefix))
+                            const flipExtraIncome = flipMonthLogs
+                              .filter((l) => l.type === 'income')
+                              .reduce((acc, l) => acc + l.amount, 0)
+                            const flipExpenseTotal = flipMonthLogs
+                              .filter((l) => l.type === 'expense')
+                              .reduce((acc, l) => acc + l.amount, 0)
+                            const flipSavedTotal = flipMonthLogs
+                              .filter((l) => l.type === 'saving')
+                              .reduce((acc, l) => acc + l.amount, 0)
+                            const flipDompet = Math.max(
+                              0,
+                              financeVault.monthlyIncome + flipExtraIncome - flipExpenseTotal - flipSavedTotal
+                            )
+                            const flipTotalGoalsSaved = financeVault.goals.reduce((acc, g) => acc + g.savedAmount, 0)
+
+                            const priorityGoal =
+                              financeVault.goals.find((g) => g.isPriority) || financeVault.goals[0] || null
+                            const priorityMonthlySaved = priorityGoal
+                              ? flipMonthLogs
+                                  .filter((l) => l.type === 'saving' && (!l.goalId || l.goalId === priorityGoal.id))
+                                  .reduce((acc, l) => acc + l.amount, 0)
+                              : 0
+                            const hasMonthlyTarget = Boolean(
+                              priorityGoal && priorityGoal.monthlyTarget && priorityGoal.monthlyTarget > 0
+                            )
+                            const activeTargetVal = priorityGoal
+                              ? hasMonthlyTarget
+                                ? priorityGoal.monthlyTarget || 0
+                                : priorityGoal.targetAmount
+                              : 0
+                            const activeSavedVal = priorityGoal
+                              ? hasMonthlyTarget
+                                ? priorityMonthlySaved
+                                : priorityGoal.savedAmount
+                              : 0
+                            const activeRemVal = Math.max(0, activeTargetVal - activeSavedVal)
+                            const activePct =
+                              activeTargetVal > 0 ? Math.min(100, Math.round((activeSavedVal / activeTargetVal) * 100)) : 0
+                            const totalGoalRem = priorityGoal
+                              ? Math.max(0, priorityGoal.targetAmount - priorityGoal.savedAmount)
+                              : 0
+                            const totalGoalPct =
+                              priorityGoal && priorityGoal.targetAmount > 0
+                                ? Math.min(100, Math.round((priorityGoal.savedAmount / priorityGoal.targetAmount) * 100))
+                                : 0
+                            const finTask = personalTasks.find((t) => t.category.toLowerCase() === 'keuangan')
+
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {/* 1. TARGET PRIORITAS SPOTLIGHT CARD */}
+                                <div
+                                  onClick={() => {
+                                    setFinanceTab('goals')
+                                    setActiveFinanceSheet(null)
+                                    setActiveFinanceQuest({
+                                      id: finTask?.id || 'vault-direct',
+                                      dateIso: getLocalIsoDate(),
+                                    })
+                                  }}
+                                  style={{
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    padding: '13px 14px',
+                                    borderRadius: '15px',
+                                    background:
+                                      'linear-gradient(155deg, rgba(16, 185, 129, 0.14) 0%, rgba(8, 13, 28, 0.96) 65%)',
+                                    border: '1px solid rgba(52, 211, 153, 0.38)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                      <span
+                                        style={{
+                                          padding: '2px 7px',
+                                          borderRadius: '999px',
+                                          background: 'rgba(16, 185, 129, 0.22)',
+                                          border: '1px solid rgba(52, 211, 153, 0.5)',
+                                          color: '#6ee7b7',
+                                          fontSize: '8.5px',
+                                          fontWeight: 900,
+                                          letterSpacing: '0.04em',
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        ★ TARGET PRIORITAS
+                                      </span>
+                                      <strong
+                                        style={{
+                                          fontSize: '12.5px',
+                                          fontWeight: 900,
+                                          color: '#ffffff',
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                        }}
+                                      >
+                                        {priorityGoal ? priorityGoal.title : 'Belum Ada Target'}
+                                      </strong>
+                                    </div>
+                                    {priorityGoal && (
+                                      <span style={{ fontSize: '10px', fontWeight: 900, color: '#6ee7b7', flexShrink: 0 }}>
+                                        {activePct}%
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {priorityGoal ? (
+                                    <>
+                                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', fontVariantNumeric: 'tabular-nums' }}>
+                                        <div>
+                                          <span style={{ display: 'block', fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                            {hasMonthlyTarget ? `Target Bulan Ini (${flipMonthPrefix})` : 'Progress Target'}
+                                          </span>
+                                          <strong style={{ fontSize: '15px', fontWeight: 900, color: '#ffffff' }}>
+                                            {formatRupiah(activeSavedVal)}{' '}
+                                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8' }}>
+                                              / {formatRupiah(activeTargetVal)}
+                                            </span>
+                                          </strong>
+                                        </div>
+
+                                        <span
+                                          style={{
+                                            padding: '4px 9px',
+                                            borderRadius: '999px',
+                                            background: activeRemVal > 0 ? 'rgba(56, 189, 248, 0.16)' : 'rgba(16, 185, 129, 0.22)',
+                                            border: activeRemVal > 0 ? '1px solid rgba(56, 189, 248, 0.42)' : '1px solid rgba(52, 211, 153, 0.5)',
+                                            color: activeRemVal > 0 ? '#7dd3fc' : '#6ee7b7',
+                                            fontSize: '10px',
+                                            fontWeight: 800,
+                                          }}
+                                        >
+                                          {activeRemVal > 0
+                                            ? `Kurang ${formatRupiah(activeRemVal)} lagi`
+                                            : hasMonthlyTarget
+                                            ? '✓ Target Bulan Ini Tercapai!'
+                                            : '✓ Target Tercapai!'}
+                                        </span>
+                                      </div>
+
+                                      {/* Progress Bar */}
+                                      <div style={{ width: '100%', height: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                        <motion.div
+                                          initial={{ width: '0%' }}
+                                          animate={{ width: `${activePct}%` }}
+                                          transition={{ type: 'spring', stiffness: 160, damping: 22 }}
+                                          style={{
+                                            height: '100%',
+                                            borderRadius: '999px',
+                                            background: 'linear-gradient(90deg, #10b981, #38bdf8)',
+                                          }}
+                                        />
+                                      </div>
+
+                                      {hasMonthlyTarget && (
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9.5px', color: '#94a3b8', fontVariantNumeric: 'tabular-nums', paddingTop: '2px' }}>
+                                          <span>
+                                            Total Tabungan: <strong style={{ color: '#e2e8f0' }}>{formatRupiah(priorityGoal.savedAmount)}</strong> / {formatRupiah(priorityGoal.targetAmount)} ({totalGoalPct}%)
+                                          </span>
+                                          <span style={{ color: '#cbd5e1', fontWeight: 700 }}>
+                                            {totalGoalRem > 0 ? `Sisa total ${formatRupiah(totalGoalRem)}` : '✓ Lunas'}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div style={{ fontSize: '11px', color: '#cbd5e1' }}>
+                                      Belum ada Target Prioritas. Klik untuk membuat Target Tabungan &amp; komitmen bulananmu!
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* 2. MINI WALLET SUMMARY (DOMPET • TABUNGAN • KELUAR) */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                                  <div style={{ padding: '8px 9px', borderRadius: '11px', background: 'rgba(7, 10, 22, 0.85)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                                    <span style={{ display: 'block', fontSize: '8.5px', color: '#94a3b8', fontWeight: 700 }}>Dompet</span>
+                                    <strong style={{ fontSize: '11px', color: currentRankTier.primaryColor, fontVariantNumeric: 'tabular-nums' }}>
+                                      {formatRupiah(flipDompet)}
+                                    </strong>
+                                  </div>
+                                  <div style={{ padding: '8px 9px', borderRadius: '11px', background: 'rgba(7, 10, 22, 0.85)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                                    <span style={{ display: 'block', fontSize: '8.5px', color: '#94a3b8', fontWeight: 700 }}>Tabungan</span>
+                                    <strong style={{ fontSize: '11px', color: '#6ee7b7', fontVariantNumeric: 'tabular-nums' }}>
+                                      {formatRupiah(flipTotalGoalsSaved)}
+                                    </strong>
+                                  </div>
+                                  <div style={{ padding: '8px 9px', borderRadius: '11px', background: 'rgba(7, 10, 22, 0.85)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                                    <span style={{ display: 'block', fontSize: '8.5px', color: '#94a3b8', fontWeight: 700 }}>Keluar Bln Ini</span>
+                                    <strong style={{ fontSize: '11px', color: '#fcd34d', fontVariantNumeric: 'tabular-nums' }}>
+                                      {formatRupiah(flipExpenseTotal)}
+                                    </strong>
+                                  </div>
+                                </div>
+
+                                {/* 3. QUICK ACTIONS */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (priorityGoal) setFinanceSelectedGoalId(priorityGoal.id)
+                                      setFinanceLogType('saving')
+                                      setIsTxSubDropdownOpen(false)
+                                      setActiveFinanceSheet('log')
+                                    }}
+                                    style={{
+                                      padding: '9px 10px',
+                                      borderRadius: '11px',
+                                      border: '1px solid rgba(52, 211, 153, 0.45)',
+                                      background: 'rgba(16, 185, 129, 0.16)',
+                                      color: '#a7f3d0',
+                                      fontSize: '10.5px',
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '5px',
+                                    }}
+                                  >
+                                    <Plus size={12} strokeWidth={2.6} />
+                                    <span>Nabung Sekarang</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFinanceTab('goals')
+                                      setActiveFinanceSheet(null)
+                                      setActiveFinanceQuest({
+                                        id: finTask?.id || 'vault-direct',
+                                        dateIso: getLocalIsoDate(),
+                                      })
+                                    }}
+                                    style={{
+                                      padding: '9px 10px',
+                                      borderRadius: '11px',
+                                      border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.4)`,
+                                      background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                                      color: currentRankTier.highlightColor,
+                                      fontSize: '10.5px',
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '5px',
+                                    }}
+                                  >
+                                    <Wallet size={12} />
+                                    <span>Kelola di Vault</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })()}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </section>
                 </motion.div>
 
