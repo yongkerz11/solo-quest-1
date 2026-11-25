@@ -1,6 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import {
+  RINGTONE_CATEGORIES,
+  DEFAULT_RINGTONE_SELECTIONS,
+  RINGTONE_STORAGE_KEY,
+  playRingtonePreset,
+  type RingtoneCategoryId,
+  type RingtoneSelections,
+} from '@/lib/sound-presets'
 import Lenis from 'lenis'
 import { motion, AnimatePresence } from 'motion/react'
 import {
@@ -2508,6 +2516,13 @@ export default function Page() {
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false)
   const [isConsistencyModalOpen, setIsConsistencyModalOpen] = useState(false)
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<'general' | 'ringtone'>('general')
+  const [ringtoneSelections, setRingtoneSelections] = useState<RingtoneSelections>(
+    DEFAULT_RINGTONE_SELECTIONS
+  )
+  const [playingRingtoneKey, setPlayingRingtoneKey] = useState<string | null>(null)
+  const hasPlayedEntrySoundRef = useRef(false)
+  const pendingEntrySoundRef = useRef(false)
   const [consistencyFilterTab, setConsistencyFilterTab] = useState<'all' | 'personal' | 'clan'>('all')
   const [prefUsername, setPrefUsername] = useState('')
   const [prefNotification, setPrefNotification] = useState(true)
@@ -2992,37 +3007,48 @@ export default function Page() {
     })
   }
 
+  // Load ringtone selections from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RINGTONE_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Partial<RingtoneSelections>
+      setRingtoneSelections({
+        alarm: typeof parsed.alarm === 'number' ? parsed.alarm : DEFAULT_RINGTONE_SELECTIONS.alarm,
+        entry: typeof parsed.entry === 'number' ? parsed.entry : DEFAULT_RINGTONE_SELECTIONS.entry,
+        accept: typeof parsed.accept === 'number' ? parsed.accept : DEFAULT_RINGTONE_SELECTIONS.accept,
+        skip: typeof parsed.skip === 'number' ? parsed.skip : DEFAULT_RINGTONE_SELECTIONS.skip,
+      })
+    } catch {}
+  }, [])
+
   // Unlock permanen AudioContext + HTML5 Audio (khususnya iOS Safari PWA) pada sentuhan pertama
   useEffect(() => {
     const unlock = () => {
       try {
         if (typeof window === 'undefined') return
         hasUserInteractedRef.current = true
-        if (pendingArrivalSoundRef.current && prefSound) {
-          pendingArrivalSoundRef.current = false
-          setIsAudioAutoplayBlocked(false)
-          playOpenAudioElement().then((played) => {
-            if (!played) {
-              const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
-              if (!AudioCtx) return
-              const ctx = audioCtxRef.current || new AudioCtx()
-              audioCtxRef.current = ctx
-              if (ctx.state === 'suspended') {
-                ctx.resume().then(() => renderQuestOpenSfx(ctx)).catch(() => {})
-              } else {
-                renderQuestOpenSfx(ctx)
-              }
-            }
-          })
-          return
-        }
-
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
         if (!AudioCtx) return
         if (!audioCtxRef.current) {
           audioCtxRef.current = new AudioCtx()
         }
         const ctx = audioCtxRef.current
+
+        if (pendingArrivalSoundRef.current && prefSound) {
+          pendingArrivalSoundRef.current = false
+          setIsAudioAutoplayBlocked(false)
+          playRingtonePreset(ctx, 'alarm', ringtoneSelections.alarm)
+          return
+        }
+
+        if (pendingEntrySoundRef.current && prefSound && !hasPlayedEntrySoundRef.current) {
+          pendingEntrySoundRef.current = false
+          hasPlayedEntrySoundRef.current = true
+          playRingtonePreset(ctx, 'entry', ringtoneSelections.entry)
+          return
+        }
+
         const silentBuf = ctx.createBuffer(1, 1, 22050)
         const src = ctx.createBufferSource()
         src.buffer = silentBuf
@@ -3041,55 +3067,50 @@ export default function Page() {
       window.removeEventListener('pointerdown', unlock)
       window.removeEventListener('keydown', unlock)
     }
-  }, [prefSound])
+  }, [prefSound, ringtoneSelections])
 
   // Efek suara RPG / Shadow Monarch System saat Pop-Up Quest Muncul & Kebuka
   const playQuestArrivalSound = () => {
     try {
       if (!prefSound || typeof window === 'undefined') return
-      playOpenAudioElement().then((played) => {
-        if (played) {
-          pendingArrivalSoundRef.current = false
-          setIsAudioAutoplayBlocked(false)
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate([45, 30, 95])
-          }
-          return
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) {
+        pendingArrivalSoundRef.current = true
+        setIsAudioAutoplayBlocked(true)
+        return
+      }
+      const ctx = audioCtxRef.current || new AudioCtx()
+      audioCtxRef.current = ctx
+      if (ctx.state === 'running') {
+        pendingArrivalSoundRef.current = false
+        setIsAudioAutoplayBlocked(false)
+        playRingtonePreset(ctx, 'alarm', ringtoneSelections.alarm)
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([45, 30, 95])
         }
-        // Fallback Web Audio API
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
-        if (!AudioCtx) {
-          pendingArrivalSoundRef.current = true
-          setIsAudioAutoplayBlocked(true)
-          return
-        }
-        const ctx = audioCtxRef.current || new AudioCtx()
-        audioCtxRef.current = ctx
-        if (ctx.state === 'running') {
-          pendingArrivalSoundRef.current = false
-          setIsAudioAutoplayBlocked(false)
-          renderQuestOpenSfx(ctx)
-        } else {
-          pendingArrivalSoundRef.current = true
-          setIsAudioAutoplayBlocked(true)
-          ctx
-            .resume()
-            .then(() => {
-              if (ctx.state === 'running' && pendingArrivalSoundRef.current) {
-                pendingArrivalSoundRef.current = false
-                setIsAudioAutoplayBlocked(false)
-                renderQuestOpenSfx(ctx)
+      } else {
+        pendingArrivalSoundRef.current = true
+        setIsAudioAutoplayBlocked(true)
+        ctx
+          .resume()
+          .then(() => {
+            if (ctx.state === 'running' && pendingArrivalSoundRef.current) {
+              pendingArrivalSoundRef.current = false
+              setIsAudioAutoplayBlocked(false)
+              playRingtonePreset(ctx, 'alarm', ringtoneSelections.alarm)
+              if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                navigator.vibrate([45, 30, 95])
               }
-            })
-            .catch(() => {})
-        }
-      })
+            }
+          })
+          .catch(() => {})
+      }
     } catch (e) {
       console.error(e)
     }
   }
 
-  // Efek suara Dark Tactical Solo Leveling "QUEST ACCEPTED" saat tombol TERIMA QUEST ditekan
+  // Efek suara saat tombol TERIMA QUEST ditekan
   const playQuestAcceptSound = () => {
     try {
       if (!prefSound || typeof window === 'undefined') return
@@ -3098,170 +3119,44 @@ export default function Page() {
       if (!AudioCtx) return
       const ctx = audioCtxRef.current || new AudioCtx()
       audioCtxRef.current = ctx
-
-      const trigger = () => {
-        const now = ctx.currentTime + 0.005
-        const master = ctx.createGain()
-        master.gain.setValueAtTime(0.9, now)
-        master.connect(ctx.destination)
-
-      // Dark abyssal delay tail
-      const delay = ctx.createDelay(0.5)
-      delay.delayTime.setValueAtTime(0.115, now)
-      const fb = ctx.createGain()
-      fb.gain.setValueAtTime(0.28, now)
-      const dFilter = ctx.createBiquadFilter()
-      dFilter.type = 'lowpass'
-      dFilter.frequency.setValueAtTime(1900, now)
-      delay.connect(dFilter)
-      dFilter.connect(fb)
-      fb.connect(delay)
-      dFilter.connect(master)
-
-      // 1. Heavy Seismic Sub-Drop & Mechanical Lock (0.00s - 0.26s)
-      const impact = ctx.createOscillator()
-      const impactGain = ctx.createGain()
-      impact.type = 'sine'
-      impact.frequency.setValueAtTime(150, now)
-      impact.frequency.exponentialRampToValueAtTime(36, now + 0.24)
-      impactGain.gain.setValueAtTime(0.48, now)
-      impactGain.gain.exponentialRampToValueAtTime(0.001, now + 0.27)
-      impact.connect(impactGain)
-      impactGain.connect(master)
-      impact.start(now)
-      impact.stop(now + 0.29)
-
-      // Short 45ms bandpass-filtered metallic lock transient (1550 Hz)
-      const lockBufLen = Math.floor(ctx.sampleRate * 0.05)
-      const lockBuf = ctx.createBuffer(1, lockBufLen, ctx.sampleRate)
-      const lockCh = lockBuf.getChannelData(0)
-      for (let i = 0; i < lockBufLen; i++) {
-        lockCh[i] = (Math.random() * 2 - 1) * (1 - i / lockBufLen)
-      }
-      const lockNoise = ctx.createBufferSource()
-      lockNoise.buffer = lockBuf
-      const lockBp = ctx.createBiquadFilter()
-      lockBp.type = 'bandpass'
-      lockBp.frequency.setValueAtTime(1550, now)
-      lockBp.Q.setValueAtTime(4.5, now)
-      const lockNoiseGain = ctx.createGain()
-      lockNoiseGain.gain.setValueAtTime(0.32, now)
-      lockNoiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045)
-      lockNoise.connect(lockBp)
-      lockBp.connect(lockNoiseGain)
-      lockNoiseGain.connect(master)
-      lockNoise.start(now)
-
-      // FM metallic clank (780 Hz -> 290 Hz)
-      const clankCarrier = ctx.createOscillator()
-      const clankMod = ctx.createOscillator()
-      const clankModGain = ctx.createGain()
-      const clankGain = ctx.createGain()
-      clankCarrier.type = 'triangle'
-      clankMod.type = 'sine'
-      clankCarrier.frequency.setValueAtTime(780, now)
-      clankCarrier.frequency.exponentialRampToValueAtTime(290, now + 0.09)
-      clankMod.frequency.setValueAtTime(780 * 1.414, now)
-      clankModGain.gain.setValueAtTime(420, now)
-      clankModGain.gain.exponentialRampToValueAtTime(5, now + 0.08)
-      clankGain.gain.setValueAtTime(0.24, now)
-      clankGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11)
-      clankMod.connect(clankModGain)
-      clankModGain.connect(clankCarrier.frequency)
-      clankCarrier.connect(clankGain)
-      clankGain.connect(master)
-      clankCarrier.start(now)
-      clankMod.start(now)
-      clankCarrier.stop(now + 0.12)
-      clankMod.stop(now + 0.12)
-
-      // 2. Tactical Data-Lock Confirm Pulses (0.03s - 0.12s): B5 -> F#5 -> E5 (22ms each)
-      const pulseBand = ctx.createBiquadFilter()
-      pulseBand.type = 'bandpass'
-      pulseBand.frequency.setValueAtTime(1250, now)
-      pulseBand.Q.setValueAtTime(2.0, now)
-      pulseBand.connect(master)
-
-      ;[987.77, 739.99, 659.25].forEach((freq, idx) => {
-        const t0 = now + 0.03 + idx * 0.03
-        const osc = ctx.createOscillator()
-        const g = ctx.createGain()
-        osc.type = 'square'
-        osc.frequency.setValueAtTime(freq, t0)
-        g.gain.setValueAtTime(0.001, t0)
-        g.gain.linearRampToValueAtTime(0.14, t0 + 0.004)
-        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.022)
-        osc.connect(g)
-        g.connect(pulseBand)
-        osc.start(t0)
-        osc.stop(t0 + 0.026)
-      })
-
-      // 3. Shadow Monarch Dark Reese Power Surge (0.08s - 0.95s): open dark fifths E2 + B2 + E3
-      const reeseFilter = ctx.createBiquadFilter()
-      reeseFilter.type = 'lowpass'
-      reeseFilter.frequency.setValueAtTime(1100, now + 0.08)
-      reeseFilter.frequency.exponentialRampToValueAtTime(210, now + 0.95)
-      reeseFilter.Q.setValueAtTime(3.5, now + 0.08)
-
-      const reeseGain = ctx.createGain()
-      reeseGain.gain.setValueAtTime(0.001, now + 0.08)
-      reeseGain.gain.linearRampToValueAtTime(0.16, now + 0.15)
-      reeseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.95)
-      reeseFilter.connect(reeseGain)
-      reeseGain.connect(master)
-      reeseGain.connect(delay)
-
-      ;[82.41, 123.47, 164.81].forEach((f) => {
-        ;[-9, 9].forEach((detuneCents) => {
-          const s = ctx.createOscillator()
-          s.type = 'sawtooth'
-          s.frequency.setValueAtTime(f, now + 0.08)
-          s.detune.setValueAtTime(detuneCents, now + 0.08)
-          s.connect(reeseFilter)
-          s.start(now + 0.08)
-          s.stop(now + 0.98)
-        })
-      })
-
-      // Single cold metallic FM E5 lock-in tone (0.14s - 0.85s)
-      const lockCarrier = ctx.createOscillator()
-      const lockMod = ctx.createOscillator()
-      const lockModGain = ctx.createGain()
-      const lockToneGain = ctx.createGain()
-      lockCarrier.type = 'sine'
-      lockMod.type = 'sine'
-      lockCarrier.frequency.setValueAtTime(659.25, now + 0.14) // E5
-      lockMod.frequency.setValueAtTime(659.25 * 1.414, now + 0.14)
-      lockModGain.gain.setValueAtTime(480, now + 0.14)
-      lockModGain.gain.exponentialRampToValueAtTime(3, now + 0.28)
-      lockToneGain.gain.setValueAtTime(0.001, now + 0.14)
-      lockToneGain.gain.linearRampToValueAtTime(0.2, now + 0.15)
-      lockToneGain.gain.exponentialRampToValueAtTime(0.001, now + 0.88)
-      lockMod.connect(lockModGain)
-      lockModGain.connect(lockCarrier.frequency)
-      lockCarrier.connect(lockToneGain)
-      lockToneGain.connect(master)
-      lockToneGain.connect(delay)
-      lockCarrier.start(now + 0.14)
-      lockMod.start(now + 0.14)
-      lockCarrier.stop(now + 0.9)
-      lockMod.stop(now + 0.9)
-
+      playRingtonePreset(ctx, 'accept', ringtoneSelections.accept)
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate([35, 25, 85])
-      }
-      }
-
-      if (ctx.state === 'running') {
-        trigger()
-      } else {
-        ctx.resume().then(trigger).catch(() => {})
       }
     } catch {}
   }
 
-  // Efek suara Dark Tactical Solo Leveling "QUEST SKIPPED / DISMISSED" saat tombol Quest Skipped ditekan
+  const handlePreviewRingtone = (categoryId: RingtoneCategoryId, index: number) => {
+    try {
+      if (typeof window === 'undefined') return
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = audioCtxRef.current || new AudioCtx()
+      audioCtxRef.current = ctx
+      playRingtonePreset(ctx, categoryId, index)
+      const key = `${categoryId}-${index}`
+      setPlayingRingtoneKey(key)
+      setTimeout(() => {
+        setPlayingRingtoneKey((curr) => (curr === key ? null : curr))
+      }, 480)
+    } catch {}
+  }
+
+  const handleSelectRingtone = (categoryId: RingtoneCategoryId, index: number) => {
+    const next = { ...ringtoneSelections, [categoryId]: index }
+    setRingtoneSelections(next)
+    try {
+      localStorage.setItem(RINGTONE_STORAGE_KEY, JSON.stringify(next))
+    } catch {}
+    handlePreviewRingtone(categoryId, index)
+    const cat = RINGTONE_CATEGORIES.find((c) => c.id === categoryId)
+    const preset = cat?.items[index]
+    if (preset) {
+      showToast(`🔔 ${cat?.title}: #${index + 1} ${preset.name}`)
+    }
+  }
+
+  // Efek suara saat tombol Quest Skipped / Skip ditekan
   const playQuestSkipSound = () => {
     try {
       if (!prefSound || typeof window === 'undefined') return
@@ -3270,58 +3165,9 @@ export default function Page() {
       if (!AudioCtx) return
       const ctx = audioCtxRef.current || new AudioCtx()
       audioCtxRef.current = ctx
-
-      const trigger = () => {
-        const now = ctx.currentTime + 0.005
-        const master = ctx.createGain()
-        master.gain.setValueAtTime(0.75, now)
-        master.connect(ctx.destination)
-
-        // 1. Short descending tactical power-down pulses (440 Hz -> 293.66 Hz)
-        ;[440, 293.66].forEach((freq, idx) => {
-          const t0 = now + idx * 0.055
-          const osc = ctx.createOscillator()
-          const flt = ctx.createBiquadFilter()
-          const g = ctx.createGain()
-          osc.type = 'sawtooth'
-          osc.frequency.setValueAtTime(freq, t0)
-          osc.frequency.exponentialRampToValueAtTime(freq * 0.78, t0 + 0.07)
-          flt.type = 'lowpass'
-          flt.frequency.setValueAtTime(1100, t0)
-          flt.frequency.exponentialRampToValueAtTime(260, t0 + 0.08)
-          g.gain.setValueAtTime(0.001, t0)
-          g.gain.linearRampToValueAtTime(0.18, t0 + 0.008)
-          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.09)
-          osc.connect(flt)
-          flt.connect(g)
-          g.connect(master)
-          osc.start(t0)
-          osc.stop(t0 + 0.1)
-        })
-
-        // 2. Low obsidian shutter lock-off thud (95 Hz -> 38 Hz)
-        const sub = ctx.createOscillator()
-        const sg = ctx.createGain()
-        sub.type = 'sine'
-        sub.frequency.setValueAtTime(95, now + 0.02)
-        sub.frequency.exponentialRampToValueAtTime(38, now + 0.24)
-        sg.gain.setValueAtTime(0.001, now + 0.02)
-        sg.gain.linearRampToValueAtTime(0.32, now + 0.045)
-        sg.gain.exponentialRampToValueAtTime(0.001, now + 0.28)
-        sub.connect(sg)
-        sg.connect(master)
-        sub.start(now + 0.02)
-        sub.stop(now + 0.3)
-
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate([25, 20, 25])
-        }
-      }
-
-      if (ctx.state === 'running') {
-        trigger()
-      } else {
-        ctx.resume().then(trigger).catch(() => {})
+      playRingtonePreset(ctx, 'skip', ringtoneSelections.skip)
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([25, 20, 25])
       }
     } catch {}
   }
@@ -3733,6 +3579,24 @@ export default function Page() {
   // Sumber kebenaran penyelesaian HARI INI adalah completedDates.includes(todayIsoStr), BUKAN boolean t.done yang bisa tertinggal dari kemarin
   const completedPersonalCount = userPersonalTasks.filter((t) => Boolean(t.completedDates?.includes(todayIsoStr))).length
   const completedTodayPersonalCount = todayPersonalTasks.filter((t) => Boolean(t.completedDates?.includes(todayIsoStr))).length
+
+  // Event 2: Mainkan ringtone pembuka sekali saat masuk app jika masih ada quest hari ini
+  useEffect(() => {
+    if (!mounted || !prefSound || hasPlayedEntrySoundRef.current) return
+    if (todayPersonalTasks.length <= completedTodayPersonalCount) return
+    if (typeof window === 'undefined') return
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = audioCtxRef.current || new AudioCtx()
+    audioCtxRef.current = ctx
+    if (ctx.state === 'running') {
+      hasPlayedEntrySoundRef.current = true
+      pendingEntrySoundRef.current = false
+      playRingtonePreset(ctx, 'entry', ringtoneSelections.entry)
+    } else {
+      pendingEntrySoundRef.current = true
+    }
+  }, [mounted, prefSound, todayPersonalTasks.length, completedTodayPersonalCount, ringtoneSelections.entry])
   const userJoinedMemberships = clanMembers.filter(
     (cm) => cm.userId === currentUser.id || (currentUser.username && cm.userId === currentUser.username)
   )
@@ -6459,6 +6323,9 @@ export default function Page() {
     })
 
     setPersonalTasks(nextTasks)
+    if (nextSkipped && isTargetToday) {
+      playQuestSkipSound()
+    }
     const updatedTask = nextTasks.find((t) => t.id === taskId)
     if (updatedTask) {
       saveCloudQuest(updatedTask, currentUser.username)
@@ -22796,6 +22663,293 @@ export default function Page() {
               </button>
             </div>
 
+            {/* Settings Tabs: Umum vs Ringtone (40) */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '8px',
+                padding: '4px',
+                marginBottom: '14px',
+                borderRadius: '12px',
+                background: 'rgba(5, 9, 20, 0.78)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setSettingsTab('general')}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '9px',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  border:
+                    settingsTab === 'general'
+                      ? `1px solid rgba(${currentRankTier.primaryRgb}, 0.5)`
+                      : '1px solid transparent',
+                  background:
+                    settingsTab === 'general'
+                      ? `rgba(${currentRankTier.primaryRgb}, 0.18)`
+                      : 'transparent',
+                  color: settingsTab === 'general' ? '#ffffff' : '#94a3b8',
+                  cursor: 'pointer',
+                }}
+              >
+                Umum
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettingsTab('ringtone')}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '9px',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  border:
+                    settingsTab === 'ringtone'
+                      ? `1px solid rgba(${currentRankTier.primaryRgb}, 0.5)`
+                      : '1px solid transparent',
+                  background:
+                    settingsTab === 'ringtone'
+                      ? `rgba(${currentRankTier.primaryRgb}, 0.18)`
+                      : 'transparent',
+                  color: settingsTab === 'ringtone' ? '#ffffff' : '#94a3b8',
+                  cursor: 'pointer',
+                }}
+              >
+                Ringtone (40)
+              </button>
+            </div>
+
+            {settingsTab === 'ringtone' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Ringkasan Ringtone Aktif */}
+                <div
+                  style={{
+                    background: 'rgba(5, 9, 20, 0.78)',
+                    border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.24)`,
+                    borderRadius: '12px',
+                    padding: '10px 12px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gap: '6px 10px',
+                    fontSize: '10px',
+                    color: '#cbd5e1',
+                  }}
+                >
+                  {RINGTONE_CATEGORIES.map((cat) => {
+                    const activeIdx = ringtoneSelections[cat.id] ?? 0
+                    const activePreset = cat.items[activeIdx]
+                    return (
+                      <div
+                        key={cat.id}
+                        style={{
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        <span style={{ color: cat.eyebrowColor, fontWeight: 800 }}>
+                          {cat.title}:{' '}
+                        </span>
+                        <strong style={{ color: '#ffffff' }}>
+                          #{activeIdx + 1} {activePreset?.name}
+                        </strong>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Daftar 4 Event x 10 Opsi Ringtone */}
+                {RINGTONE_CATEGORIES.map((cat) => {
+                  const selectedIdx = ringtoneSelections[cat.id] ?? 0
+                  return (
+                    <div
+                      key={cat.id}
+                      style={{
+                        background: 'rgba(5, 9, 20, 0.78)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '14px',
+                        padding: '12px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '10px',
+                          paddingBottom: '8px',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontSize: '9px',
+                              fontWeight: 900,
+                              letterSpacing: '0.1em',
+                              color: cat.eyebrowColor,
+                            }}
+                          >
+                            {cat.eyebrow}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '13px',
+                              fontWeight: 800,
+                              color: '#ffffff',
+                              marginTop: '2px',
+                            }}
+                          >
+                            {cat.title}
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: '999px',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            color: '#94a3b8',
+                          }}
+                        >
+                          10 Opsi
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {cat.items.map((item, idx) => {
+                          const isSelected = selectedIdx === idx
+                          const isPlaying = playingRingtoneKey === `${cat.id}-${idx}`
+                          return (
+                            <div
+                              key={item.name}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px',
+                                padding: '8px 10px',
+                                borderRadius: '11px',
+                                background: isPlaying
+                                  ? 'rgba(16, 185, 129, 0.14)'
+                                  : isSelected
+                                  ? `rgba(${currentRankTier.primaryRgb}, 0.14)`
+                                  : 'rgba(255, 255, 255, 0.03)',
+                                border: isPlaying
+                                  ? '1px solid #34d399'
+                                  : isSelected
+                                  ? `1px solid ${currentRankTier.primaryColor}`
+                                  : '1px solid rgba(255, 255, 255, 0.07)',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '9px',
+                                  minWidth: 0,
+                                  flex: 1,
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handlePreviewRingtone(cat.id, idx)}
+                                  title="Putar suara"
+                                  style={{
+                                    width: '30px',
+                                    height: '30px',
+                                    borderRadius: '9px',
+                                    border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.42)`,
+                                    background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                                    color: currentRankTier.highlightColor,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    flexShrink: 0,
+                                    fontSize: '11px',
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  ▶
+                                </button>
+                                <div style={{ minWidth: 0 }}>
+                                  <div
+                                    style={{
+                                      fontSize: '12px',
+                                      fontWeight: 800,
+                                      color: '#ffffff',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    #{idx + 1} {item.name}
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: '10px',
+                                      color: '#94a3b8',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {item.desc}
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectRingtone(cat.id, idx)}
+                                style={{
+                                  padding: '5px 10px',
+                                  borderRadius: '9px',
+                                  border: isSelected
+                                    ? `1px solid ${currentRankTier.highlightColor}`
+                                    : '1px solid rgba(255, 255, 255, 0.14)',
+                                  background: isSelected
+                                    ? currentRankTier.primaryColor
+                                    : 'rgba(255, 255, 255, 0.05)',
+                                  color: isSelected ? '#030712' : '#cbd5e1',
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {isSelected ? 'Aktif' : 'Pilih'}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+
+                <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => setIsPreferencesModalOpen(false)}
+                    style={{
+                      background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
+                      color: '#030712',
+                      fontWeight: 900,
+                      border: 'none',
+                      boxShadow: `0 10px 24px -6px ${currentRankTier.glowColor}`,
+                    }}
+                  >
+                    Selesai
+                  </button>
+                </div>
+              </div>
+            ) : (
             <form onSubmit={handleSavePreferences}>
               {/* Profile Card Info (Synced to Rank Tier) */}
               <div
@@ -23173,6 +23327,7 @@ export default function Page() {
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       )}
@@ -23876,7 +24031,9 @@ export default function Page() {
                     onClick={() => {
                       const q = arrivedQuestAlert
                       markQuestAlertHandled(q)
-                      playQuestSkipSound()
+                      if (q.id === 'preview-quest') {
+                        playQuestSkipSound()
+                      }
                       closeQuestAlertWithAnim(() => {
                         if (q.id !== 'preview-quest') {
                           handleSkipPersonal(q.id, getLocalIsoDate())
