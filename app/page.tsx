@@ -2562,13 +2562,13 @@ export default function Page() {
   const [isAddingFinanceBucket, setIsAddingFinanceBucket] = useState<boolean>(false)
   const [newBucketName, setNewBucketName] = useState<string>('')
   const [newBucketCategory, setNewBucketCategory] = useState<'kebutuhan' | 'hiburan' | 'tabungan' | 'cicilan'>('kebutuhan')
-  const [newBucketTarget, setNewBucketTarget] = useState<string>('300.000')
+  const [newBucketTarget, setNewBucketTarget] = useState<string>('')
   const [editingBucketId, setEditingBucketId] = useState<string | null>(null)
   const [editingBucketNameDraft, setEditingBucketNameDraft] = useState<string>('')
   const [editingBucketTargetDraft, setEditingBucketTargetDraft] = useState<string>('')
   const [isAddingFinanceGoal, setIsAddingFinanceGoal] = useState<boolean>(false)
   const [newGoalTitle, setNewGoalTitle] = useState<string>('')
-  const [newGoalTarget, setNewGoalTarget] = useState<string>('2.000.000')
+  const [newGoalTarget, setNewGoalTarget] = useState<string>('')
   const [newGoalSaved, setNewGoalSaved] = useState<string>('0')
   const [newGoalNote, setNewGoalNote] = useState<string>('')
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
@@ -4200,9 +4200,9 @@ export default function Page() {
     }
   }, [])
 
-  // Pause Lenis & lock background scroll when Top Transaction Drawer / Sheet / Nav Menu / Settings Modal is open
+  // Pause Lenis & lock background scroll when Top Transaction Drawer / Sheet / Nav Menu / Finance FAB / Settings Modal is open
   useEffect(() => {
-    const shouldLock = Boolean(activeFinanceSheet || isNavAddMenuOpen || isPreferencesModalOpen)
+    const shouldLock = Boolean(activeFinanceSheet || isNavAddMenuOpen || isFinanceFabOpen || isPreferencesModalOpen)
     if (shouldLock) {
       lenisRef.current?.stop()
       document.documentElement.style.overflow = 'hidden'
@@ -4217,7 +4217,7 @@ export default function Page() {
       document.documentElement.style.overflow = ''
       document.body.style.overflow = ''
     }
-  }, [activeFinanceSheet, isNavAddMenuOpen, isPreferencesModalOpen])
+  }, [activeFinanceSheet, isNavAddMenuOpen, isFinanceFabOpen, isPreferencesModalOpen])
 
   // Cleanup live flip interval & camera stream on unmount or leave photos subpage
   useEffect(() => {
@@ -6010,7 +6010,7 @@ export default function Page() {
     })
     setFinanceSelectedBucketId(newBucket.id)
     setNewBucketName('')
-    setNewBucketTarget('300.000')
+    setNewBucketTarget('')
     setIsAddingFinanceBucket(false)
     setActiveFinanceSheet(null)
     setFinanceTab('budget')
@@ -6075,7 +6075,7 @@ export default function Page() {
     })
     setFinanceSelectedGoalId(newGoal.id)
     setNewGoalTitle('')
-    setNewGoalTarget('2.000.000')
+    setNewGoalTarget('')
     setNewGoalSaved('0')
     setNewGoalNote('')
     setIsAddingFinanceGoal(false)
@@ -8914,12 +8914,12 @@ export default function Page() {
       const iconClose = <X size={15} strokeWidth={2.6} />
 
       if (financeFabStyle === 'portal') {
-        // #1 Portal Orb Fan
+        // #1 Rankerz Dual-Ring Orb + Mono Stack
         return (
           <div
             style={{
               position: 'fixed',
-              bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+              bottom: 'calc(18px + env(safe-area-inset-bottom, 0px))',
               left: '50%',
               transform: 'translateX(-50%)',
               zIndex: 46,
@@ -8930,92 +8930,122 @@ export default function Page() {
             }}
           >
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {/* Left Arc Pill: Catat Uang */}
-              <motion.button
-                type="button"
-                initial={false}
-                animate={{
-                  x: isFinanceFabOpen ? -68 : 0,
-                  y: isFinanceFabOpen ? -54 : 0,
-                  scale: isFinanceFabOpen ? 1 : 0.4,
-                  opacity: isFinanceFabOpen ? 1 : 0,
-                }}
-                transition={{ type: 'spring', stiffness: 380, damping: 24 }}
-                onClick={() => {
-                  setIsFinanceFabOpen(false)
-                  setActiveFinanceSheet('log')
-                }}
-                style={{
-                  position: 'absolute',
-                  pointerEvents: isFinanceFabOpen ? 'auto' : 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '9px 15px',
-                  borderRadius: '999px',
-                  border: '1px solid rgba(255,255,255,0.4)',
-                  background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                  color: '#030712',
-                  fontSize: '11px',
-                  fontWeight: 900,
-                  boxShadow: `0 10px 26px -6px ${currentRankTier.glowColor}`,
-                  whiteSpace: 'nowrap',
-                  cursor: 'pointer',
-                }}
-              >
-                {iconLog}
-                <span>Transaksi</span>
-              </motion.button>
+              <AnimatePresence>
+                {isFinanceFabOpen && (
+                  <motion.div
+                    key="finance-mono-stack"
+                    initial={{ x: '-50%', opacity: 0 }}
+                    animate={{ x: '-50%', opacity: 1 }}
+                    exit={{ x: '-50%', opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 22px)',
+                      left: '50%',
+                      x: '-50%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '10px',
+                      zIndex: 65,
+                      pointerEvents: 'auto',
+                    }}
+                  >
+                    {/* Top Pill: Transactions */}
+                    <motion.button
+                      type="button"
+                      initial={{ y: 24, scale: 0.82, opacity: 0 }}
+                      animate={{ y: 0, scale: 1, opacity: 1 }}
+                      exit={{ y: 18, scale: 0.85, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 420, damping: 26, delay: 0.04 }}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.94 }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setIsFinanceFabOpen(false)
+                        setIsTxSubDropdownOpen(false)
+                        setActiveFinanceSheet('log')
+                      }}
+                      style={{
+                        width: '176px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '10px 18px',
+                        borderRadius: '999px',
+                        border: '1px solid rgba(255, 255, 255, 0.35)',
+                        background: `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
+                        color: '#030712',
+                        fontSize: '12px',
+                        fontWeight: 900,
+                        letterSpacing: '0.01em',
+                        boxShadow: `0 12px 28px -6px ${currentRankTier.glowColor}`,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {iconLog}
+                      <span>Transactions</span>
+                    </motion.button>
 
-              {/* Right Arc Pill: Tambah Target */}
-              <motion.button
-                type="button"
-                initial={false}
-                animate={{
-                  x: isFinanceFabOpen ? 68 : 0,
-                  y: isFinanceFabOpen ? -54 : 0,
-                  scale: isFinanceFabOpen ? 1 : 0.4,
-                  opacity: isFinanceFabOpen ? 1 : 0,
-                }}
-                transition={{ type: 'spring', stiffness: 380, damping: 24 }}
-                onClick={() => {
-                  setIsFinanceFabOpen(false)
-                  setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
-                  setActiveFinanceSheet('target')
-                }}
-                style={{
-                  position: 'absolute',
-                  pointerEvents: isFinanceFabOpen ? 'auto' : 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '9px 15px',
-                  borderRadius: '999px',
-                  border: `1px solid ${currentRankTier.primaryColor}`,
-                  background: 'rgba(9, 14, 28, 0.96)',
-                  color: currentRankTier.highlightColor,
-                  fontSize: '11px',
-                  fontWeight: 900,
-                  boxShadow: `0 10px 26px -8px ${currentRankTier.glowColor}`,
-                  whiteSpace: 'nowrap',
-                  cursor: 'pointer',
-                }}
-              >
-                {iconTarget}
-                <span>+ Target</span>
-              </motion.button>
+                    {/* Bottom Pill: Add G/P */}
+                    <motion.button
+                      type="button"
+                      initial={{ y: 14, scale: 0.84, opacity: 0 }}
+                      animate={{ y: 0, scale: 1, opacity: 1 }}
+                      exit={{ y: 10, scale: 0.86, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.94 }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setIsFinanceFabOpen(false)
+                        setFinanceTargetDraftType(financeTab === 'budget' ? 'bucket' : 'goal')
+                        setActiveFinanceSheet('target')
+                      }}
+                      style={{
+                        width: '176px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '10px 18px',
+                        borderRadius: '999px',
+                        border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.5)`,
+                        background:
+                          'linear-gradient(168deg, rgba(16, 25, 46, 0.95) 0%, rgba(7, 11, 22, 0.98) 100%)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        color: '#ffffff',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        letterSpacing: '0.01em',
+                        boxShadow:
+                          '0 14px 32px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <Target size={15} color={currentRankTier.highlightColor} strokeWidth={2.3} />
+                      <span>Add G/P</span>
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              {/* Center Portal Orb Trigger */}
+              {/* Center Rankerz Dual-Ring Orb Trigger */}
               <motion.button
                 type="button"
-                whileHover={{ scale: 1.08 }}
+                whileHover={{ scale: 1.07 }}
                 whileTap={{ scale: 0.92 }}
-                onClick={() => setIsFinanceFabOpen(!isFinanceFabOpen)}
+                onClick={() => setIsFinanceFabOpen((prev) => !prev)}
+                aria-label="Aksi Finance Vault"
                 style={{
                   pointerEvents: 'auto',
                   position: 'relative',
-                  width: '52px',
-                  height: '52px',
+                  width: '56px',
+                  height: '56px',
                   borderRadius: '999px',
                   display: 'flex',
                   alignItems: 'center',
@@ -9023,41 +9053,59 @@ export default function Page() {
                   cursor: 'pointer',
                   background: 'transparent',
                   border: 'none',
+                  padding: 0,
                 }}
               >
+                {/* Outer Pulsing Halo */}
                 <span
+                  aria-hidden="true"
                   style={{
                     position: 'absolute',
-                    inset: 0,
+                    inset: '0px',
                     borderRadius: '999px',
-                    border: `1.5px dashed ${currentRankTier.primaryColor}`,
-                    animation: 'spinSlow 10s linear infinite',
+                    border: `1.5px dashed rgba(${currentRankTier.primaryRgb}, 0.55)`,
+                    boxShadow: `0 0 22px -6px ${currentRankTier.glowColor}`,
+                    animation: 'spinSlow 14s linear infinite',
                   }}
                 />
+                {/* Inner Crisp Ring */}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    inset: '4px',
+                    borderRadius: '999px',
+                    border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.35)`,
+                    background: 'rgba(6, 10, 22, 0.72)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                  }}
+                />
+                {/* Core Button */}
                 <span
                   style={{
                     position: 'relative',
-                    width: '40px',
-                    height: '40px',
+                    width: '42px',
+                    height: '42px',
                     borderRadius: '999px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: isFinanceFabOpen
-                      ? '#090e1c'
+                      ? 'rgba(9, 14, 28, 0.96)'
                       : `linear-gradient(135deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`,
-                    color: isFinanceFabOpen ? currentRankTier.primaryColor : '#030712',
-                    border: isFinanceFabOpen ? `1px solid ${currentRankTier.primaryColor}` : 'none',
-                    boxShadow: `0 0 20px ${currentRankTier.glowColor}`,
-                    transition: 'all 0.3s ease',
+                    color: isFinanceFabOpen ? currentRankTier.highlightColor : '#030712',
+                    border: isFinanceFabOpen ? `1.5px solid ${currentRankTier.primaryColor}` : '1px solid rgba(255,255,255,0.45)',
+                    boxShadow: `0 6px 20px -2px ${currentRankTier.glowColor}`,
+                    transition: 'all 0.25s ease',
                   }}
                 >
                   <motion.span
                     animate={{ rotate: isFinanceFabOpen ? 45 : 0 }}
-                    transition={{ type: 'spring', stiffness: 350, damping: 20 }}
+                    transition={{ type: 'spring', stiffness: 360, damping: 22 }}
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    <Plus size={20} strokeWidth={2.8} />
+                    <Plus size={20} strokeWidth={2.7} />
                   </motion.span>
                 </span>
               </motion.button>
@@ -9131,7 +9179,7 @@ export default function Page() {
                       }}
                     >
                       {iconLog}
-                      <span>Transaksi</span>
+                      <span>Transactions</span>
                     </motion.button>
                     <motion.button
                       type="button"
@@ -9157,7 +9205,7 @@ export default function Page() {
                       }}
                     >
                       {iconTarget}
-                      <span>+ Target</span>
+                      <span>Add G/P</span>
                     </motion.button>
                   </div>
                 </div>
@@ -9244,7 +9292,7 @@ export default function Page() {
               }}
             >
               {iconLog}
-              <span>Transaksi</span>
+              <span>Transactions</span>
             </motion.button>
 
             {/* Center Mecha Core Trigger */}
@@ -9311,7 +9359,7 @@ export default function Page() {
               }}
             >
               {iconTarget}
-              <span>+ Target</span>
+              <span>Add G/P</span>
             </motion.button>
           </div>
         )
@@ -9363,7 +9411,7 @@ export default function Page() {
                 cursor: 'pointer',
               }}
             >
-              <span>+ Tambah Target</span>
+              <span>Add G/P</span>
               {iconTarget}
             </motion.button>
 
@@ -9396,7 +9444,7 @@ export default function Page() {
                 cursor: 'pointer',
               }}
             >
-              <span>Transaksi</span>
+              <span>Transactions</span>
               {iconLog}
             </motion.button>
 
@@ -9486,7 +9534,7 @@ export default function Page() {
                   }}
                 >
                   {iconLog}
-                  <span>Transaksi</span>
+                  <span>Transactions</span>
                 </motion.button>
 
                 {/* Center Close */}
@@ -9513,7 +9561,7 @@ export default function Page() {
                   {iconClose}
                 </motion.button>
 
-                {/* Opsi 2: Tambah Target */}
+                {/* Opsi 2: Add G/P */}
                 <motion.button
                   type="button"
                   whileHover={{ scale: 1.04 }}
@@ -9540,7 +9588,7 @@ export default function Page() {
                   }}
                 >
                   {iconTarget}
-                  <span>+ Target</span>
+                  <span>Add G/P</span>
                 </motion.button>
               </motion.div>
             ) : (
@@ -10120,35 +10168,9 @@ export default function Page() {
               <strong style={{ fontSize: '12px', color: '#ffffff' }}>
                 Pos Pengeluaran ({financeVault.buckets.length})
               </strong>
-              {!isFinanceViewOnly ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFinanceTargetDraftType('bucket')
-                    setActiveFinanceSheet('target')
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '5px 10px',
-                    borderRadius: '999px',
-                    background: 'rgba(251, 191, 36, 0.14)',
-                    border: '1px solid rgba(251, 191, 36, 0.35)',
-                    color: '#fde68a',
-                    fontSize: '10px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Plus size={11} />
-                  <span>Tambah Pos</span>
-                </button>
-              ) : (
-                <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>
-                  Mode lihat saja
-                </span>
-              )}
+              <span style={{ fontSize: '9.5px', color: '#94a3b8' }}>
+                Kelola via tombol di bawah
+              </span>
             </div>
 
             {financeVault.buckets.map((bucket) => {
@@ -10602,6 +10624,7 @@ export default function Page() {
         <AnimatePresence>
           {isFinanceFabOpen && !isFinanceViewOnly && (
             <motion.div
+              data-lenis-prevent
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -10610,9 +10633,10 @@ export default function Page() {
               style={{
                 position: 'fixed',
                 inset: 0,
-                background: 'rgba(2, 4, 10, 0.65)',
-                backdropFilter: 'blur(3px)',
-                WebkitBackdropFilter: 'blur(3px)',
+                background: 'rgba(2, 5, 14, 0.72)',
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+                touchAction: 'none',
                 zIndex: 44,
               }}
             />
