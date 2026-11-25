@@ -4665,6 +4665,7 @@ export default function Page() {
     ? personalTasks.find((t) => t.id === activeFinanceQuest.id) ||
       personalTasks.find((t) => t.category.toLowerCase() === 'keuangan') || {
         id: activeFinanceQuest.id,
+        userId: currentUser.id,
         title: 'Finance Vault',
         category: 'Keuangan',
         xp: 15,
