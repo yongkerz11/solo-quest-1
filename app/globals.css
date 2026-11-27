@@ -1108,6 +1108,50 @@ button { font: inherit; color: inherit; }
 .quest-hero-card:hover img {
   transform: scale(1.04);
 }
+@keyframes chronoPulseHalo {
+  0%, 100% { transform: scale(1); opacity: 0.62; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+.chrono-matrix-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px !important;
+  padding: 20px 18px !important;
+}
+.chrono-lens {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 0%), rgba(var(--rank-rgb, 56, 189, 248), 0.11), transparent 70%);
+}
+.chrono-quest-row {
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.16s ease;
+}
+.chrono-quest-row:hover {
+  border-color: rgba(var(--rank-rgb, 56, 189, 248), 0.48) !important;
+  background: rgba(var(--rank-rgb, 56, 189, 248), 0.09) !important;
+}
+.chrono-mini-act {
+  transition: all 0.15s ease;
+}
+.chrono-mini-act.skip:hover {
+  background: rgba(244, 63, 94, 0.22) !important;
+  border-color: #fb7185 !important;
+  color: #fda4af !important;
+}
+.chrono-mini-act.seal:hover {
+  background: rgba(168, 85, 247, 0.24) !important;
+  border-color: #c084fc !important;
+  color: #e9d5ff !important;
+}
+.chrono-restore-btn:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+.chrono-halo-ring {
+  animation: chronoPulseHalo 3.2s ease-in-out infinite;
+}
 .quest-hero-card:active {
   transform: scale(0.985);
 }

@@ -22,6 +22,7 @@ import {
   Home,
   KeyRound,
   Lock,
+  Unlock,
   LogIn,
   LogOut,
   Pencil,
@@ -2497,6 +2498,13 @@ export default function Page() {
   const [selectedWeekDay, setSelectedWeekDay] = useState<string | null>(null)
   const [showCompletedDayQuests, setShowCompletedDayQuests] = useState<boolean>(false)
   const [showSealedQuests, setShowSealedQuests] = useState<boolean>(false)
+  const [weeklyCardSubTab, setWeeklyCardSubTab] = useState<'active' | 'history' | 'sealed'>('active')
+  const [weeklyUndoState, setWeeklyUndoState] = useState<{
+    kind: 'complete' | 'skip' | 'seal'
+    taskId: string
+    dateIso: string
+    label: string
+  } | null>(null)
 
   // Modals State
   const [isPersonalModalOpen, setIsPersonalModalOpen] = useState(false)
@@ -16696,1079 +16704,1215 @@ export default function Page() {
                 >
                   <section
                     data-scroll-card
-                    className="weekly-strip-card"
-                    style={{ marginBottom: '12px', perspective: '1200px' }}
+                    className="weekly-strip-card chrono-matrix-card"
+                    onPointerMove={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      e.currentTarget.style.setProperty('--mx', `${e.clientX - rect.left}px`)
+                      e.currentTarget.style.setProperty('--my', `${e.clientY - rect.top}px`)
+                    }}
+                    style={{
+                      marginBottom: '12px',
+                      perspective: '1400px',
+                      background: `radial-gradient(ellipse 80% 34% at 50% 0%, rgba(${currentRankTier.primaryRgb}, 0.18), transparent 68%), linear-gradient(175deg, #0d1322 0%, #070a13 48%, #05070e 100%)`,
+                      border: '1px solid rgba(255, 255, 255, 0.09)',
+                      boxShadow: `0 34px 80px -20px rgba(0, 0, 0, 0.95), 0 0 40px -22px ${currentRankTier.glowColor}, inset 0 1px 0 rgba(255, 255, 255, 0.16)`,
+                    }}
                   >
+                    {/* Top Horizon Rank Beam */}
                     <div
+                      aria-hidden="true"
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '8px',
-                        marginBottom: '10px',
+                        position: 'absolute',
+                        top: 0,
+                        left: '16%',
+                        right: '16%',
+                        height: '1.5px',
+                        background: `linear-gradient(90deg, transparent, ${currentRankTier.highlightColor}, transparent)`,
+                        boxShadow: `0 0 18px 2px ${currentRankTier.primaryColor}`,
+                        zIndex: 3,
+                        pointerEvents: 'none',
                       }}
-                    >
-                      <div>
-                        <span
-                          style={{
-                            fontSize: '8.5px',
-                            fontWeight: 800,
-                            letterSpacing: '0.14em',
-                            textTransform: 'uppercase',
-                            color: isWeeklyCardFlipped ? '#34d399' : currentRankTier.primaryColor,
-                            display: 'block',
-                          }}
-                        >
-                          {isWeeklyCardFlipped ? 'FINANCE VAULT • PRIORITAS' : 'WEEKLY SCHEDULE'}
-                        </span>
-                        <h2 style={{ fontSize: '13.5px', fontWeight: 800, margin: '1px 0 0', color: '#ffffff' }}>
-                          {isWeeklyCardFlipped ? 'Target & Keuangan' : 'Jadwal Minggu Ini'}
-                        </h2>
-                      </div>
+                    />
+                    <div className="chrono-lens" aria-hidden="true" />
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {/* 3D Flip Toggle Button (Quest <-> Finance) */}
-                        <button
-                          type="button"
-                          onClick={() => setIsWeeklyCardFlipped((prev) => !prev)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            padding: '5px 10px',
-                            borderRadius: '11px',
-                            border: isWeeklyCardFlipped
-                              ? `1px solid rgba(${currentRankTier.primaryRgb}, 0.45)`
-                              : '1px solid rgba(52, 211, 153, 0.45)',
-                            background: isWeeklyCardFlipped
-                              ? `rgba(${currentRankTier.primaryRgb}, 0.14)`
-                              : 'rgba(16, 185, 129, 0.14)',
-                            color: isWeeklyCardFlipped ? currentRankTier.highlightColor : '#6ee7b7',
-                            fontSize: '10px',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            transition: 'all 0.18s ease',
-                          }}
-                          title={isWeeklyCardFlipped ? 'Flip kembali ke Jadwal Quest' : 'Flip kartu ke Target & Finance'}
-                        >
-                          {isWeeklyCardFlipped ? <RotateCcw size={11} /> : <Wallet size={11} />}
-                          <span>{isWeeklyCardFlipped ? 'Flip Quest' : 'Flip Finance'}</span>
-                        </button>
-
-                        {!isWeeklyCardFlipped ? (
-                          <button
-                            type="button"
-                            onClick={() => setIsConsistencyModalOpen(true)}
+                    <div style={{ position: 'relative', zIndex: 2 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                          marginBottom: '12px',
+                        }}
+                      >
+                        <div>
+                          <span
                             style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '5px 10px',
-                              borderRadius: '11px',
-                              border: '1px solid rgba(255, 255, 255, 0.15)',
-                              background: 'rgba(255, 255, 255, 0.05)',
-                              color: '#e2e8f0',
-                              fontSize: '10px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
+                              fontSize: '8.5px',
+                              fontWeight: 800,
+                              letterSpacing: '0.16em',
+                              textTransform: 'uppercase',
+                              color: isWeeklyCardFlipped ? '#34d399' : currentRankTier.primaryColor,
+                              display: 'block',
                             }}
-                            title="Lihat Konsistensi Tahunan"
                           >
-                            <BarChart2 size={11} />
-                            <span>Heatmap</span>
-                          </button>
-                        ) : (
+                            {isWeeklyCardFlipped ? 'FINANCE VAULT • PRIORITAS' : 'CHRONO ENERGY MATRIX'}
+                          </span>
+                          <h2 style={{ fontSize: '16px', fontWeight: 800, margin: '1px 0 0', color: '#ffffff', letterSpacing: '-0.02em' }}>
+                            {isWeeklyCardFlipped ? 'Target & Keuangan' : 'Jadwal Minggu Ini'}
+                          </h2>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {!isWeeklyCardFlipped && (
+                            <button
+                              type="button"
+                              onClick={() => setIsConsistencyModalOpen(true)}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(255, 255, 255, 0.09)',
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                color: '#cbd5e1',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                              }}
+                              title="Lihat Heatmap Konsistensi Tahunan"
+                              aria-label="Lihat Heatmap Konsistensi Tahunan"
+                            >
+                              <BarChart2 size={14} />
+                            </button>
+                          )}
+
+                          {/* 3D Flip Toggle Button (Quest <-> Finance) */}
                           <button
                             type="button"
-                            onClick={() => {
-                              const finTask = personalTasks.find((t) => t.category.toLowerCase() === 'keuangan')
-                              setFinanceTab('goals')
-                              setActiveFinanceSheet(null)
-                              setActiveFinanceQuest({
-                                id: finTask?.id || 'vault-direct',
-                                dateIso: getLocalIsoDate(),
-                              })
-                            }}
+                            onClick={() => setIsWeeklyCardFlipped((prev) => !prev)}
                             style={{
+                              height: '32px',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '3px',
-                              padding: '5px 10px',
-                              borderRadius: '11px',
-                              border: '1px solid rgba(52, 211, 153, 0.45)',
-                              background: 'linear-gradient(135deg, #059669, #0284c7)',
-                              color: '#ffffff',
-                              fontSize: '10px',
+                              gap: '6px',
+                              padding: '0 12px',
+                              borderRadius: '10px',
+                              border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.44)`,
+                              background: `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.18), rgba(${currentRankTier.primaryRgb}, 0.06))`,
+                              color: currentRankTier.highlightColor,
+                              fontSize: '10.5px',
                               fontWeight: 800,
                               cursor: 'pointer',
+                              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+                              transition: 'all 0.18s ease',
                             }}
-                            title="Buka Halaman Finance Vault"
+                            title={isWeeklyCardFlipped ? 'Flip kembali ke Jadwal Quest' : 'Flip kartu ke Target & Finance'}
                           >
-                            <span>Vault</span>
-                            <ChevronRight size={11} />
+                            {isWeeklyCardFlipped ? <RotateCcw size={12} /> : <Wallet size={12} />}
+                            <span>{isWeeklyCardFlipped ? 'Flip Quest' : 'Finance'}</span>
                           </button>
-                        )}
-                      </div>
-                    </div>
 
-                    <AnimatePresence mode="wait" initial={false}>
-                      {!isWeeklyCardFlipped ? (
-                        <motion.div
-                          key="weekly-card-front-quests"
-                          initial={{ rotateY: -85, opacity: 0, scale: 0.96 }}
-                          animate={{ rotateY: 0, opacity: 1, scale: 1 }}
-                          exit={{ rotateY: 85, opacity: 0, scale: 0.96 }}
-                          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-                          style={{ transformStyle: 'preserve-3d' }}
-                        >
-                    {/* Magnetic Sliding 7-Day Strip (Sen - Min) */}
-                    {(() => {
-                      const selectedDayIdx = Math.max(
-                        0,
-                        currentWeekDays.findIndex((d) => d.code === activeScheduleDayCode)
-                      )
-                      return (
-                        <div
-                          style={{
-                            position: 'relative',
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(7, 1fr)',
-                            padding: '4px',
-                            borderRadius: '14px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid rgba(255, 255, 255, 0.06)',
-                            marginBottom: '13px',
-                          }}
-                        >
-                          <div
-                            className="magnetic-pill"
-                            aria-hidden="true"
-                            style={{
-                              pointerEvents: 'none',
-                              position: 'absolute',
-                              top: '4px',
-                              bottom: '4px',
-                              left: '4px',
-                              width: 'calc(14.2857% - 1.2px)',
-                              borderRadius: '11px',
-                              border: '1px solid rgba(255, 255, 255, 0.25)',
-                              transform: `translateX(${selectedDayIdx * 100}%)`,
-                              background: `linear-gradient(160deg, rgba(${currentRankTier.primaryRgb}, 0.14), rgba(255, 255, 255, 0.06))`,
-                              boxShadow: `0 4px 14px -4px ${currentRankTier.glowColor}`,
-                            }}
-                          />
-                          {currentWeekDays.map((day) => {
-                            const isSelected = day.code === activeScheduleDayCode
-                            const hasScheduled = day.scheduledTasks.length > 0
-                            return (
-                              <button
-                                key={day.code}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedWeekDay(day.code)
-                                  setShowCompletedDayQuests(false)
-                                }}
-                                style={{
-                                  position: 'relative',
-                                  zIndex: 1,
-                                  padding: '9px 0',
-                                  background: 'transparent',
-                                  border: 0,
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontSize: '8.5px',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    color: isSelected ? '#ffffff' : '#94a3b8',
-                                  }}
-                                >
-                                  {day.shortLabel}
-                                </span>
-                                <span
-                                  style={{
-                                    fontSize: '11px',
-                                    fontWeight: 800,
-                                    marginTop: '2px',
-                                    fontVariantNumeric: 'tabular-nums',
-                                    color: isSelected ? currentRankTier.primaryColor : '#e2e8f0',
-                                  }}
-                                >
-                                  {day.dateNum}
-                                </span>
-                                <span
-                                  style={{
-                                    width: '4px',
-                                    height: '4px',
-                                    borderRadius: '999px',
-                                    marginTop: '3px',
-                                    background: day.isDone
-                                      ? '#34d399'
-                                      : isSelected
-                                        ? currentRankTier.primaryColor
-                                        : hasScheduled
-                                          ? '#a855f7'
-                                          : '#475569',
-                                  }}
-                                />
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )
-                    })()}
-
-                    {/* Preview Quest pada Hari yang Dipilih */}
-                    {(() => {
-                      const isPastDay = Boolean(activeScheduleDayObj.isPast)
-                      const isFutureDay = Boolean(activeScheduleDayObj.isFuture)
-                      const isTaskDoneOnDay = (t: PersonalTask) =>
-                        Boolean(t.completedDates?.includes(activeScheduleDayObj.isoDate))
-                      const isTaskSkippedOnDay = (t: PersonalTask) => {
-                        if (t.category.toLowerCase() === 'keuangan') return false
-                        if (isFutureDay || isTaskDoneOnDay(t)) return false
-                        if (isPastDay) {
-                          return !t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
-                        }
-                        const wasUnskipped = Boolean(t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`))
-                        return Boolean(
-                          t.skippedDates?.includes(activeScheduleDayObj.isoDate) ||
-                            (!wasUnskipped && isQuestTimeSkipped(t.targetTime, false, t.schedule))
-                        )
-                      }
-
-                      const isTaskUpcomingTimeOnDay = (t: PersonalTask) => {
-                        if (t.category.toLowerCase() === 'keuangan') return false
-                        if (isPastDay || isFutureDay || isTaskDoneOnDay(t) || isTaskSkippedOnDay(t)) return false
-                        return isQuestTimeUpcoming(t.targetTime, false, t.schedule)
-                      }
-
-                      const nonFinanceDayTasks = activeScheduleDayObj.scheduledTasks.filter(
-                        (t) => t.category.toLowerCase() !== 'keuangan'
-                      )
-                      const totalDayTasks = nonFinanceDayTasks.length
-                      const remainingDayTasks = nonFinanceDayTasks.filter(
-                        (t) => !isTaskDoneOnDay(t)
-                      )
-                      const completedDayCount = totalDayTasks - remainingDayTasks.length
-                      const skippedDayCount = remainingDayTasks.filter((t) => isTaskSkippedOnDay(t)).length
-                      const upcomingTimedDayCount = remainingDayTasks.filter((t) => isTaskUpcomingTimeOnDay(t)).length
-                      const activePendingDayTasks = remainingDayTasks.filter(
-                        (t) => !isTaskSkippedOnDay(t) && !isTaskUpcomingTimeOnDay(t)
-                      )
-                      const activeRemainingDayCount = activePendingDayTasks.length
-                      const hiddenDayTasks = nonFinanceDayTasks.filter(
-                        (t) => !activePendingDayTasks.some((p) => p.id === t.id)
-                      )
-                      const allDoneForDay = totalDayTasks > 0 && remainingDayTasks.length === 0
-                      const hasExpandableDayQuests =
-                        completedDayCount > 0 || skippedDayCount > 0 || upcomingTimedDayCount > 0
-                      const primaryVisibleTasks = isFutureDay
-                        ? nonFinanceDayTasks
-                        : activePendingDayTasks
-
-                      const headerBadgeText = allDoneForDay
-                        ? `✓ ${totalDayTasks}/${totalDayTasks} Selesai`
-                        : totalDayTasks === 0
-                          ? 'Kosong'
-                          : isFutureDay
-                            ? `Hanya Lihat • ${totalDayTasks} Quest`
-                            : [
-                                activeRemainingDayCount > 0 ? `${activeRemainingDayCount} Aktif` : null,
-                                upcomingTimedDayCount > 0 ? `${upcomingTimedDayCount} Menunggu` : null,
-                                completedDayCount > 0 && activeRemainingDayCount === 0
-                                  ? `${completedDayCount} Selesai`
-                                  : null,
-                                skippedDayCount > 0 ? `${skippedDayCount} Skip` : null,
-                              ]
-                                .filter(Boolean)
-                                .join(' • ')
-
-                      return (
-                        <div
-                          style={{
-                            padding: '13px 12px',
-                            borderRadius: '14px',
-                            background: 'rgba(7, 5, 17, 0.85)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              marginBottom:
-                                primaryVisibleTasks.length > 0 || totalDayTasks === 0 ? '8px' : '6px',
-                              userSelect: 'none',
-                            }}
-                          >
-                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#e2e8f0' }}>
-                              {activeScheduleDayObj.fullName}
-                              {activeScheduleDayObj.isToday ? ' (Hari Ini)' : ''}
-                            </span>
-                            <span
+                          {isWeeklyCardFlipped && (
+                            <button
+                              type="button"
                               onClick={() => {
-                                if (hasExpandableDayQuests) {
-                                  setShowCompletedDayQuests((prev) => !prev)
-                                }
+                                const finTask = personalTasks.find((t) => t.category.toLowerCase() === 'keuangan')
+                                setFinanceTab('goals')
+                                setActiveFinanceSheet(null)
+                                setActiveFinanceQuest({
+                                  id: finTask?.id || 'vault-direct',
+                                  dateIso: getLocalIsoDate(),
+                                })
                               }}
                               style={{
-                                fontSize: '9.5px',
-                                fontWeight: 700,
-                                cursor: hasExpandableDayQuests ? 'pointer' : 'default',
-                                color: allDoneForDay
-                                  ? '#67e8f9'
-                                  : totalDayTasks === 0
-                                    ? '#94a3b8'
-                                    : currentRankTier.primaryColor,
+                                height: '32px',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '3px',
+                                padding: '0 10px',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(52, 211, 153, 0.45)',
+                                background: 'linear-gradient(135deg, #059669, #0284c7)',
+                                color: '#ffffff',
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                cursor: 'pointer',
                               }}
+                              title="Buka Halaman Finance Vault"
                             >
-                              {isFutureDay && totalDayTasks > 0 && <Lock size={9} />}
-                              <span>{headerBadgeText}</span>
-                            </span>
-                          </div>
+                              <span>Vault</span>
+                              <ChevronRight size={11} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                          {(() => {
-                            const priorityGoalForDay =
-                              financeVault.goals.find((g) => g.isPriority) || financeVault.goals[0] || null
-                            const dayMonthPrefix = activeScheduleDayObj.isoDate.slice(0, 7)
-                            const priorityMonthlySaved = priorityGoalForDay
-                              ? financeVault.logs
-                                  .filter(
-                                    (l) =>
-                                      l.type === 'saving' &&
-                                      l.dateIso.startsWith(dayMonthPrefix) &&
-                                      (!l.goalId || l.goalId === priorityGoalForDay.id)
-                                  )
-                                  .reduce((acc, l) => acc + l.amount, 0)
-                              : 0
-                            const hasPriorityMonthly = Boolean(
-                              priorityGoalForDay && priorityGoalForDay.monthlyTarget && priorityGoalForDay.monthlyTarget > 0
-                            )
-                            const finTargetVal = priorityGoalForDay
-                              ? hasPriorityMonthly
-                                ? priorityGoalForDay.monthlyTarget || 0
-                                : priorityGoalForDay.targetAmount
-                              : 0
-                            const finSavedVal = priorityGoalForDay
-                              ? hasPriorityMonthly
-                                ? priorityMonthlySaved
-                                : priorityGoalForDay.savedAmount
-                              : 0
-                            const finRemVal = Math.max(0, finTargetVal - finSavedVal)
-                            const finPct = finTargetVal > 0 ? Math.min(100, Math.round((finSavedVal / finTargetVal) * 100)) : 0
-                            const finTargetText = priorityGoalForDay
-                              ? hasPriorityMonthly
-                                ? `Bln ini: ${formatRupiah(finSavedVal)} / ${formatRupiah(finTargetVal)}`
-                                : `Target: ${formatRupiah(finSavedVal)} / ${formatRupiah(finTargetVal)}`
-                              : 'Belum ada target prioritas'
-                            const finRemText = priorityGoalForDay
-                              ? finRemVal > 0
-                                ? `Kurang ${formatRupiah(finRemVal)} lagi`
-                                : hasPriorityMonthly
-                                ? '✓ Target Bln Ini Tercapai!'
-                                : '✓ Target Tercapai!'
-                              : 'Atur target di Vault'
-
-                            const renderDayQuestRow = (task: PersonalTask) => {
-                              const isGym = task.category.toLowerCase() === 'gym'
-                              const isFinance = task.category.toLowerCase() === 'keuangan'
-                              const isDoneOnDay = isTaskDoneOnDay(task)
-                              const isSkipped = isTaskSkippedOnDay(task)
-                              const isUpcomingTime = isTaskUpcomingTimeOnDay(task)
-                              const isArrivedActive =
-                                activeScheduleDayObj.isToday &&
-                                !isDoneOnDay &&
-                                !isSkipped &&
-                                isQuestTimeArrived(task.targetTime, task.schedule)
-                              return (
-                                <motion.div
-                                  key={task.id}
-                                  layout
-                                  initial={{ opacity: 0, y: 8 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, x: 26, scale: 0.93 }}
-                                  transition={{ type: 'spring', stiffness: 340, damping: 26 }}
-                                  onClick={() => {
-                                    if (isFinance) {
-                                      setFinanceTab('goals')
-                                      setActiveFinanceSheet(null)
-                                      setActiveFinanceQuest({
-                                        id: task.id,
-                                        dateIso: activeScheduleDayObj.isoDate,
-                                        viewOnly: isFutureDay,
-                                      })
-                                    }
-                                  }}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    gap: '8px',
-                                    padding: '8px 10px',
-                                    borderRadius: '11px',
-                                    opacity: isFutureDay ? 0.8 : 1,
-                                    cursor: isFinance ? 'pointer' : 'default',
-                                    background:
-                                      isSkipped && !isDoneOnDay
-                                        ? 'rgba(69, 10, 26, 0.45)'
-                                        : isFinance
-                                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(18, 14, 33, 0.95))'
-                                        : 'rgba(18, 14, 33, 0.92)',
-                                    border:
-                                      isSkipped && !isDoneOnDay
-                                        ? '1px solid rgba(244, 63, 94, 0.35)'
-                                        : isFinance
-                                        ? '1px solid rgba(52, 211, 153, 0.32)'
-                                        : '1px solid rgba(255, 255, 255, 0.1)',
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                                    {!isFinance && (
-                                      <span
-                                        className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
-                                        onClick={() => {
-                                          if (!isFutureDay) {
-                                            handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
-                                          }
-                                        }}
-                                        role={isFutureDay ? undefined : 'button'}
-                                        tabIndex={isFutureDay ? undefined : 0}
-                                        style={{
-                                          width: '20px',
-                                          height: '20px',
-                                          borderRadius: '6px',
-                                          border: isFutureDay
-                                            ? '1px solid rgba(148, 163, 184, 0.3)'
-                                            : isDoneOnDay
-                                              ? '1px solid #38bdf8'
-                                              : isSkipped
-                                                ? '1px solid #ef4444'
-                                                : '1px solid rgba(168, 85, 247, 0.5)',
-                                          background: isFutureDay
-                                            ? 'rgba(15, 11, 26, 0.75)'
-                                            : isDoneOnDay
-                                              ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(14, 116, 144, 0.45))'
-                                              : isSkipped
-                                                ? 'rgba(239, 68, 68, 0.2)'
-                                                : 'rgba(255, 255, 255, 0.04)',
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          cursor: isFutureDay ? 'not-allowed' : 'pointer',
-                                          flexShrink: 0,
-                                          color: isFutureDay
-                                            ? '#9a8fb2'
-                                            : isDoneOnDay
-                                              ? '#67e8f9'
-                                              : isSkipped
-                                                ? '#f87171'
-                                                : 'transparent',
-                                          transition: 'all 0.15s ease',
-                                        }}
-                                        title={
-                                          isFutureDay
-                                            ? 'Belum saatnya dikerjakan (Hanya Lihat)'
-                                            : isDoneOnDay
-                                              ? 'Batalkan selesai'
-                                              : 'Centang selesai (+XP)'
-                                        }
-                                        aria-label={
-                                          isFutureDay
-                                            ? 'Belum saatnya dikerjakan (Hanya Lihat)'
-                                            : isDoneOnDay
-                                              ? 'Batalkan selesai'
-                                              : 'Centang selesai (+XP)'
-                                        }
-                                      >
-                                        {isFutureDay ? (
-                                          <Lock size={10} color="#9a8fb2" />
-                                        ) : isDoneOnDay ? (
-                                          <Check size={13} strokeWidth={3} />
-                                        ) : isSkipped ? (
-                                          <FastForward size={11} color="#f87171" strokeWidth={2.5} />
-                                        ) : null}
-                                      </span>
-                                    )}
-                                    <span
-                                      style={{
-                                        width: '26px',
-                                        height: '26px',
-                                        borderRadius: '8px',
-                                        background: isFinance ? 'rgba(16, 185, 129, 0.16)' : 'rgba(168, 85, 247, 0.14)',
-                                        border: isFinance ? '1px solid rgba(52, 211, 153, 0.38)' : '1px solid rgba(168, 85, 247, 0.3)',
-                                        color: isFinance ? '#6ee7b7' : '#d8b4fe',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexShrink: 0,
-                                      }}
-                                    >
-                                      {renderCategoryIcon(task.category, 14)}
-                                    </span>
-                                    <div style={{ minWidth: 0, flex: 1 }}>
-                                      <strong
-                                        style={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '5px',
-                                          fontSize: '11.5px',
-                                          color: '#ffffff',
-                                          textDecoration: !isFinance && isDoneOnDay ? 'line-through' : 'none',
-                                          whiteSpace: 'nowrap',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                        }}
-                                      >
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                          {isFinance && priorityGoalForDay ? priorityGoalForDay.title : task.title}
-                                        </span>
-                                        {isFinance && (
-                                          <span
-                                            style={{
-                                              fontSize: '7.5px',
-                                              color: '#6ee7b7',
-                                              background: 'rgba(16, 185, 129, 0.16)',
-                                              border: '1px solid rgba(52, 211, 153, 0.38)',
-                                              padding: '1px 5px',
-                                              borderRadius: '999px',
-                                              fontWeight: 800,
-                                              flexShrink: 0,
-                                            }}
-                                          >
-                                            ★ PRIORITAS
-                                          </span>
-                                        )}
-                                        {!isFinance && isArrivedActive && (
-                                          <span
-                                            style={{
-                                              fontSize: '8px',
-                                              color: '#e9d5ff',
-                                              background: 'rgba(124, 58, 237, 0.22)',
-                                              border: '1px solid rgba(167, 139, 250, 0.42)',
-                                              padding: '1px 4px',
-                                              borderRadius: '4px',
-                                              fontWeight: 800,
-                                              flexShrink: 0,
-                                            }}
-                                          >
-                                            TERBUKA
-                                          </span>
-                                        )}
-                                        {!isFinance && isUpcomingTime && (
-                                          <span
-                                            style={{
-                                              fontSize: '8px',
-                                              color: '#cbd5e1',
-                                              background: 'rgba(148, 163, 184, 0.14)',
-                                              border: '1px solid rgba(148, 163, 184, 0.3)',
-                                              padding: '1px 4px',
-                                              borderRadius: '4px',
-                                              fontWeight: 700,
-                                              flexShrink: 0,
-                                            }}
-                                          >
-                                            JAM {task.targetTime}
-                                          </span>
-                                        )}
-                                        {!isFinance && isSkipped && !isDoneOnDay && (
-                                          <span
-                                            style={{
-                                              fontSize: '7.5px',
-                                              color: '#ffffff',
-                                              background: '#f43f5e',
-                                              padding: '1px 4px',
-                                              borderRadius: '4px',
-                                              fontWeight: 900,
-                                              flexShrink: 0,
-                                            }}
-                                          >
-                                            {isPastDay ? 'SKIP' : 'DILEWATI'}
-                                          </span>
-                                        )}
-                                      </strong>
-                                      {isFinance ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '2px' }}>
-                                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '5px', fontSize: '9.5px', fontVariantNumeric: 'tabular-nums' }}>
-                                            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{finTargetText}</span>
-                                            <span
-                                              style={{
-                                                color: finRemVal > 0 ? '#7dd3fc' : '#6ee7b7',
-                                                fontWeight: 800,
-                                              }}
-                                            >
-                                              • {finRemText}
-                                            </span>
-                                          </div>
-                                          {priorityGoalForDay && (
-                                            <div style={{ width: '100%', maxWidth: '190px', height: '3.5px', borderRadius: '999px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-                                              <div
-                                                style={{
-                                                  width: `${finPct}%`,
-                                                  height: '100%',
-                                                  borderRadius: '999px',
-                                                  background: 'linear-gradient(90deg, #10b981, #38bdf8)',
-                                                }}
-                                              />
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <span
-                                          style={{
-                                            fontSize: '9px',
-                                            color: isSkipped && !isDoneOnDay ? '#fca5a5' : '#b8add1',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            flexWrap: 'wrap',
-                                          }}
-                                        >
-                                          <span>
-                                            {task.category}
-                                            {isSkipped && !isDoneOnDay
-                                              ? isPastDay
-                                                ? ' • (Skip)'
-                                                : ' • (Dilewati)'
-                                              : ` • +${task.xp} XP`}
-                                          </span>
-                                          {task.targetTime && (
-                                            <span style={{ color: '#7dd3fc', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                              • <Clock size={9} /> {task.targetTime}
-                                            </span>
-                                          )}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                    {isFutureDay ? (
-                                      isGym ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setWorkoutSubPage('overview')
-                                            setActiveWorkoutQuest({
-                                              type: 'personal',
-                                              id: task.id,
-                                              dateIso: activeScheduleDayObj.isoDate,
-                                              viewOnly: true,
-                                            })
-                                          }}
-                                          style={{
-                                            padding: '4px 7px',
-                                            borderRadius: '6px',
-                                            background: 'rgba(124, 58, 237, 0.16)',
-                                            border: '1px solid rgba(168, 85, 247, 0.45)',
-                                            color: '#e9d5ff',
-                                            fontSize: '9.5px',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '3px',
-                                          }}
-                                          title="Lihat daftar gerakan Gym (Mode Hanya Lihat)"
-                                        >
-                                          <Eye size={10} color="#c084fc" />
-                                          <span>Lihat</span>
-                                        </button>
-                                      ) : isFinance ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setFinanceTab('goals')
-                                            setActiveFinanceSheet(null)
-                                            setActiveFinanceQuest({
-                                              id: task.id,
-                                              dateIso: activeScheduleDayObj.isoDate,
-                                              viewOnly: true,
-                                            })
-                                          }}
-                                          style={{
-                                            padding: '4px 7px',
-                                            borderRadius: '6px',
-                                            background: 'rgba(16, 185, 129, 0.16)',
-                                            border: '1px solid rgba(52, 211, 153, 0.45)',
-                                            color: '#a7f3d0',
-                                            fontSize: '9.5px',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '3px',
-                                          }}
-                                          title="Lihat Finance Vault (Mode Hanya Lihat)"
-                                        >
-                                          <Eye size={10} color="#34d399" />
-                                          <span>Lihat</span>
-                                        </button>
-                                      ) : (
-                                        <span
-                                          style={{
-                                            padding: '4px 6px',
-                                            borderRadius: '6px',
-                                            background: 'rgba(148, 163, 184, 0.1)',
-                                            border: '1px solid rgba(148, 163, 184, 0.25)',
-                                            color: '#9a8fb2',
-                                            fontSize: '9.5px',
-                                            fontWeight: 700,
-                                            cursor: 'not-allowed',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '3px',
-                                          }}
-                                          title="Quest besok-besoknya hanya bisa dilihat"
-                                        >
-                                          <Lock size={9} />
-                                          <span>Lihat</span>
-                                        </span>
-                                      )
-                                    ) : (
-                                      <>
-                                        {isGym && !isDoneOnDay && !isSkipped && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setWorkoutSubPage('overview')
-                                              setActiveWorkoutQuest({
-                                                type: 'personal',
-                                                id: task.id,
-                                                dateIso: activeScheduleDayObj.isoDate,
-                                              })
-                                            }}
-                                            style={{
-                                              padding: '4px 8px',
-                                              borderRadius: '6px',
-                                              background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
-                                              border: 'none',
-                                              color: '#ffffff',
-                                              fontSize: '9.5px',
-                                              fontWeight: 800,
-                                              cursor: 'pointer',
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '3px',
-                                            }}
-                                            title="Mulai Workout"
-                                          >
-                                            <Play size={8} fill="currentColor" />
-                                            <span>Start</span>
-                                          </button>
-                                        )}
-
-                                        {isFinance && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setFinanceTab('goals')
-                                              setActiveFinanceSheet(null)
-                                              setActiveFinanceQuest({
-                                                id: task.id,
-                                                dateIso: activeScheduleDayObj.isoDate,
-                                              })
-                                            }}
-                                            style={{
-                                              padding: '4px 8px',
-                                              borderRadius: '6px',
-                                              background: 'linear-gradient(135deg, #059669, #0284c7)',
-                                              border: 'none',
-                                              color: '#ffffff',
-                                              fontSize: '9.5px',
-                                              fontWeight: 800,
-                                              cursor: 'pointer',
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '3px',
-                                            }}
-                                            title="Buka Finance Vault"
-                                          >
-                                            <Wallet size={9} />
-                                            <span>Vault</span>
-                                          </button>
-                                        )}
-
-                                        {!isFinance && !isDoneOnDay && (
-                                          <>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)}
-                                              style={{
-                                                padding: '4px 7px',
-                                                borderRadius: '6px',
-                                                background: isSkipped ? 'rgba(244, 63, 94, 0.2)' : 'rgba(168, 85, 247, 0.12)',
-                                                border: isSkipped ? '1px solid rgba(251, 113, 133, 0.5)' : '1px solid rgba(168, 85, 247, 0.32)',
-                                                color: isSkipped ? '#fecdd3' : '#e9d5ff',
-                                                fontSize: '9.5px',
-                                                fontWeight: 700,
-                                                cursor: 'pointer',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '3px',
-                                              }}
-                                              title={
-                                                isSkipped
-                                                  ? 'Batalkan status Skip agar quest bisa dikerjakan'
-                                                  : 'Lewati quest (0 XP)'
-                                              }
-                                            >
-                                              <span>{isSkipped ? 'Batal' : 'Skip'}</span>
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleToggleSealPersonal(task.id)}
-                                              style={{
-                                                padding: '4px 6px',
-                                                borderRadius: '6px',
-                                                background: 'rgba(255, 255, 255, 0.04)',
-                                                border: '1px solid rgba(168, 85, 247, 0.26)',
-                                                color: '#c4b5fd',
-                                                fontSize: '9.5px',
-                                                fontWeight: 700,
-                                                cursor: 'pointer',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                              }}
-                                              title="Seal Quest (Segel sementara tanpa hapus XP/riwayat)"
-                                              aria-label={`Seal ${task.title}`}
-                                            >
-                                              <Lock size={9} />
-                                            </button>
-                                          </>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                </motion.div>
+                      <AnimatePresence mode="wait" initial={false}>
+                        {!isWeeklyCardFlipped ? (
+                          <motion.div
+                            key="weekly-card-front-quests"
+                            initial={{ rotateY: -85, opacity: 0, scale: 0.96 }}
+                            animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+                            exit={{ rotateY: 85, opacity: 0, scale: 0.96 }}
+                            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                            style={{ transformStyle: 'preserve-3d' }}
+                          >
+                            {(() => {
+                              const selectedDayIdx = Math.max(
+                                0,
+                                currentWeekDays.findIndex((d) => d.code === activeScheduleDayCode)
                               )
-                            }
+                              const isPastDay = Boolean(activeScheduleDayObj.isPast)
+                              const isFutureDay = Boolean(activeScheduleDayObj.isFuture)
+                              const isTaskDoneOnDay = (t: PersonalTask) =>
+                                Boolean(t.completedDates?.includes(activeScheduleDayObj.isoDate))
+                              const isTaskSkippedOnDay = (t: PersonalTask) => {
+                                if (t.category.toLowerCase() === 'keuangan') return false
+                                if (isFutureDay || isTaskDoneOnDay(t)) return false
+                                if (isPastDay) {
+                                  return !t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
+                                }
+                                const wasUnskipped = Boolean(
+                                  t.skippedDates?.includes(`unskip:${activeScheduleDayObj.isoDate}`)
+                                )
+                                return Boolean(
+                                  t.skippedDates?.includes(activeScheduleDayObj.isoDate) ||
+                                    (!wasUnskipped && isQuestTimeSkipped(t.targetTime, false, t.schedule))
+                                )
+                              }
 
-                            return (
-                              <>
-                                {primaryVisibleTasks.length > 0 ? (
+                              const nonFinanceDayTasks = activeScheduleDayObj.scheduledTasks
+                                .filter((t) => t.category.toLowerCase() !== 'keuangan')
+                                .slice()
+                                .sort((a, b) => (a.targetTime || '99:99').localeCompare(b.targetTime || '99:99'))
+
+                              const totalDayTasks = nonFinanceDayTasks.length
+                              const completedDayTasks = nonFinanceDayTasks.filter((t) => isTaskDoneOnDay(t))
+                              const completedDayCount = completedDayTasks.length
+                              const earnedDayXp = completedDayTasks.reduce((sum, t) => sum + t.xp, 0)
+
+                              const activeVisibleDayTasks = isFutureDay
+                                ? nonFinanceDayTasks
+                                : nonFinanceDayTasks.filter(
+                                    (t) => !isTaskDoneOnDay(t) && !isTaskSkippedOnDay(t)
+                                  )
+
+                              const historyDayTasks = isFutureDay
+                                ? []
+                                : nonFinanceDayTasks.filter(
+                                    (t) => isTaskDoneOnDay(t) || isTaskSkippedOnDay(t)
+                                  )
+                              const skippedDayCount = historyDayTasks.length - completedDayCount
+                              const litEnergyCount =
+                                totalDayTasks === 0 ? 0 : Math.round((completedDayCount / totalDayTasks) * 8)
+
+                              return (
+                                <>
+                                  {/* 8-Segment Daily Energy Rail */}
                                   <div
                                     style={{
                                       display: 'grid',
-                                      gridTemplateColumns: 'minmax(0, 1fr)',
-                                      gap: '6px',
-                                      maxHeight: '320px',
-                                      overflowY: 'auto',
-                                      WebkitOverflowScrolling: 'touch',
+                                      gridTemplateColumns: 'repeat(8, 1fr)',
+                                      gap: '4px',
+                                      marginBottom: '12px',
                                     }}
                                   >
-                                    <AnimatePresence mode="popLayout">
-                                      {primaryVisibleTasks.map((task) => renderDayQuestRow(task))}
-                                    </AnimatePresence>
-                                  </div>
-                                ) : totalDayTasks === 0 ? (
-                                  <div
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      gap: '8px',
-                                      padding: '4px 2px',
-                                    }}
-                                  >
-                                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#94a3b8' }}>
-                                      Belum ada quest terjadwal
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => openAddPersonalModal()}
-                                      style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        padding: '4px 10px',
-                                        borderRadius: '999px',
-                                        border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.48)`,
-                                        background: `rgba(${currentRankTier.primaryRgb}, 0.16)`,
-                                        color: '#ffffff',
-                                        fontSize: '9.5px',
-                                        fontWeight: 800,
-                                        cursor: 'pointer',
-                                      }}
-                                    >
-                                      <Plus size={10} strokeWidth={2.8} />
-                                      <span>Tambah Quest</span>
-                                    </button>
-                                  </div>
-                                ) : null}
-
-                                {!isFutureDay && hiddenDayTasks.length > 0 && (
-                                  <div
-                                    style={{
-                                      marginTop: primaryVisibleTasks.length > 0 ? '8px' : '0',
-                                      paddingTop: primaryVisibleTasks.length > 0 ? '8px' : '0',
-                                      borderTop:
-                                        primaryVisibleTasks.length > 0
-                                          ? '1px solid rgba(255, 255, 255, 0.09)'
-                                          : 'none',
-                                    }}
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={() => setShowCompletedDayQuests((prev) => !prev)}
-                                      style={{
-                                        width: '100%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        background: 'transparent',
-                                        border: 'none',
-                                        padding: '2px 0',
-                                        cursor: 'pointer',
-                                        color: '#cbd5e1',
-                                        textAlign: 'left',
-                                      }}
-                                    >
-                                      <span style={{ fontSize: '10px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                        <span
+                                    {Array.from({ length: 8 }, (_, segIdx) => {
+                                      const isLit = segIdx < litEnergyCount
+                                      return (
+                                        <div
+                                          key={segIdx}
                                           style={{
-                                            width: '14px',
-                                            height: '14px',
+                                            height: '5px',
                                             borderRadius: '999px',
-                                            background: 'rgba(52, 211, 153, 0.2)',
-                                            color: '#6ee7b7',
+                                            background: isLit
+                                              ? `linear-gradient(90deg, ${currentRankTier.primaryColor}, ${currentRankTier.highlightColor})`
+                                              : 'rgba(255, 255, 255, 0.07)',
+                                            boxShadow: isLit ? `0 0 10px ${currentRankTier.glowColor}` : 'none',
+                                            transition: 'all 0.3s ease',
+                                          }}
+                                        />
+                                      )
+                                    })}
+                                  </div>
+
+                                  {/* 7-Day Magnetic Strip with Mini Completion Bars */}
+                                  <div
+                                    style={{
+                                      position: 'relative',
+                                      display: 'grid',
+                                      gridTemplateColumns: 'repeat(7, 1fr)',
+                                      padding: '4px',
+                                      borderRadius: '15px',
+                                      background: 'rgba(2, 4, 10, 0.58)',
+                                      border: '1px solid rgba(255, 255, 255, 0.065)',
+                                      marginBottom: '12px',
+                                    }}
+                                  >
+                                    <div
+                                      className="magnetic-pill"
+                                      aria-hidden="true"
+                                      style={{
+                                        pointerEvents: 'none',
+                                        position: 'absolute',
+                                        top: '4px',
+                                        bottom: '4px',
+                                        left: '4px',
+                                        width: 'calc(14.2857% - 1.15px)',
+                                        borderRadius: '11px',
+                                        border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.62)`,
+                                        transform: `translateX(${selectedDayIdx * 100}%)`,
+                                        background: `linear-gradient(165deg, rgba(${currentRankTier.primaryRgb}, 0.28), rgba(${currentRankTier.primaryRgb}, 0.08))`,
+                                        boxShadow: `0 6px 18px -6px ${currentRankTier.glowColor}, inset 0 1px 0 rgba(255, 255, 255, 0.22)`,
+                                      }}
+                                    />
+                                    {currentWeekDays.map((day) => {
+                                      const isSelected = day.code === activeScheduleDayCode
+                                      const dayNonFin = day.scheduledTasks.filter(
+                                        (t) => t.category.toLowerCase() !== 'keuangan'
+                                      )
+                                      const dayDone = dayNonFin.filter((t) =>
+                                        Boolean(t.completedDates?.includes(day.isoDate))
+                                      ).length
+                                      const dayPct =
+                                        dayNonFin.length > 0
+                                          ? Math.round((dayDone / dayNonFin.length) * 100)
+                                          : 0
+
+                                      return (
+                                        <button
+                                          key={day.code}
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedWeekDay(day.code)
+                                            setWeeklyCardSubTab('active')
+                                            setWeeklyUndoState(null)
+                                          }}
+                                          style={{
+                                            position: 'relative',
+                                            zIndex: 1,
+                                            padding: '7px 0 6px',
+                                            background: 'transparent',
+                                            border: 0,
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '2px',
+                                            cursor: 'pointer',
+                                          }}
+                                        >
+                                          <span
+                                            style={{
+                                              fontSize: '8.5px',
+                                              fontWeight: 800,
+                                              textTransform: 'uppercase',
+                                              letterSpacing: '0.04em',
+                                              color: isSelected ? currentRankTier.highlightColor : '#64748b',
+                                            }}
+                                          >
+                                            {day.shortLabel}
+                                          </span>
+                                          <span
+                                            style={{
+                                              fontSize: '13px',
+                                              fontWeight: 800,
+                                              fontVariantNumeric: 'tabular-nums',
+                                              color: isSelected ? '#ffffff' : '#cbd5e1',
+                                            }}
+                                          >
+                                            {day.dateNum}
+                                          </span>
+                                          <span
+                                            style={{
+                                              width: '12px',
+                                              height: '2.5px',
+                                              borderRadius: '999px',
+                                              background: 'rgba(255, 255, 255, 0.1)',
+                                              marginTop: '2px',
+                                              overflow: 'hidden',
+                                            }}
+                                          >
+                                            <span
+                                              style={{
+                                                display: 'block',
+                                                height: '100%',
+                                                width: `${dayPct}%`,
+                                                borderRadius: '999px',
+                                                background: isSelected
+                                                  ? currentRankTier.primaryColor
+                                                  : '#34d399',
+                                                transition: 'width 0.3s ease',
+                                              }}
+                                            />
+                                          </span>
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+
+                                  {/* 3-Tab Segmented Switcher: Aktif | Selesai/Skip | Sealed */}
+                                  <div
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: '1.1fr 1.2fr 1fr',
+                                      padding: '3.5px',
+                                      borderRadius: '12px',
+                                      background: 'rgba(255, 255, 255, 0.035)',
+                                      border: '1px solid rgba(255, 255, 255, 0.065)',
+                                      marginBottom: '12px',
+                                    }}
+                                  >
+                                    {[
+                                      {
+                                        id: 'active' as const,
+                                        label: 'Aktif',
+                                        count: activeVisibleDayTasks.length,
+                                        icon: null,
+                                      },
+                                      {
+                                        id: 'history' as const,
+                                        label: 'Selesai/Skip',
+                                        count: historyDayTasks.length,
+                                        icon: null,
+                                      },
+                                      {
+                                        id: 'sealed' as const,
+                                        label: 'Sealed',
+                                        count: sealedPersonalTasks.length,
+                                        icon: <Lock size={10} />,
+                                      },
+                                    ].map((tb) => {
+                                      const isTabOn = weeklyCardSubTab === tb.id
+                                      return (
+                                        <button
+                                          key={tb.id}
+                                          type="button"
+                                          onClick={() => setWeeklyCardSubTab(tb.id)}
+                                          style={{
+                                            padding: '6.5px 6px',
+                                            borderRadius: '9px',
+                                            border: 'none',
+                                            background: isTabOn
+                                              ? `rgba(${currentRankTier.primaryRgb}, 0.18)`
+                                              : 'transparent',
+                                            boxShadow: isTabOn
+                                              ? `inset 0 0 0 1px rgba(${currentRankTier.primaryRgb}, 0.48)`
+                                              : 'none',
+                                            color: isTabOn ? '#ffffff' : '#94a3b8',
+                                            fontSize: '10.5px',
+                                            fontWeight: 700,
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            fontSize: '8.5px',
-                                            fontWeight: 900,
+                                            gap: '5px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.16s ease',
                                           }}
                                         >
-                                          ✓
-                                        </span>
-                                        <span>
-                                          {completedDayCount > 0
-                                            ? `${completedDayCount} Quest Selesai Disembunyikan`
-                                            : `${hiddenDayTasks.length} Quest Lainnya Disembunyikan`}
-                                        </span>
-                                      </span>
-                                      <span
-                                        style={{
-                                          fontSize: '9.5px',
-                                          fontWeight: 800,
-                                          color: currentRankTier.primaryColor,
-                                          padding: '2px 8px',
-                                          borderRadius: '999px',
-                                          background: 'rgba(255, 255, 255, 0.06)',
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '2px',
-                                        }}
-                                      >
-                                        <span>{showCompletedDayQuests ? 'Sembunyikan' : 'Lihat'}</span>
-                                        {showCompletedDayQuests ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-                                      </span>
-                                    </button>
-
-                                    <AnimatePresence>
-                                      {showCompletedDayQuests && (
-                                        <motion.div
-                                          initial={{ height: 0, opacity: 0 }}
-                                          animate={{ height: 'auto', opacity: 1 }}
-                                          exit={{ height: 0, opacity: 0 }}
-                                          transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-                                          style={{ overflow: 'hidden' }}
-                                        >
-                                          <div
+                                          {tb.icon}
+                                          <span>{tb.label}</span>
+                                          <span
                                             style={{
-                                              display: 'grid',
-                                              gridTemplateColumns: 'minmax(0, 1fr)',
-                                              gap: '5px',
-                                              paddingTop: '7px',
+                                              padding: '1px 6px',
+                                              borderRadius: '999px',
+                                              background: isTabOn
+                                                ? currentRankTier.primaryColor
+                                                : 'rgba(255, 255, 255, 0.08)',
+                                              color: isTabOn ? '#03050a' : '#cbd5e1',
+                                              fontSize: '9.5px',
+                                              fontWeight: 800,
+                                              fontVariantNumeric: 'tabular-nums',
                                             }}
                                           >
-                                            {hiddenDayTasks.map((task) => {
-                                              if (isTaskDoneOnDay(task)) {
+                                            {tb.count}
+                                          </span>
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+
+                                  {/* MAIN SCROLLABLE CONTENT ZONE */}
+                                  <div
+                                    data-lenis-prevent
+                                    style={{
+                                      maxHeight: '320px',
+                                      overflowY: 'auto',
+                                      WebkitOverflowScrolling: 'touch',
+                                      paddingRight: '2px',
+                                    }}
+                                  >
+                                    {/* TAB 1: AKTIF */}
+                                    {weeklyCardSubTab === 'active' && (
+                                      <>
+                                        {totalDayTasks === 0 ? (
+                                          /* REST & RECOVERY DAY EMPTY STATE */
+                                          <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            style={{
+                                              minHeight: '220px',
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              textAlign: 'center',
+                                              padding: '18px 14px',
+                                              borderRadius: '20px',
+                                              background: `radial-gradient(circle at 50% 38%, rgba(${currentRankTier.primaryRgb}, 0.16), transparent 68%)`,
+                                              border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.22)`,
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                position: 'relative',
+                                                width: '68px',
+                                                height: '68px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                marginBottom: '12px',
+                                              }}
+                                            >
+                                              <div
+                                                className="chrono-halo-ring"
+                                                style={{
+                                                  position: 'absolute',
+                                                  inset: 0,
+                                                  borderRadius: '50%',
+                                                  border: `1.5px dashed rgba(${currentRankTier.primaryRgb}, 0.55)`,
+                                                  boxShadow: `0 0 28px -4px ${currentRankTier.glowColor}, inset 0 0 18px rgba(${currentRankTier.primaryRgb}, 0.24)`,
+                                                }}
+                                              />
+                                              <div
+                                                style={{
+                                                  width: '46px',
+                                                  height: '46px',
+                                                  borderRadius: '14px',
+                                                  transform: 'rotate(45deg)',
+                                                  background: `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.32), rgba(10, 16, 32, 0.95))`,
+                                                  border: `1.5px solid ${currentRankTier.highlightColor}`,
+                                                  boxShadow: `0 0 22px -4px ${currentRankTier.glowColor}`,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                }}
+                                              >
+                                                <Moon size={19} color="#ffffff" style={{ transform: 'rotate(-45deg)' }} />
+                                              </div>
+                                            </div>
+                                            <span
+                                              style={{
+                                                fontSize: '9px',
+                                                fontWeight: 800,
+                                                letterSpacing: '0.18em',
+                                                color: currentRankTier.highlightColor,
+                                                marginBottom: '4px',
+                                              }}
+                                            >
+                                              REST &amp; RECOVERY DAY
+                                            </span>
+                                            <strong style={{ fontSize: '17px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+                                              Jadwal {activeScheduleDayObj.isToday ? 'Hari Ini' : activeScheduleDayObj.fullName} Kosong
+                                            </strong>
+                                            <span style={{ fontSize: '11.5px', color: '#b8add1', maxWidth: '250px', lineHeight: 1.5, marginTop: '4px' }}>
+                                              Waktunya pemulihan energi Hunter — atau tambahkan quest baru jika ingin tetap produktif.
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => openAddPersonalModal()}
+                                              style={{
+                                                marginTop: '14px',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                padding: '6px 13px',
+                                                borderRadius: '999px',
+                                                border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.5)`,
+                                                background: `rgba(${currentRankTier.primaryRgb}, 0.16)`,
+                                                color: currentRankTier.highlightColor,
+                                                fontSize: '10.5px',
+                                                fontWeight: 800,
+                                                cursor: 'pointer',
+                                              }}
+                                            >
+                                              <Plus size={12} strokeWidth={2.8} />
+                                              <span>Tambah Quest Baru</span>
+                                            </button>
+                                          </motion.div>
+                                        ) : activeVisibleDayTasks.length === 0 ? (
+                                          /* 100% ALL OBJECTIVES CLEARED VICTORY STATE */
+                                          <motion.div
+                                            initial={{ opacity: 0, scale: 0.96 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            style={{
+                                              minHeight: '220px',
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              textAlign: 'center',
+                                              padding: '18px 14px',
+                                              borderRadius: '20px',
+                                              background: `radial-gradient(circle at 50% 38%, rgba(${currentRankTier.primaryRgb}, 0.18), transparent 68%)`,
+                                              border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.26)`,
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                position: 'relative',
+                                                width: '68px',
+                                                height: '68px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                marginBottom: '12px',
+                                              }}
+                                            >
+                                              <div
+                                                className="chrono-halo-ring"
+                                                style={{
+                                                  position: 'absolute',
+                                                  inset: 0,
+                                                  borderRadius: '50%',
+                                                  border: `1.5px dashed rgba(${currentRankTier.primaryRgb}, 0.6)`,
+                                                  boxShadow: `0 0 30px -4px ${currentRankTier.glowColor}, inset 0 0 20px rgba(${currentRankTier.primaryRgb}, 0.28)`,
+                                                }}
+                                              />
+                                              <div
+                                                style={{
+                                                  width: '46px',
+                                                  height: '46px',
+                                                  borderRadius: '14px',
+                                                  transform: 'rotate(45deg)',
+                                                  background: `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.35), rgba(10, 16, 32, 0.95))`,
+                                                  border: `1.5px solid ${currentRankTier.highlightColor}`,
+                                                  boxShadow: `0 0 24px -4px ${currentRankTier.glowColor}`,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                }}
+                                              >
+                                                <Crown size={20} color="#ffffff" style={{ transform: 'rotate(-45deg)' }} />
+                                              </div>
+                                            </div>
+                                            <span
+                                              style={{
+                                                fontSize: '9px',
+                                                fontWeight: 800,
+                                                letterSpacing: '0.18em',
+                                                color: currentRankTier.highlightColor,
+                                                marginBottom: '4px',
+                                              }}
+                                            >
+                                              DAILY OBJECTIVES CLEARED
+                                            </span>
+                                            <strong style={{ fontSize: '17.5px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+                                              Semua Quest {activeScheduleDayObj.isToday ? 'Hari Ini' : activeScheduleDayObj.fullName} Tuntas!
+                                            </strong>
+                                            <span style={{ fontSize: '11.5px', color: '#b8add1', maxWidth: '265px', lineHeight: 1.5, marginTop: '4px' }}>
+                                              Seluruh jadwal sudah dibereskan dengan bersih. Salah pencet? Buka Selesai/Skip untuk mengaktifkan lagi.
+                                            </span>
+                                            <div
+                                              style={{
+                                                display: 'flex',
+                                                gap: '7px',
+                                                marginTop: '14px',
+                                                flexWrap: 'wrap',
+                                                justifyContent: 'center',
+                                              }}
+                                            >
+                                              <span
+                                                style={{
+                                                  padding: '5px 11px',
+                                                  borderRadius: '999px',
+                                                  background: 'rgba(255, 255, 255, 0.05)',
+                                                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                  fontSize: '10.5px',
+                                                  fontWeight: 700,
+                                                  color: '#e2e8f0',
+                                                }}
+                                              >
+                                                {completedDayCount} Selesai • +{earnedDayXp} XP
+                                              </span>
+                                              {skippedDayCount > 0 && (
+                                                <span
+                                                  style={{
+                                                    padding: '5px 11px',
+                                                    borderRadius: '999px',
+                                                    background: 'rgba(244, 63, 94, 0.1)',
+                                                    border: '1px solid rgba(244, 63, 94, 0.28)',
+                                                    fontSize: '10.5px',
+                                                    fontWeight: 700,
+                                                    color: '#fda4af',
+                                                  }}
+                                                >
+                                                  {skippedDayCount} Dilewati
+                                                </span>
+                                              )}
+                                              <button
+                                                type="button"
+                                                onClick={() => setWeeklyCardSubTab('history')}
+                                                style={{
+                                                  padding: '5px 12px',
+                                                  borderRadius: '999px',
+                                                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.5)`,
+                                                  background: `rgba(${currentRankTier.primaryRgb}, 0.16)`,
+                                                  color: currentRankTier.highlightColor,
+                                                  fontSize: '10.5px',
+                                                  fontWeight: 800,
+                                                  cursor: 'pointer',
+                                                }}
+                                              >
+                                                Lihat / Aktifkan Lagi
+                                              </button>
+                                            </div>
+                                          </motion.div>
+                                        ) : (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                                            <AnimatePresence mode="popLayout">
+                                              {activeVisibleDayTasks.map((task) => {
+                                                const isGym = task.category.toLowerCase() === 'gym'
+                                                const isArrivedActive =
+                                                  activeScheduleDayObj.isToday &&
+                                                  isQuestTimeArrived(task.targetTime, task.schedule)
                                                 return (
-                                                  <div
+                                                  <motion.div
                                                     key={task.id}
-                                                    onClick={() =>
-                                                      handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
-                                                    }
-                                                    style={{
-                                                      cursor: 'pointer',
-                                                      borderRadius: '9px',
-                                                      padding: '6px 9px',
-                                                      background: 'rgba(52, 211, 153, 0.05)',
-                                                      border: '1px solid rgba(52, 211, 153, 0.22)',
-                                                      display: 'flex',
-                                                      alignItems: 'center',
-                                                      justifyContent: 'space-between',
-                                                      gap: '8px',
+                                                    layout
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, x: 38, scale: 0.95 }}
+                                                    whileTap={isFutureDay ? undefined : { scale: 0.98 }}
+                                                    transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+                                                    className="chrono-quest-row"
+                                                    onClick={() => {
+                                                      if (!isFutureDay) {
+                                                        handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
+                                                        setWeeklyUndoState({
+                                                          kind: 'complete',
+                                                          taskId: task.id,
+                                                          dateIso: activeScheduleDayObj.isoDate,
+                                                          label: `✓ "${task.title}" selesai (+${task.xp} XP)`,
+                                                        })
+                                                      }
                                                     }}
-                                                    title="Klik untuk membatalkan selesai"
+                                                    style={{
+                                                      display: 'grid',
+                                                      gridTemplateColumns: '52px minmax(0, 1fr) auto',
+                                                      alignItems: 'center',
+                                                      gap: '10px',
+                                                      padding: '10px 10px',
+                                                      borderRadius: '14px',
+                                                      background: 'rgba(255, 255, 255, 0.028)',
+                                                      border: isArrivedActive
+                                                        ? `1px solid rgba(${currentRankTier.primaryRgb}, 0.42)`
+                                                        : '1px solid rgba(255, 255, 255, 0.065)',
+                                                      cursor: isFutureDay ? 'default' : 'pointer',
+                                                      opacity: isFutureDay ? 0.85 : 1,
+                                                    }}
                                                   >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                                                      <span
+                                                    {/* Left Time Pillar */}
+                                                    <div
+                                                      style={{
+                                                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                                        fontSize: '10.5px',
+                                                        fontWeight: 800,
+                                                        color: currentRankTier.highlightColor,
+                                                        textAlign: 'center',
+                                                        padding: '5px 4px',
+                                                        borderRadius: '8px',
+                                                        background: `rgba(${currentRankTier.primaryRgb}, 0.11)`,
+                                                        border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.28)`,
+                                                        fontVariantNumeric: 'tabular-nums',
+                                                      }}
+                                                    >
+                                                      {task.targetTime || 'FLEX'}
+                                                    </div>
+
+                                                    {/* Middle Quest Title + Category & XP */}
+                                                    <div style={{ minWidth: 0 }}>
+                                                      <strong
                                                         style={{
-                                                          width: '16px',
-                                                          height: '16px',
-                                                          borderRadius: '4px',
-                                                          background: 'rgba(52, 211, 153, 0.9)',
-                                                          color: '#04060e',
-                                                          display: 'inline-flex',
+                                                          display: 'flex',
                                                           alignItems: 'center',
-                                                          justifyContent: 'center',
-                                                          fontSize: '9.5px',
-                                                          fontWeight: 900,
-                                                          flexShrink: 0,
-                                                        }}
-                                                      >
-                                                        ✓
-                                                      </span>
-                                                      <span
-                                                        style={{
-                                                          fontSize: '10.5px',
-                                                          fontWeight: 600,
-                                                          textDecoration: 'line-through',
-                                                          color: '#94a3b8',
+                                                          gap: '5px',
+                                                          fontSize: '12.5px',
+                                                          fontWeight: 700,
+                                                          color: '#ffffff',
                                                           whiteSpace: 'nowrap',
                                                           overflow: 'hidden',
                                                           textOverflow: 'ellipsis',
                                                         }}
                                                       >
-                                                        {task.title}
-                                                      </span>
+                                                        <span
+                                                          style={{
+                                                            color: currentRankTier.highlightColor,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            flexShrink: 0,
+                                                          }}
+                                                        >
+                                                          {renderCategoryIcon(task.category, 14)}
+                                                        </span>
+                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                          {task.title}
+                                                        </span>
+                                                      </strong>
+                                                      <div
+                                                        style={{
+                                                          fontSize: '10px',
+                                                          color: '#b8add1',
+                                                          marginTop: '2px',
+                                                          display: 'flex',
+                                                          alignItems: 'center',
+                                                          gap: '5px',
+                                                        }}
+                                                      >
+                                                        {isArrivedActive && (
+                                                          <>
+                                                            <span style={{ color: currentRankTier.primaryColor, fontWeight: 800 }}>
+                                                              AKTIF
+                                                            </span>
+                                                            <span>•</span>
+                                                          </>
+                                                        )}
+                                                        <span>{task.category}</span>
+                                                        <span>•</span>
+                                                        <strong style={{ color: currentRankTier.highlightColor }}>
+                                                          +{task.xp} XP
+                                                        </strong>
+                                                      </div>
                                                     </div>
-                                                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#34d399', flexShrink: 0 }}>
-                                                      +{task.xp} XP
-                                                    </span>
-                                                  </div>
+
+                                                    {/* Right Action Buttons */}
+                                                    <div
+                                                      onClick={(e) => e.stopPropagation()}
+                                                      style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}
+                                                    >
+                                                      {isFutureDay ? (
+                                                        isGym ? (
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              setWorkoutSubPage('overview')
+                                                              setActiveWorkoutQuest({
+                                                                type: 'personal',
+                                                                id: task.id,
+                                                                dateIso: activeScheduleDayObj.isoDate,
+                                                                viewOnly: true,
+                                                              })
+                                                            }}
+                                                            style={{
+                                                              padding: '5px 8px',
+                                                              borderRadius: '8px',
+                                                              background: 'rgba(124, 58, 237, 0.16)',
+                                                              border: '1px solid rgba(168, 85, 247, 0.45)',
+                                                              color: '#e9d5ff',
+                                                              fontSize: '9.5px',
+                                                              fontWeight: 700,
+                                                              cursor: 'pointer',
+                                                              display: 'inline-flex',
+                                                              alignItems: 'center',
+                                                              gap: '3px',
+                                                            }}
+                                                          >
+                                                            <Eye size={10} color="#c084fc" />
+                                                            <span>Lihat</span>
+                                                          </button>
+                                                        ) : (
+                                                          <span
+                                                            style={{
+                                                              padding: '5px 7px',
+                                                              borderRadius: '8px',
+                                                              background: 'rgba(148, 163, 184, 0.08)',
+                                                              border: '1px solid rgba(148, 163, 184, 0.22)',
+                                                              color: '#94a3b8',
+                                                              fontSize: '9.5px',
+                                                              fontWeight: 700,
+                                                              display: 'inline-flex',
+                                                              alignItems: 'center',
+                                                              gap: '3px',
+                                                            }}
+                                                          >
+                                                            <Lock size={9} />
+                                                            <span>Lihat</span>
+                                                          </span>
+                                                        )
+                                                      ) : (
+                                                        <>
+                                                          {isGym && (
+                                                            <button
+                                                              type="button"
+                                                              onClick={() => {
+                                                                setWorkoutSubPage('overview')
+                                                                setActiveWorkoutQuest({
+                                                                  type: 'personal',
+                                                                  id: task.id,
+                                                                  dateIso: activeScheduleDayObj.isoDate,
+                                                                })
+                                                              }}
+                                                              style={{
+                                                                height: '28px',
+                                                                padding: '0 8px',
+                                                                borderRadius: '8px',
+                                                                background: 'linear-gradient(135deg, #6366f1, #7c3aed)',
+                                                                border: 'none',
+                                                                color: '#ffffff',
+                                                                fontSize: '9.5px',
+                                                                fontWeight: 800,
+                                                                cursor: 'pointer',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '3px',
+                                                              }}
+                                                              title="Mulai Sesi Gym Workout"
+                                                            >
+                                                              <Play size={8} fill="currentColor" />
+                                                              <span>Start</span>
+                                                            </button>
+                                                          )}
+                                                          <button
+                                                            type="button"
+                                                            className="chrono-mini-act skip"
+                                                            onClick={() => {
+                                                              handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)
+                                                              setWeeklyUndoState({
+                                                                kind: 'skip',
+                                                                taskId: task.id,
+                                                                dateIso: activeScheduleDayObj.isoDate,
+                                                                label: `Dilewati: "${task.title}"`,
+                                                              })
+                                                            }}
+                                                            style={{
+                                                              width: '28px',
+                                                              height: '28px',
+                                                              borderRadius: '8px',
+                                                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                              background: 'rgba(255, 255, 255, 0.04)',
+                                                              color: '#94a3b8',
+                                                              display: 'inline-flex',
+                                                              alignItems: 'center',
+                                                              justifyContent: 'center',
+                                                              cursor: 'pointer',
+                                                            }}
+                                                            title="Skip Quest (Lewati 0 XP)"
+                                                            aria-label={`Skip ${task.title}`}
+                                                          >
+                                                            <FastForward size={12} />
+                                                          </button>
+                                                          <button
+                                                            type="button"
+                                                            className="chrono-mini-act seal"
+                                                            onClick={() => {
+                                                              handleToggleSealPersonal(task.id)
+                                                              setWeeklyUndoState({
+                                                                kind: 'seal',
+                                                                taskId: task.id,
+                                                                dateIso: activeScheduleDayObj.isoDate,
+                                                                label: `Disegel: "${task.title}"`,
+                                                              })
+                                                            }}
+                                                            style={{
+                                                              width: '28px',
+                                                              height: '28px',
+                                                              borderRadius: '8px',
+                                                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                              background: 'rgba(255, 255, 255, 0.04)',
+                                                              color: '#94a3b8',
+                                                              display: 'inline-flex',
+                                                              alignItems: 'center',
+                                                              justifyContent: 'center',
+                                                              cursor: 'pointer',
+                                                            }}
+                                                            title="Segel Quest (Pindahkan ke Sealed)"
+                                                            aria-label={`Segel ${task.title}`}
+                                                          >
+                                                            <Lock size={11} />
+                                                          </button>
+                                                        </>
+                                                      )}
+                                                    </div>
+                                                  </motion.div>
                                                 )
-                                              }
-                                              return renderDayQuestRow(task)
+                                              })}
+                                            </AnimatePresence>
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {/* TAB 2: SELESAI / SKIP -> AKTIFKAN LAGI */}
+                                    {weeklyCardSubTab === 'history' && (
+                                      <>
+                                        {historyDayTasks.length === 0 ? (
+                                          <div
+                                            style={{
+                                              minHeight: '185px',
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              textAlign: 'center',
+                                              padding: '18px 14px',
+                                              borderRadius: '18px',
+                                              background: 'rgba(255, 255, 255, 0.02)',
+                                              border: '1px solid rgba(255, 255, 255, 0.06)',
+                                            }}
+                                          >
+                                            <span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.16em', color: currentRankTier.highlightColor }}>
+                                              BELUM ADA RIWAYAT
+                                            </span>
+                                            <strong style={{ fontSize: '15px', color: '#ffffff', marginTop: '4px' }}>
+                                              Belum Ada Quest Selesai / Skip
+                                            </strong>
+                                            <span style={{ fontSize: '11px', color: '#94a3b8', maxWidth: '250px', lineHeight: 1.5, marginTop: '4px' }}>
+                                              Quest yang kamu tap selesai atau skip akan muncul di sini dan bisa diaktifkan lagi kapan saja.
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                                            {historyDayTasks.map((task) => {
+                                              const isDone = isTaskDoneOnDay(task)
+                                              return (
+                                                <motion.div
+                                                  key={task.id}
+                                                  layout
+                                                  initial={{ opacity: 0, y: 8 }}
+                                                  animate={{ opacity: 1, y: 0 }}
+                                                  style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    gap: '10px',
+                                                    padding: '10px 12px',
+                                                    borderRadius: '14px',
+                                                    background: 'rgba(255, 255, 255, 0.028)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.065)',
+                                                  }}
+                                                >
+                                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                                    <div
+                                                      style={{
+                                                        fontSize: '12.5px',
+                                                        fontWeight: 700,
+                                                        color: '#ffffff',
+                                                        textDecoration: isDone ? 'line-through' : 'none',
+                                                        opacity: isDone ? 0.68 : 0.9,
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                      }}
+                                                    >
+                                                      {task.title}
+                                                    </div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                      <strong style={{ color: isDone ? '#34d399' : '#fda4af' }}>
+                                                        {isDone ? `Selesai (+${task.xp} XP)` : 'Dilewati (Skip)'}
+                                                      </strong>
+                                                      <span>•</span>
+                                                      <span>{task.targetTime || 'FLEX'}</span>
+                                                    </div>
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    className="chrono-restore-btn"
+                                                    onClick={() => {
+                                                      if (isDone) {
+                                                        handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
+                                                      } else {
+                                                        handleSkipPersonal(task.id, activeScheduleDayObj.isoDate)
+                                                      }
+                                                      setWeeklyUndoState(null)
+                                                    }}
+                                                    style={{
+                                                      padding: '5px 10px',
+                                                      borderRadius: '9px',
+                                                      border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.45)`,
+                                                      background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                                                      color: currentRankTier.highlightColor,
+                                                      fontSize: '10px',
+                                                      fontWeight: 800,
+                                                      display: 'inline-flex',
+                                                      alignItems: 'center',
+                                                      gap: '5px',
+                                                      cursor: 'pointer',
+                                                      flexShrink: 0,
+                                                    }}
+                                                  >
+                                                    <RotateCcw size={11} />
+                                                    <span>Aktifkan Lagi</span>
+                                                  </button>
+                                                </motion.div>
+                                              )
                                             })}
                                           </div>
-                                        </motion.div>
-                                      )}
-                                    </AnimatePresence>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {/* TAB 3: SEALED -> BUKA SEGEL */}
+                                    {weeklyCardSubTab === 'sealed' && (
+                                      <>
+                                        {sealedPersonalTasks.length === 0 ? (
+                                          <div
+                                            style={{
+                                              minHeight: '185px',
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              textAlign: 'center',
+                                              padding: '18px 14px',
+                                              borderRadius: '18px',
+                                              background: 'rgba(255, 255, 255, 0.02)',
+                                              border: '1px solid rgba(255, 255, 255, 0.06)',
+                                            }}
+                                          >
+                                            <span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.16em', color: '#c4b5fd' }}>
+                                              ZERO SEALED QUESTS
+                                            </span>
+                                            <strong style={{ fontSize: '15px', color: '#ffffff', marginTop: '4px' }}>
+                                              Tidak Ada Quest Disegel
+                                            </strong>
+                                            <span style={{ fontSize: '11px', color: '#94a3b8', maxWidth: '250px', lineHeight: 1.5, marginTop: '4px' }}>
+                                              Klik ikon gembok pada quest aktif jika ingin menyegel sementara tanpa menghapus riwayat &amp; XP.
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                                            {sealedPersonalTasks.map((sq) => (
+                                              <motion.div
+                                                key={sq.id}
+                                                layout
+                                                initial={{ opacity: 0, y: 8 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                style={{
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'space-between',
+                                                  gap: '10px',
+                                                  padding: '10px 12px',
+                                                  borderRadius: '14px',
+                                                  background: 'rgba(168, 85, 247, 0.05)',
+                                                  border: '1px solid rgba(168, 85, 247, 0.22)',
+                                                }}
+                                              >
+                                                <div style={{ minWidth: 0, flex: 1 }}>
+                                                  <div
+                                                    style={{
+                                                      fontSize: '12.5px',
+                                                      fontWeight: 700,
+                                                      color: '#ffffff',
+                                                      whiteSpace: 'nowrap',
+                                                      overflow: 'hidden',
+                                                      textOverflow: 'ellipsis',
+                                                    }}
+                                                  >
+                                                    {sq.title}
+                                                  </div>
+                                                  <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    <span style={{ color: '#c084fc', fontWeight: 700 }}>Disegel</span>
+                                                    <span>•</span>
+                                                    <span>{sq.category}</span>
+                                                    <span>•</span>
+                                                    <span>+{sq.xp} XP</span>
+                                                  </div>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  className="chrono-restore-btn"
+                                                  onClick={() => {
+                                                    handleToggleSealPersonal(sq.id)
+                                                    setWeeklyUndoState(null)
+                                                  }}
+                                                  style={{
+                                                    padding: '5px 10px',
+                                                    borderRadius: '9px',
+                                                    border: '1px solid rgba(192, 132, 252, 0.5)',
+                                                    background: 'rgba(168, 85, 247, 0.16)',
+                                                    color: '#e9d5ff',
+                                                    fontSize: '10px',
+                                                    fontWeight: 800,
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    cursor: 'pointer',
+                                                    flexShrink: 0,
+                                                  }}
+                                                >
+                                                  <Unlock size={11} />
+                                                  <span>Buka Segel</span>
+                                                </button>
+                                              </motion.div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
                                   </div>
-                                )}
-                              </>
-                            )
-                          })()}
-                        </div>
-                      )
-                    })()}
-                    {renderSealedQuestsDrawer(true)}
-                        </motion.div>
-                      ) : (
+
+                                  {/* INLINE UNDO BAR */}
+                                  <AnimatePresence>
+                                    {weeklyUndoState && (
+                                      <motion.div
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 6 }}
+                                        style={{
+                                          marginTop: '10px',
+                                          padding: '9px 12px',
+                                          borderRadius: '12px',
+                                          background: 'rgba(12, 19, 36, 0.95)',
+                                          border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.42)`,
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          alignItems: 'center',
+                                          gap: '8px',
+                                          fontSize: '11px',
+                                          color: '#e2e8f0',
+                                        }}
+                                      >
+                                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                          {weeklyUndoState.label}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const u = weeklyUndoState
+                                            setWeeklyUndoState(null)
+                                            if (u.kind === 'complete') {
+                                              handleTogglePersonal(u.taskId, u.dateIso)
+                                            } else if (u.kind === 'skip') {
+                                              handleSkipPersonal(u.taskId, u.dateIso)
+                                            } else if (u.kind === 'seal') {
+                                              handleToggleSealPersonal(u.taskId)
+                                            }
+                                            setWeeklyCardSubTab('active')
+                                          }}
+                                          style={{
+                                            padding: '4px 10px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: currentRankTier.primaryColor,
+                                            color: '#03050a',
+                                            fontSize: '10.5px',
+                                            fontWeight: 800,
+                                            cursor: 'pointer',
+                                            flexShrink: 0,
+                                          }}
+                                        >
+                                          Urungkan
+                                        </button>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </>
+                              )
+                            })()}
+                          </motion.div>
+                        ) : (
                         <motion.div
                           key="weekly-card-back-finance"
                           initial={{ rotateY: 85, opacity: 0, scale: 0.96 }}
@@ -18040,7 +18184,8 @@ export default function Page() {
                           })()}
                         </motion.div>
                       )}
-                    </AnimatePresence>
+                      </AnimatePresence>
+                    </div>
                   </section>
                 </motion.div>
 
