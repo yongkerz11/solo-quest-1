@@ -22718,7 +22718,7 @@ export default function Page() {
                   cursor: 'pointer',
                 }}
               >
-                Ringtone (40)
+                Ringtone (10)
               </button>
             </div>
 
