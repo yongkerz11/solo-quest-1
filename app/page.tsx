@@ -16343,568 +16343,788 @@ export default function Page() {
                  (Dirancang umum untuk semua jenis Quest: Belajar, Produktivitas, Kesehatan, Gym, dll.)
                  ================================================================ */
               <>
-                <section
-                  id="hero-card"
-                  className="hero-card-unified"
-                  onPointerMove={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    const px = e.clientX - rect.left
-                    const py = e.clientY - rect.top
-                    e.currentTarget.style.setProperty('--mx', `${px}px`)
-                    e.currentTarget.style.setProperty('--my', `${py}px`)
-                    if (heroPresenceMode === 'aura' || heroPresenceMode === 'domain') {
-                      const nx = px / Math.max(1, rect.width)
-                      const ny = py / Math.max(1, rect.height)
-                      const tiltMul = heroPresenceMode === 'domain' ? 15 : 10
-                      heroTiltTargetRef.current = {
-                        x: -(ny - 0.5) * tiltMul,
-                        y: (nx - 0.5) * (tiltMul * 1.25),
-                      }
-                    } else {
-                      heroTiltTargetRef.current = { x: 0, y: 0 }
-                    }
-                  }}
-                  onPointerLeave={() => {
-                    heroTiltTargetRef.current = { x: 0, y: 0 }
-                  }}
-                >
-                  <motion.div
-                    initial={{ opacity: 0, y: 12, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-                    className="monarch-hero-shell"
-                    data-hero-mode={heroPresenceMode}
-                  >
-                    {/* Rotating 360° Laser Ring (Active in Domain Mode) */}
-                    <div className="monarch-domain-laser" aria-hidden="true" />
-                    {/* Top Chrono Horizon Beam */}
-                    <div className="monarch-horizon-beam" aria-hidden="true" />
-                    {/* Pointer Spotlight Lens */}
-                    <div className="monarch-hero-lens" aria-hidden="true" />
-                    {/* Live Mana & Abyssal Lightning Canvas (0% CPU in Silent/Chrono) */}
-                    <canvas ref={heroFxCanvasRef} className="monarch-fx-canvas" aria-hidden="true" />
+                {(() => {
+                  const isSilentMode = heroPresenceMode === 'silent'
+                  const isChronoMode = heroPresenceMode === 'chrono'
+                  const isAuraMode = heroPresenceMode === 'aura'
+                  const isDomainMode = heroPresenceMode === 'domain'
 
-                    {/* Mode Switch Shockwave Burst */}
-                    <AnimatePresence>
-                      {heroModeWave && (
-                        <motion.span
-                          key={heroModeWave.id}
-                          className="monarch-mode-wave"
-                          style={{ left: heroModeWave.x, top: heroModeWave.y }}
-                          initial={{ opacity: 0.92, scale: 0.2 }}
-                          animate={{ opacity: 0, scale: 22 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
-                          onAnimationComplete={() => {
-                            setHeroModeWave((prev) => (prev?.id === heroModeWave.id ? null : prev))
+                  const rPri = currentRankTier.primaryColor
+                  const rSec = currentRankTier.secondaryColor
+                  const rHi = currentRankTier.highlightColor
+                  const rRgb = currentRankTier.primaryRgb
+                  const rSecRgb = currentRankTier.secondaryRgb
+                  const rGlow = currentRankTier.glowColor
+
+                  const embPri = isSilentMode ? '#64748b' : rPri
+                  const embSec = isSilentMode ? '#334155' : rSec
+                  const embHi = isSilentMode ? '#94a3b8' : rHi
+                  const embSurf = isSilentMode ? '#0f172a' : currentRankTier.deepSurface
+                  const gradSuffix = isSilentMode ? 'silent' : `active-${currentRank}`
+
+                  const modeList = [
+                    { id: 'silent', label: 'Silent' },
+                    { id: 'chrono', label: 'Chrono' },
+                    { id: 'aura', label: 'Aura' },
+                    { id: 'domain', label: 'Domain' },
+                  ] as const
+                  const activeModeIdx = Math.max(0, modeList.findIndex((m) => m.id === heroPresenceMode))
+
+                  const shellBackground = isSilentMode
+                    ? 'linear-gradient(175deg, #090c14 0%, #05070c 60%, #040509 100%)'
+                    : isChronoMode
+                      ? `radial-gradient(ellipse 88% 52% at 50% 0%, rgba(${rRgb}, 0.28), transparent 68%), radial-gradient(ellipse 65% 55% at 84% 38%, rgba(${rSecRgb}, 0.24), transparent 70%), linear-gradient(175deg, #0d1322 0%, #070a13 52%, #05070e 100%)`
+                      : isAuraMode
+                        ? `radial-gradient(ellipse 92% 64% at 78% 28%, rgba(${rRgb}, 0.38), transparent 66%), radial-gradient(ellipse 75% 48% at 22% 0%, rgba(${rSecRgb}, 0.28), transparent 68%), linear-gradient(175deg, #0f172a 0%, #070b16 54%, #05070f 100%)`
+                        : `radial-gradient(ellipse 96% 68% at 78% 30%, rgba(${rRgb}, 0.46), transparent 66%), radial-gradient(ellipse 78% 58% at 18% 95%, rgba(${rSecRgb}, 0.36), transparent 68%), linear-gradient(170deg, #11182d 0%, #08091a 52%, #04050d 100%)`
+
+                  const shellBorder = isSilentMode
+                    ? '1px solid rgba(255, 255, 255, 0.065)'
+                    : isChronoMode
+                      ? `1px solid rgba(${rRgb}, 0.42)`
+                      : isAuraMode
+                        ? `1px solid rgba(${rRgb}, 0.58)`
+                        : `1px solid rgba(${rRgb}, 0.78)`
+
+                  const shellShadow = isSilentMode
+                    ? '0 20px 48px -22px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+                    : isChronoMode
+                      ? `0 28px 66px -20px rgba(0, 0, 0, 0.95), 0 0 42px -16px ${rGlow}, inset 0 1px 0 rgba(255, 255, 255, 0.16)`
+                      : isAuraMode
+                        ? `0 32px 76px -18px rgba(0, 0, 0, 0.96), 0 0 56px -12px ${rGlow}, inset 0 1px 0 rgba(255, 255, 255, 0.24)`
+                        : `0 34px 86px -16px rgba(0, 0, 0, 0.98), 0 0 72px -10px ${rGlow}, inset 0 1px 0 rgba(255, 255, 255, 0.3)`
+
+                  return (
+                    <section
+                      id="hero-card"
+                      className="hero-card-unified"
+                      onPointerMove={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const px = e.clientX - rect.left
+                        const py = e.clientY - rect.top
+                        e.currentTarget.style.setProperty('--mx', `${px}px`)
+                        e.currentTarget.style.setProperty('--my', `${py}px`)
+                        if (isAuraMode || isDomainMode) {
+                          const nx = px / Math.max(1, rect.width)
+                          const ny = py / Math.max(1, rect.height)
+                          const tiltMul = isDomainMode ? 15 : 10
+                          heroTiltTargetRef.current = {
+                            x: -(ny - 0.5) * tiltMul,
+                            y: (nx - 0.5) * (tiltMul * 1.25),
+                          }
+                        } else {
+                          heroTiltTargetRef.current = { x: 0, y: 0 }
+                        }
+                      }}
+                      onPointerLeave={() => {
+                        heroTiltTargetRef.current = { x: 0, y: 0 }
+                      }}
+                    >
+                      <motion.div
+                        initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                        className="monarch-hero-shell"
+                        data-hero-mode={heroPresenceMode}
+                        style={{
+                          background: shellBackground,
+                          border: shellBorder,
+                          boxShadow: shellShadow,
+                        }}
+                      >
+                        {/* Rotating 360° Laser Ring (Active in Domain Mode, Explicit Rank Colors) */}
+                        <div
+                          className="monarch-domain-laser"
+                          aria-hidden="true"
+                          style={{ opacity: isDomainMode ? 1 : 0 }}
+                        >
+                          <div
+                            className="monarch-domain-laser-spin"
+                            style={{
+                              background: `conic-gradient(from 0deg, transparent 0deg, transparent 60deg, ${rPri} 115deg, #ffffff 135deg, ${rSec} 165deg, transparent 215deg, transparent 250deg, ${rHi} 315deg, transparent 360deg)`,
+                            }}
+                          />
+                        </div>
+
+                        {/* Top Chrono Horizon Beam (Explicit Rank Colors) */}
+                        <div
+                          className="monarch-horizon-beam"
+                          aria-hidden="true"
+                          style={{
+                            left: isSilentMode ? '32%' : isDomainMode ? '4%' : isAuraMode ? '8%' : '14%',
+                            right: isSilentMode ? '32%' : isDomainMode ? '4%' : isAuraMode ? '8%' : '14%',
+                            height: isAuraMode || isDomainMode ? '2px' : '1.5px',
+                            opacity: isSilentMode ? 0.22 : 1,
+                            background: isSilentMode
+                              ? 'linear-gradient(90deg, transparent, #64748b, transparent)'
+                              : `linear-gradient(90deg, transparent, ${rPri}, ${rHi}, ${rPri}, transparent)`,
+                            boxShadow: isSilentMode
+                              ? 'none'
+                              : isDomainMode
+                                ? `0 0 24px 4px ${rPri}`
+                                : `0 0 18px 2px ${rPri}`,
                           }}
                         />
-                      )}
-                    </AnimatePresence>
 
-                    <div style={{ position: 'relative', zIndex: 4 }}>
-                      {/* OPSI A: HEADER ROW WITH TACTICAL 4-MODE CAPSULE SWITCHER */}
-                      <div className="monarch-top-bar">
-                        <div className="hunter-status-pill" style={{ marginBottom: 0 }}>
-                          <span className="hunter-status-dot" />
-                          STATUS MONARCH
-                        </div>
+                        {/* Pointer Spotlight Lens (Explicit Rank RGB) */}
+                        <div
+                          className="monarch-hero-lens"
+                          aria-hidden="true"
+                          style={{
+                            opacity: isSilentMode ? 0 : 1,
+                            background: `radial-gradient(330px circle at var(--mx, 50%) var(--my, 20%), rgba(${rRgb}, ${isDomainMode || isAuraMode ? 0.22 : 0.15}), transparent 68%)`,
+                          }}
+                        />
 
-                        <div className="monarch-mode-capsule" role="tablist" aria-label="Mode Kehadiran Hunter">
-                          {(
-                            [
-                              { id: 'silent', label: 'Silent' },
-                              { id: 'chrono', label: 'Chrono' },
-                              { id: 'aura', label: 'Aura' },
-                              { id: 'domain', label: 'Domain' },
-                            ] as const
-                          ).map((m) => {
-                            const isActive = heroPresenceMode === m.id
-                            return (
-                              <button
-                                key={m.id}
-                                type="button"
-                                role="tab"
-                                aria-selected={isActive}
-                                className={`monarch-mode-btn ${isActive ? 'active' : ''}`}
-                                onClick={(ev) => switchHeroPresenceMode(m.id, ev)}
-                                title={`Mode ${m.label}`}
+                        {/* Live Mana & Abyssal Lightning Canvas (0% CPU in Silent/Chrono) */}
+                        <canvas ref={heroFxCanvasRef} className="monarch-fx-canvas" aria-hidden="true" />
+
+                        {/* Mode Switch Shockwave Burst */}
+                        <AnimatePresence>
+                          {heroModeWave && (
+                            <motion.span
+                              key={heroModeWave.id}
+                              className="monarch-mode-wave"
+                              style={{
+                                left: heroModeWave.x,
+                                top: heroModeWave.y,
+                                borderColor: isSilentMode ? '#94a3b8' : rHi,
+                                boxShadow: isSilentMode ? '0 0 14px rgba(148,163,184,0.4)' : `0 0 24px ${rPri}`,
+                              }}
+                              initial={{ opacity: 0.92, scale: 0.2 }}
+                              animate={{ opacity: 0, scale: 22 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.62, ease: [0.22, 1, 0.36, 1] }}
+                              onAnimationComplete={() => {
+                                setHeroModeWave((prev) => (prev?.id === heroModeWave.id ? null : prev))
+                              }}
+                            />
+                          )}
+                        </AnimatePresence>
+
+                        <div style={{ position: 'relative', zIndex: 4 }}>
+                          {/* OPSI A: HEADER ROW WITH TACTICAL 4-MODE CAPSULE SWITCHER */}
+                          <div className="monarch-top-bar">
+                            <div
+                              className="hunter-status-pill"
+                              style={{
+                                marginBottom: 0,
+                                color: isSilentMode ? '#94a3b8' : rHi,
+                              }}
+                            >
+                              <span
+                                className="hunter-status-dot"
+                                style={{
+                                  background: isSilentMode ? '#64748b' : rPri,
+                                  boxShadow: isSilentMode ? 'none' : `0 0 10px ${rPri}`,
+                                  borderRadius: isSilentMode ? '999px' : '1px',
+                                  transform: isSilentMode ? 'none' : 'rotate(45deg)',
+                                }}
+                              />
+                              STATUS MONARCH
+                            </div>
+
+                            <div className="monarch-mode-capsule" role="tablist" aria-label="Mode Kehadiran Hunter">
+                              {/* Persistent Sliding Thumb — Never Loses Rank Color After Silent Mode */}
+                              <motion.span
+                                aria-hidden="true"
+                                className="monarch-mode-thumb"
+                                animate={{
+                                  x: `${activeModeIdx * 100}%`,
+                                  backgroundColor: isSilentMode
+                                    ? 'rgba(148, 163, 184, 0.18)'
+                                    : `rgba(${rRgb}, 0.28)`,
+                                  borderColor: isSilentMode
+                                    ? 'rgba(148, 163, 184, 0.38)'
+                                    : rPri,
+                                  boxShadow: isSilentMode
+                                    ? '0 0 0px rgba(0,0,0,0)'
+                                    : `0 0 14px -2px ${rGlow}`,
+                                }}
+                                transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+                              />
+                              {modeList.map((m) => {
+                                const isActive = heroPresenceMode === m.id
+                                return (
+                                  <button
+                                    key={m.id}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    className={`monarch-mode-btn ${isActive ? 'active' : ''}`}
+                                    style={{
+                                      color: isActive ? (isSilentMode ? '#e2e8f0' : '#ffffff') : '#94a3b8',
+                                    }}
+                                    onClick={(ev) => switchHeroPresenceMode(m.id, ev)}
+                                    title={`Mode ${m.label}`}
+                                  >
+                                    <span className="monarch-mode-btn-inner">
+                                      {m.id === 'silent' && <EyeOff size={9.5} strokeWidth={2.4} style={{ color: isActive ? '#cbd5e1' : 'currentColor' }} />}
+                                      {m.id === 'chrono' && <Clock size={9.5} strokeWidth={2.4} style={{ color: isActive ? rHi : 'currentColor' }} />}
+                                      {m.id === 'aura' && (
+                                        <svg
+                                          width="9.5"
+                                          height="9.5"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke={isActive ? rHi : 'currentColor'}
+                                          strokeWidth="2.4"
+                                        >
+                                          <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" />
+                                        </svg>
+                                      )}
+                                      {m.id === 'domain' && <Zap size={9.5} strokeWidth={2.4} style={{ color: isActive ? rHi : 'currentColor' }} />}
+                                      <span>{m.label}</span>
+                                    </span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+
+                          {/* MAIN BODY: LEFT TELEMETRY + RIGHT ORIGINAL WINGED RANK EMBLEM */}
+                          <div className="monarch-main-row">
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="monarch-level-row">
+                                <h1
+                                  className="hero-level-number"
+                                  style={{
+                                    margin: 0,
+                                    color: isSilentMode ? '#e2e8f0' : '#ffffff',
+                                    textShadow: isSilentMode
+                                      ? 'none'
+                                      : isDomainMode
+                                        ? `0 0 28px ${rGlow}`
+                                        : isAuraMode
+                                          ? `0 0 20px ${rGlow}`
+                                          : `0 0 12px rgba(${rRgb}, 0.25)`,
+                                  }}
+                                >
+                                  Level {currentLevel}
+                                </h1>
+                                <span
+                                  className="monarch-state-tag"
+                                  style={{
+                                    background: isSilentMode ? 'rgba(255, 255, 255, 0.04)' : `rgba(${rRgb}, 0.18)`,
+                                    border: isSilentMode
+                                      ? '1px solid rgba(255, 255, 255, 0.09)'
+                                      : `1px solid rgba(${rRgb}, 0.48)`,
+                                    color: isSilentMode ? '#64748b' : rHi,
+                                    boxShadow: isSilentMode ? 'none' : `0 0 12px -4px ${rGlow}`,
+                                  }}
+                                >
+                                  {isSilentMode
+                                    ? 'STEALTH'
+                                    : isChronoMode
+                                      ? `RANK ${currentRank} • TACTICAL`
+                                      : isAuraMode
+                                        ? `RANK ${currentRank} • AURA`
+                                        : `RANK ${currentRank} • DOMAIN`}
+                                </span>
+                              </div>
+
+                              <div className="hero-progress-inline" style={{ marginTop: '11px' }}>
+                                <div className="hero-progress-meta">
+                                  <span>
+                                    <Zap
+                                      size={10.5}
+                                      fill="currentColor"
+                                      style={{
+                                        display: 'inline',
+                                        color: isSilentMode ? '#94a3b8' : rPri,
+                                        marginRight: '4px',
+                                        verticalAlign: '-1px',
+                                      }}
+                                    />
+                                    {effectiveXp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
+                                  </span>
+                                  <span
+                                    style={{
+                                      color: isSilentMode ? '#cbd5e1' : rHi,
+                                      fontWeight: 900,
+                                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                    }}
+                                  >
+                                    {levelProgress}%
+                                  </span>
+                                </div>
+
+                                {/* 10-Segment Chrono Energy XP Matrix Rail (Explicit Rank Gradient & Glow) */}
+                                {(() => {
+                                  const litCount = Math.max(
+                                    effectiveXp > 0 ? 1 : 0,
+                                    Math.min(10, Math.round((levelProgress / 100) * 10))
+                                  )
+                                  return (
+                                    <div className="monarch-xp-segs" aria-label={`XP Progress ${levelProgress}%`}>
+                                      {Array.from({ length: 10 }, (_, idx) => {
+                                        const isLit = idx < litCount
+                                        return (
+                                          <span
+                                            key={idx}
+                                            className={`monarch-xp-seg ${isLit ? 'lit' : ''}`}
+                                            style={
+                                              isLit
+                                                ? {
+                                                    background: isSilentMode
+                                                      ? '#64748b'
+                                                      : isDomainMode
+                                                        ? `linear-gradient(90deg, ${rPri}, ${rHi}, #ffffff)`
+                                                        : `linear-gradient(90deg, ${rSec}, ${rPri}, ${rHi})`,
+                                                    boxShadow: isSilentMode
+                                                      ? 'none'
+                                                      : isDomainMode
+                                                        ? `0 0 14px ${rPri}`
+                                                        : `0 0 10px ${rGlow}`,
+                                                  }
+                                                : undefined
+                                            }
+                                          />
+                                        )
+                                      })}
+                                    </div>
+                                  )
+                                })()}
+                              </div>
+                            </div>
+
+                            {/* UPGRADED SHADOW MONARCH WINGED HEXAGONAL EMBLEM + CATEGORY MASTERY PILL (EXPLICIT RANK COLORS) */}
+                            <div className="hero-mecha-emblem-dock">
+                              <div
+                                className="rank-hex-emblem"
+                                style={{
+                                  filter: isSilentMode
+                                    ? 'none'
+                                    : isDomainMode
+                                      ? `drop-shadow(0 0 22px ${rGlow})`
+                                      : `drop-shadow(0 0 14px ${rGlow})`,
+                                }}
+                                onClick={() => setActiveTab('rank')}
+                                title="Lihat Peringkat Hunter"
                               >
-                                {isActive && (
-                                  <motion.span
-                                    layoutId="monarch-mode-active-bg"
-                                    className="monarch-mode-active-pill"
-                                    transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+                                {!isSilentMode && (
+                                  <div
+                                    className="rank-hex-ripple"
+                                    style={{ borderColor: `rgba(${rRgb}, 0.48)` }}
                                   />
                                 )}
-                                <span className="monarch-mode-btn-inner">
-                                  {m.id === 'silent' && <EyeOff size={9.5} strokeWidth={2.4} />}
-                                  {m.id === 'chrono' && <Clock size={9.5} strokeWidth={2.4} />}
-                                  {m.id === 'aura' && (
-                                    <svg width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                                      <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" />
-                                    </svg>
-                                  )}
-                                  {m.id === 'domain' && <Zap size={9.5} strokeWidth={2.4} />}
-                                  <span>{m.label}</span>
-                                </span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-
-                      {/* MAIN BODY: LEFT TELEMETRY + RIGHT ORIGINAL WINGED RANK EMBLEM */}
-                      <div className="monarch-main-row">
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="monarch-level-row">
-                            <h1 className="hero-level-number" style={{ margin: 0 }}>
-                              Level {currentLevel}
-                            </h1>
-                            <span className="monarch-state-tag">
-                              {heroPresenceMode === 'silent'
-                                ? 'STEALTH'
-                                : heroPresenceMode === 'chrono'
-                                  ? 'TACTICAL'
-                                  : heroPresenceMode === 'aura'
-                                    ? 'MANA AURA'
-                                    : 'OVERDRIVE'}
-                            </span>
-                          </div>
-
-                          <div className="hero-progress-inline" style={{ marginTop: '11px' }}>
-                            <div className="hero-progress-meta">
-                              <span>
-                                <Zap
-                                  size={10.5}
-                                  fill="currentColor"
-                                  style={{
-                                    display: 'inline',
-                                    color: heroPresenceMode === 'silent' ? '#94a3b8' : currentRankTier.primaryColor,
-                                    marginRight: '4px',
-                                    verticalAlign: '-1px',
-                                  }}
-                                />
-                                {effectiveXp.toLocaleString('id-ID')} / {nextLevelXp.toLocaleString('id-ID')} XP
-                              </span>
-                              <span
-                                style={{
-                                  color: heroPresenceMode === 'silent' ? '#cbd5e1' : currentRankTier.highlightColor,
-                                  fontWeight: 900,
-                                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                                }}
-                              >
-                                {levelProgress}%
-                              </span>
-                            </div>
-
-                            {/* 10-Segment Chrono Energy XP Matrix Rail */}
-                            {(() => {
-                              const litCount = Math.max(
-                                effectiveXp > 0 ? 1 : 0,
-                                Math.min(10, Math.round((levelProgress / 100) * 10))
-                              )
-                              return (
-                                <div className="monarch-xp-segs" aria-label={`XP Progress ${levelProgress}%`}>
-                                  {Array.from({ length: 10 }, (_, idx) => (
+                                {!isSilentMode && (
+                                  <>
                                     <span
-                                      key={idx}
-                                      className={`monarch-xp-seg ${idx < litCount ? 'lit' : ''}`}
+                                      className="spark-p1"
+                                      aria-hidden="true"
+                                      style={{
+                                        position: 'absolute',
+                                        left: '-2px',
+                                        bottom: '12px',
+                                        width: '4px',
+                                        height: '4px',
+                                        borderRadius: '999px',
+                                        background: rHi,
+                                        boxShadow: `0 0 6px ${rPri}`,
+                                        pointerEvents: 'none',
+                                      }}
                                     />
-                                  ))}
+                                    <span
+                                      className="spark-p2"
+                                      aria-hidden="true"
+                                      style={{
+                                        position: 'absolute',
+                                        right: '-2px',
+                                        bottom: '16px',
+                                        width: '4px',
+                                        height: '4px',
+                                        borderRadius: '999px',
+                                        background: rPri,
+                                        boxShadow: `0 0 6px ${rPri}`,
+                                        pointerEvents: 'none',
+                                      }}
+                                    />
+                                    <span
+                                      className="spark-p3"
+                                      aria-hidden="true"
+                                      style={{
+                                        position: 'absolute',
+                                        left: '8px',
+                                        top: '12px',
+                                        width: '2px',
+                                        height: '2px',
+                                        borderRadius: '999px',
+                                        background: '#ffffff',
+                                        boxShadow: `0 0 5px ${rHi}`,
+                                        pointerEvents: 'none',
+                                      }}
+                                    />
+                                    <span
+                                      className="spark-p4"
+                                      aria-hidden="true"
+                                      style={{
+                                        position: 'absolute',
+                                        right: '8px',
+                                        top: '8px',
+                                        width: '2px',
+                                        height: '2px',
+                                        borderRadius: '999px',
+                                        background: rHi,
+                                        boxShadow: `0 0 5px ${rPri}`,
+                                        pointerEvents: 'none',
+                                      }}
+                                    />
+                                  </>
+                                )}
+
+                                <div className="rank-hex-float">
+                                  {/* Explicit Rank Halo Behind Emblem (0% in Silent, Vivid Rank Glow in Chrono/Aura/Domain) */}
+                                  <span
+                                    aria-hidden="true"
+                                    style={{
+                                      position: 'absolute',
+                                      inset: '6px',
+                                      borderRadius: '999px',
+                                      background: isSilentMode
+                                        ? 'transparent'
+                                        : `radial-gradient(circle, rgba(${rRgb}, ${isDomainMode ? 0.62 : isAuraMode ? 0.5 : 0.38}) 0%, rgba(${rSecRgb}, 0.22) 55%, transparent 76%)`,
+                                      filter: 'blur(5px)',
+                                      pointerEvents: 'none',
+                                      zIndex: 0,
+                                    }}
+                                  />
+                                  <svg
+                                    key={gradSuffix}
+                                    className="rank-hex-svg"
+                                    viewBox="0 0 106 102"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                  >
+                                    <defs>
+                                      <linearGradient id={`hexOuterGrad-${gradSuffix}`} x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
+                                        <stop offset="0%" stopColor={isSilentMode ? '#cbd5e1' : '#ffffff'} />
+                                        <stop offset="45%" stopColor={embPri} />
+                                        <stop offset="100%" stopColor={embSec} />
+                                      </linearGradient>
+                                      <radialGradient id={`hexCoreGrad-${gradSuffix}`} cx="50%" cy="28%" r="72%">
+                                        <stop offset="0%" stopColor={embSec} stopOpacity="0.92" />
+                                        <stop offset="62%" stopColor={embSurf} stopOpacity="0.98" />
+                                        <stop offset="100%" stopColor="#070410" stopOpacity="0.99" />
+                                      </radialGradient>
+                                      <linearGradient id={`wingGrad-${gradSuffix}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor={embHi} stopOpacity={isSilentMode ? '0.65' : '0.95'} />
+                                        <stop offset="48%" stopColor={embPri} stopOpacity={isSilentMode ? '0.5' : '0.86'} />
+                                        <stop offset="100%" stopColor={embSec} stopOpacity="0.24" />
+                                      </linearGradient>
+                                    </defs>
+
+                                    <g className="rank-svg-orbit-cw">
+                                      <circle
+                                        cx="53"
+                                        cy="51"
+                                        r="48"
+                                        stroke={embPri}
+                                        strokeOpacity={isSilentMode ? '0.2' : '0.42'}
+                                        strokeWidth="1"
+                                        strokeDasharray="5 5"
+                                      />
+                                      <circle cx="53" cy="3" r="2.2" fill={embHi} />
+                                      <circle cx="53" cy="99" r="2.2" fill={embPri} />
+                                      <circle cx="101" cy="51" r="1.8" fill={embPri} opacity="0.85" />
+                                      <circle cx="5" cy="51" r="1.8" fill={embHi} opacity="0.85" />
+                                    </g>
+
+                                    <g className="rank-svg-orbit-ccw">
+                                      <circle
+                                        cx="53"
+                                        cy="51"
+                                        r="43.5"
+                                        stroke={embHi}
+                                        strokeOpacity={isSilentMode ? '0.22' : '0.55'}
+                                        strokeWidth="1.2"
+                                        strokeDasharray="22 66"
+                                        strokeLinecap="round"
+                                      />
+                                    </g>
+
+                                    <g className="rank-svg-wings">
+                                      <path d="M16 31 L1 18 L7 36 L16 41 Z" fill={`url(#wingGrad-${gradSuffix})`} />
+                                      <path d="M15 33 L4 22" stroke={embHi} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
+                                      <path d="M16 45 L-1 42 L6 54 L16 56 Z" fill={`url(#wingGrad-${gradSuffix})`} opacity="0.85" />
+                                      <path d="M15 47 L3 44" stroke={embHi} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
+                                      <path d="M17 59 L4 60 L10 69 L17 69 Z" fill={`url(#wingGrad-${gradSuffix})`} opacity="0.62" />
+                                      <path d="M16 61 L7 62" stroke={embHi} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
+
+                                      <path d="M90 31 L105 18 L99 36 L90 41 Z" fill={`url(#wingGrad-${gradSuffix})`} />
+                                      <path d="M91 33 L102 22" stroke={embHi} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
+                                      <path d="M90 45 L107 42 L100 54 L90 56 Z" fill={`url(#wingGrad-${gradSuffix})`} opacity="0.85" />
+                                      <path d="M91 47 L103 44" stroke={embHi} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
+                                      <path d="M89 59 L102 60 L96 69 L89 69 Z" fill={`url(#wingGrad-${gradSuffix})`} opacity="0.62" />
+                                      <path d="M90 61 L99 62" stroke={embHi} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
+                                    </g>
+
+                                    <polygon
+                                      points="53,8 90,28 90,74 53,94 16,74 16,28"
+                                      fill={`url(#hexCoreGrad-${gradSuffix})`}
+                                      stroke={`url(#hexOuterGrad-${gradSuffix})`}
+                                      strokeWidth="2.2"
+                                      strokeLinejoin="round"
+                                    />
+                                    <polygon points="53,8 90,28 53,51 16,28" fill="#ffffff" fillOpacity="0.07" />
+                                    <g stroke={embHi} strokeOpacity="0.18" strokeWidth="0.85">
+                                      <line x1="53" y1="51" x2="53" y2="8" />
+                                      <line x1="53" y1="51" x2="90" y2="28" />
+                                      <line x1="53" y1="51" x2="90" y2="74" />
+                                      <line x1="53" y1="51" x2="53" y2="94" />
+                                      <line x1="53" y1="51" x2="16" y2="74" />
+                                      <line x1="53" y1="51" x2="16" y2="28" />
+                                    </g>
+
+                                    {!isSilentMode && (
+                                      <>
+                                        <polygon
+                                          className="rank-svg-laser-glow"
+                                          pathLength={100}
+                                          points="53,8 90,28 90,74 53,94 16,74 16,28"
+                                          fill="none"
+                                          stroke={rPri}
+                                          strokeOpacity="0.62"
+                                          strokeWidth="4.5"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                        <polygon
+                                          className="rank-svg-laser-border"
+                                          pathLength={100}
+                                          points="53,8 90,28 90,74 53,94 16,74 16,28"
+                                          fill="none"
+                                          stroke="#ffffff"
+                                          strokeWidth="1.6"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                      </>
+                                    )}
+
+                                    <polygon
+                                      points="53,13.5 84.5,31 84.5,71 53,88.5 21.5,71 21.5,31"
+                                      fill="none"
+                                      stroke={embHi}
+                                      strokeOpacity="0.46"
+                                      strokeWidth="1"
+                                    />
+                                    <polyline
+                                      points="23,32 53,15 83,32"
+                                      fill="none"
+                                      stroke="#ffffff"
+                                      strokeOpacity="0.52"
+                                      strokeWidth="1.15"
+                                      strokeLinecap="round"
+                                    />
+
+                                    <polygon points="43.5,11 46.5,5.5 49,10.5" fill={embPri} />
+                                    <polygon points="62.5,11 59.5,5.5 57,10.5" fill={embPri} />
+                                    <polygon points="53,2 57.5,8.5 53,14.5 48.5,8.5" fill={embHi} />
+                                    <polygon points="53,87.5 56.5,93.5 53,99.5 49.5,93.5" fill={embSec} />
+                                  </svg>
+
+                                  <div className="rank-hex-content">
+                                    <span
+                                      className="rank-hex-label"
+                                      style={{ color: isSilentMode ? '#94a3b8' : rHi }}
+                                    >
+                                      RANK
+                                    </span>
+                                    <strong
+                                      className="rank-hex-letter"
+                                      style={{
+                                        fontSize:
+                                          currentRank.length >= 3
+                                            ? '14px'
+                                            : currentRank.length === 2
+                                              ? '18px'
+                                              : '22px',
+                                        color: isSilentMode ? '#e2e8f0' : '#ffffff',
+                                        textShadow: isSilentMode
+                                          ? 'none'
+                                          : `0 0 12px rgba(${rRgb}, 0.96), 0 0 24px rgba(${rSecRgb}, 0.78)`,
+                                      }}
+                                    >
+                                      {currentRank}
+                                    </strong>
+                                    <span
+                                      className="rank-hex-sub"
+                                      style={{ color: isSilentMode ? '#64748b' : rPri }}
+                                    >
+                                      HUNTER
+                                    </span>
+                                  </div>
                                 </div>
-                              )
-                            })()}
-                          </div>
-                        </div>
-
-                        {/* UPGRADED SHADOW MONARCH WINGED HEXAGONAL EMBLEM + CATEGORY MASTERY PILL (ORIGINAL UNTOUCHED) */}
-                        <div className="hero-mecha-emblem-dock">
-                          <div
-                            className="rank-hex-emblem"
-                            style={{
-                              filter:
-                                heroPresenceMode === 'silent'
-                                  ? 'saturate(0.28) brightness(0.86)'
-                                  : heroPresenceMode === 'domain'
-                                    ? `drop-shadow(0 0 22px ${currentRankTier.glowColor})`
-                                    : `drop-shadow(0 0 14px ${currentRankTier.glowColor})`,
-                            }}
-                            onClick={() => setActiveTab('rank')}
-                            title="Lihat Peringkat Hunter"
-                          >
-                            <div className="rank-hex-ripple" />
-                            <span
-                              className="spark-p1"
-                              aria-hidden="true"
-                              style={{
-                                position: 'absolute',
-                                left: '-2px',
-                                bottom: '12px',
-                                width: '4px',
-                                height: '4px',
-                                borderRadius: '999px',
-                                background: currentRankTier.highlightColor,
-                                boxShadow: `0 0 6px ${currentRankTier.primaryColor}`,
-                                pointerEvents: 'none',
-                              }}
-                            />
-                            <span
-                              className="spark-p2"
-                              aria-hidden="true"
-                              style={{
-                                position: 'absolute',
-                                right: '-2px',
-                                bottom: '16px',
-                                width: '4px',
-                                height: '4px',
-                                borderRadius: '999px',
-                                background: currentRankTier.primaryColor,
-                                boxShadow: `0 0 6px ${currentRankTier.primaryColor}`,
-                                pointerEvents: 'none',
-                              }}
-                            />
-                            <span
-                              className="spark-p3"
-                              aria-hidden="true"
-                              style={{
-                                position: 'absolute',
-                                left: '8px',
-                                top: '12px',
-                                width: '2px',
-                                height: '2px',
-                                borderRadius: '999px',
-                                background: '#ffffff',
-                                boxShadow: `0 0 5px ${currentRankTier.highlightColor}`,
-                                pointerEvents: 'none',
-                              }}
-                            />
-                            <span
-                              className="spark-p4"
-                              aria-hidden="true"
-                              style={{
-                                position: 'absolute',
-                                right: '8px',
-                                top: '8px',
-                                width: '2px',
-                                height: '2px',
-                                borderRadius: '999px',
-                                background: currentRankTier.highlightColor,
-                                boxShadow: `0 0 5px ${currentRankTier.primaryColor}`,
-                                pointerEvents: 'none',
-                              }}
-                            />
-
-                            <div className="rank-hex-float">
-                              <svg
-                                className="rank-hex-svg"
-                                viewBox="0 0 106 102"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                              >
-                                <defs>
-                                  <linearGradient id="hexOuterGrad" x1="15" y1="6" x2="91" y2="96" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0%" stopColor="#ffffff" />
-                                    <stop offset="45%" stopColor={currentRankTier.primaryColor} />
-                                    <stop offset="100%" stopColor={currentRankTier.secondaryColor} />
-                                  </linearGradient>
-                                  <radialGradient id="hexCoreGrad" cx="50%" cy="28%" r="72%">
-                                    <stop offset="0%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.92" />
-                                    <stop offset="62%" stopColor={currentRankTier.deepSurface} stopOpacity="0.98" />
-                                    <stop offset="100%" stopColor="#070410" stopOpacity="0.99" />
-                                  </radialGradient>
-                                  <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stopColor={currentRankTier.highlightColor} stopOpacity="0.95" />
-                                    <stop offset="48%" stopColor={currentRankTier.primaryColor} stopOpacity="0.86" />
-                                    <stop offset="100%" stopColor={currentRankTier.secondaryColor} stopOpacity="0.24" />
-                                  </linearGradient>
-                                </defs>
-
-                                <g className="rank-svg-orbit-cw">
-                                  <circle
-                                    cx="53"
-                                    cy="51"
-                                    r="48"
-                                    stroke={currentRankTier.primaryColor}
-                                    strokeOpacity="0.34"
-                                    strokeWidth="1"
-                                    strokeDasharray="5 5"
-                                  />
-                                  <circle cx="53" cy="3" r="2.2" fill={currentRankTier.highlightColor} />
-                                  <circle cx="53" cy="99" r="2.2" fill={currentRankTier.primaryColor} />
-                                  <circle cx="101" cy="51" r="1.8" fill={currentRankTier.primaryColor} opacity="0.85" />
-                                  <circle cx="5" cy="51" r="1.8" fill={currentRankTier.highlightColor} opacity="0.85" />
-                                </g>
-
-                                <g className="rank-svg-orbit-ccw">
-                                  <circle
-                                    cx="53"
-                                    cy="51"
-                                    r="43.5"
-                                    stroke={currentRankTier.highlightColor}
-                                    strokeOpacity="0.48"
-                                    strokeWidth="1.2"
-                                    strokeDasharray="22 66"
-                                    strokeLinecap="round"
-                                  />
-                                </g>
-
-                                <g className="rank-svg-wings">
-                                  <path d="M16 31 L1 18 L7 36 L16 41 Z" fill="url(#wingGrad)" />
-                                  <path d="M15 33 L4 22" stroke={currentRankTier.highlightColor} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
-                                  <path d="M16 45 L-1 42 L6 54 L16 56 Z" fill="url(#wingGrad)" opacity="0.85" />
-                                  <path d="M15 47 L3 44" stroke={currentRankTier.highlightColor} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
-                                  <path d="M17 59 L4 60 L10 69 L17 69 Z" fill="url(#wingGrad)" opacity="0.62" />
-                                  <path d="M16 61 L7 62" stroke={currentRankTier.highlightColor} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
-
-                                  <path d="M90 31 L105 18 L99 36 L90 41 Z" fill="url(#wingGrad)" />
-                                  <path d="M91 33 L102 22" stroke={currentRankTier.highlightColor} strokeOpacity="0.72" strokeWidth="0.9" strokeLinecap="round" />
-                                  <path d="M90 45 L107 42 L100 54 L90 56 Z" fill="url(#wingGrad)" opacity="0.85" />
-                                  <path d="M91 47 L103 44" stroke={currentRankTier.highlightColor} strokeOpacity="0.58" strokeWidth="0.8" strokeLinecap="round" />
-                                  <path d="M89 59 L102 60 L96 69 L89 69 Z" fill="url(#wingGrad)" opacity="0.62" />
-                                  <path d="M90 61 L99 62" stroke={currentRankTier.highlightColor} strokeOpacity="0.45" strokeWidth="0.7" strokeLinecap="round" />
-                                </g>
-
-                                <polygon
-                                  points="53,8 90,28 90,74 53,94 16,74 16,28"
-                                  fill="url(#hexCoreGrad)"
-                                  stroke="url(#hexOuterGrad)"
-                                  strokeWidth="2.2"
-                                  strokeLinejoin="round"
-                                />
-                                <polygon points="53,8 90,28 53,51 16,28" fill="#ffffff" fillOpacity="0.07" />
-                                <g stroke={currentRankTier.highlightColor} strokeOpacity="0.18" strokeWidth="0.85">
-                                  <line x1="53" y1="51" x2="53" y2="8" />
-                                  <line x1="53" y1="51" x2="90" y2="28" />
-                                  <line x1="53" y1="51" x2="90" y2="74" />
-                                  <line x1="53" y1="51" x2="53" y2="94" />
-                                  <line x1="53" y1="51" x2="16" y2="74" />
-                                  <line x1="53" y1="51" x2="16" y2="28" />
-                                </g>
-
-                                <polygon
-                                  className="rank-svg-laser-glow"
-                                  pathLength={100}
-                                  points="53,8 90,28 90,74 53,94 16,74 16,28"
-                                  fill="none"
-                                  stroke={currentRankTier.primaryColor}
-                                  strokeOpacity="0.58"
-                                  strokeWidth="4.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                                <polygon
-                                  className="rank-svg-laser-border"
-                                  pathLength={100}
-                                  points="53,8 90,28 90,74 53,94 16,74 16,28"
-                                  fill="none"
-                                  stroke="#ffffff"
-                                  strokeWidth="1.6"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-
-                                <polygon
-                                  points="53,13.5 84.5,31 84.5,71 53,88.5 21.5,71 21.5,31"
-                                  fill="none"
-                                  stroke={currentRankTier.highlightColor}
-                                  strokeOpacity="0.46"
-                                  strokeWidth="1"
-                                />
-                                <polyline
-                                  points="23,32 53,15 83,32"
-                                  fill="none"
-                                  stroke="#ffffff"
-                                  strokeOpacity="0.52"
-                                  strokeWidth="1.15"
-                                  strokeLinecap="round"
-                                />
-
-                                <polygon points="43.5,11 46.5,5.5 49,10.5" fill={currentRankTier.primaryColor} />
-                                <polygon points="62.5,11 59.5,5.5 57,10.5" fill={currentRankTier.primaryColor} />
-                                <polygon points="53,2 57.5,8.5 53,14.5 48.5,8.5" fill={currentRankTier.highlightColor} />
-                                <polygon points="53,87.5 56.5,93.5 53,99.5 49.5,93.5" fill={currentRankTier.secondaryColor} />
-                              </svg>
-
-                              <div className="rank-hex-content">
-                                <span className="rank-hex-label">RANK</span>
-                                <strong
-                                  className="rank-hex-letter"
-                                  style={{
-                                    fontSize:
-                                      currentRank.length >= 3
-                                        ? '14px'
-                                        : currentRank.length === 2
-                                          ? '18px'
-                                          : '22px',
-                                    textShadow: `0 0 12px rgba(${currentRankTier.primaryRgb}, 0.96), 0 0 24px rgba(${currentRankTier.secondaryRgb}, 0.72)`,
-                                  }}
-                                >
-                                  {currentRank}
-                                </strong>
-                                <span className="rank-hex-sub">HUNTER</span>
                               </div>
+
+                              {/* Pill Category Mastery di bawah Emblem */}
+                              {featuredCategory ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsMasteryPageOpen(true)}
+                                  className="rank-mastery-pill"
+                                  style={{
+                                    marginTop: '0px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '3px 10px',
+                                    borderRadius: '999px',
+                                    background: isSilentMode
+                                      ? 'rgba(15, 23, 42, 0.85)'
+                                      : `rgba(${rRgb}, 0.22)`,
+                                    border: isSilentMode
+                                      ? '1px solid rgba(255, 255, 255, 0.1)'
+                                      : `1px solid rgba(${rRgb}, 0.54)`,
+                                    boxShadow: isSilentMode ? 'none' : `0 4px 14px -4px ${rGlow}`,
+                                    color: '#ffffff',
+                                    cursor: 'pointer',
+                                    minWidth: '86px',
+                                    maxWidth: '104px',
+                                    textAlign: 'center',
+                                  }}
+                                  title="Buka Category Mastery (Kategori dengan XP tertinggi atau pilihanmu)"
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: '8.5px',
+                                      fontWeight: 800,
+                                      color: '#ffffff',
+                                      lineHeight: 1.15,
+                                      display: 'block',
+                                      width: '100%',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {featuredCategory.name}
+                                  </span>
+                                  <div
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '1px',
+                                      lineHeight: 1,
+                                      marginTop: '1.5px',
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        color: isSilentMode ? '#94a3b8' : rHi,
+                                        fontWeight: 800,
+                                        fontSize: '8px',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {featuredCategory.xp} XP
+                                    </span>
+                                    <ChevronRight size={8} style={{ color: '#e2e8f0', flexShrink: 0 }} />
+                                  </div>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsMasteryPageOpen(true)}
+                                  className="rank-mastery-pill"
+                                  style={{
+                                    marginTop: '0px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '3px 10px',
+                                    borderRadius: '999px',
+                                    background: isSilentMode
+                                      ? 'rgba(15, 23, 42, 0.85)'
+                                      : `rgba(${rRgb}, 0.2)`,
+                                    border: isSilentMode
+                                      ? '1px solid rgba(255, 255, 255, 0.1)'
+                                      : `1px solid rgba(${rRgb}, 0.48)`,
+                                    boxShadow: isSilentMode ? 'none' : `0 4px 14px -4px ${rGlow}`,
+                                    color: '#ffffff',
+                                    cursor: 'pointer',
+                                    minWidth: '86px',
+                                    textAlign: 'center',
+                                  }}
+                                  title="Buka Category Mastery"
+                                >
+                                  <span style={{ fontSize: '8.5px', fontWeight: 800, color: '#ffffff' }}>
+                                    Mastery
+                                  </span>
+                                  <div
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '1px',
+                                      fontSize: '8px',
+                                      color: isSilentMode ? '#94a3b8' : rHi,
+                                      fontWeight: 800,
+                                    }}
+                                  >
+                                    <span>0 XP</span>
+                                    <ChevronRight size={8} style={{ color: '#e2e8f0' }} />
+                                  </div>
+                                </button>
+                              )}
                             </div>
                           </div>
 
-                          {/* Pill Category Mastery di bawah Emblem */}
-                          {featuredCategory ? (
-                            <button
-                              type="button"
-                              onClick={() => setIsMasteryPageOpen(true)}
-                              className="rank-mastery-pill"
-                              style={{
-                                marginTop: '0px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: '3px 10px',
-                                borderRadius: '999px',
-                                background:
-                                  heroPresenceMode === 'silent'
-                                    ? 'rgba(15, 23, 42, 0.85)'
-                                    : `rgba(${currentRankTier.primaryRgb}, 0.18)`,
-                                border:
-                                  heroPresenceMode === 'silent'
-                                    ? '1px solid rgba(255, 255, 255, 0.1)'
-                                    : `1px solid rgba(${currentRankTier.primaryRgb}, 0.48)`,
-                                color: '#ffffff',
-                                cursor: 'pointer',
-                                minWidth: '86px',
-                                maxWidth: '104px',
-                                textAlign: 'center',
-                              }}
-                              title="Buka Category Mastery (Kategori dengan XP tertinggi atau pilihanmu)"
+                          {/* Recessed Luxury Glass Stats Dock (Preserving 3-Column Streak / Riwayat / Komunitas) */}
+                          <div
+                            className="hero-stats-dock"
+                            style={{
+                              borderColor: isSilentMode
+                                ? 'rgba(255, 255, 255, 0.055)'
+                                : isDomainMode
+                                  ? `rgba(${rRgb}, 0.36)`
+                                  : `rgba(${rRgb}, 0.2)`,
+                            }}
+                          >
+                            <div className="hero-dock-item">
+                              <Flame size={11} style={{ color: isSilentMode ? '#94a3b8' : '#fcd34d', flexShrink: 0 }} />
+                              <div className="hero-dock-text">
+                                <strong style={{ color: isSilentMode ? '#cbd5e1' : '#fcd34d' }}>{currentUser.streak}H</strong>
+                                <span>Streak</span>
+                              </div>
+                            </div>
+
+                            <div
+                              className="hero-dock-item clickable"
+                              onClick={() => setIsHistoryPageOpen(true)}
+                              title="Buka History Quest"
                             >
-                              <span
-                                style={{
-                                  fontSize: '8.5px',
-                                  fontWeight: 800,
-                                  color: '#ffffff',
-                                  lineHeight: 1.15,
-                                  display: 'block',
-                                  width: '100%',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                }}
-                              >
-                                {featuredCategory.name}
-                              </span>
-                              <div
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '1px',
-                                  lineHeight: 1,
-                                  marginTop: '1.5px',
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    color: heroPresenceMode === 'silent' ? '#94a3b8' : currentRankTier.highlightColor,
-                                    fontWeight: 800,
-                                    fontSize: '8px',
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                >
-                                  {featuredCategory.xp} XP
+                              <div className="hero-dock-text">
+                                <strong style={{ color: isSilentMode ? '#cbd5e1' : rHi }}>
+                                  {userHistoryItems.length}
+                                </strong>
+                                <span>
+                                  Riwayat <ChevronRight size={9} style={{ opacity: 0.78, flexShrink: 0 }} />
                                 </span>
-                                <ChevronRight size={8} style={{ color: '#e2e8f0', flexShrink: 0 }} />
                               </div>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setIsMasteryPageOpen(true)}
-                              className="rank-mastery-pill"
-                              style={{
-                                marginTop: '0px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: '3px 10px',
-                                borderRadius: '999px',
-                                background:
-                                  heroPresenceMode === 'silent'
-                                    ? 'rgba(15, 23, 42, 0.85)'
-                                    : `rgba(${currentRankTier.primaryRgb}, 0.16)`,
-                                border:
-                                  heroPresenceMode === 'silent'
-                                    ? '1px solid rgba(255, 255, 255, 0.1)'
-                                    : `1px solid rgba(${currentRankTier.primaryRgb}, 0.42)`,
-                                color: '#ffffff',
-                                cursor: 'pointer',
-                                minWidth: '86px',
-                                textAlign: 'center',
-                              }}
-                              title="Buka Category Mastery"
+                            </div>
+
+                            <div
+                              className="hero-dock-item clickable"
+                              onClick={() => setActiveTab('clan')}
+                              title="Buka Komunitas Clan"
                             >
-                              <span style={{ fontSize: '8.5px', fontWeight: 800, color: '#ffffff' }}>
-                                Mastery
-                              </span>
-                              <div
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '1px',
-                                  fontSize: '8px',
-                                  color: heroPresenceMode === 'silent' ? '#94a3b8' : currentRankTier.highlightColor,
-                                  fontWeight: 800,
-                                }}
-                              >
-                                <span>0 XP</span>
-                                <ChevronRight size={8} style={{ color: '#e2e8f0' }} />
+                              <div className="hero-dock-text">
+                                <strong style={{ color: '#ffffff' }}>{userJoinedClanIds.length} Clan</strong>
+                                <span>
+                                  Komunitas <ChevronRight size={9} style={{ opacity: 0.78, flexShrink: 0 }} />
+                                </span>
                               </div>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Recessed Luxury Glass Stats Dock (Preserving 3-Column Streak / Riwayat / Komunitas) */}
-                      <div className="hero-stats-dock">
-                        <div className="hero-dock-item">
-                          <Flame size={11} style={{ color: '#fcd34d', flexShrink: 0 }} />
-                          <div className="hero-dock-text">
-                            <strong style={{ color: '#fcd34d' }}>{currentUser.streak}H</strong>
-                            <span>Streak</span>
+                            </div>
                           </div>
                         </div>
-
-                        <div
-                          className="hero-dock-item clickable"
-                          onClick={() => setIsHistoryPageOpen(true)}
-                          title="Buka History Quest"
-                        >
-                          <div className="hero-dock-text">
-                            <strong style={{ color: heroPresenceMode === 'silent' ? '#cbd5e1' : currentRankTier.highlightColor }}>
-                              {userHistoryItems.length}
-                            </strong>
-                            <span>
-                              Riwayat <ChevronRight size={9} style={{ opacity: 0.78, flexShrink: 0 }} />
-                            </span>
-                          </div>
-                        </div>
-
-                        <div
-                          className="hero-dock-item clickable"
-                          onClick={() => setActiveTab('clan')}
-                          title="Buka Komunitas Clan"
-                        >
-                          <div className="hero-dock-text">
-                            <strong style={{ color: '#ffffff' }}>{userJoinedClanIds.length} Clan</strong>
-                            <span>
-                              Komunitas <ChevronRight size={9} style={{ opacity: 0.78, flexShrink: 0 }} />
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                </section>
+                      </motion.div>
+                    </section>
+                  )
+                })()}
 
                 {/* WAVE #4 • DUAL COMPARISON SMOOTH WAVE (Tren XP Mingguan) */}
                 <motion.div
