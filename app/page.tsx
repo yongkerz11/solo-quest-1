@@ -2499,6 +2499,7 @@ export default function Page() {
   const [showCompletedDayQuests, setShowCompletedDayQuests] = useState<boolean>(false)
   const [showSealedQuests, setShowSealedQuests] = useState<boolean>(false)
   const [weeklyCardSubTab, setWeeklyCardSubTab] = useState<'active' | 'history' | 'sealed'>('active')
+  const [peekUpcomingInStandby, setPeekUpcomingInStandby] = useState(false)
   const [weeklyUndoState, setWeeklyUndoState] = useState<{
     kind: 'complete' | 'skip' | 'seal'
     taskId: string
@@ -17160,12 +17161,12 @@ export default function Page() {
                                     {weeklyCardSubTab === 'active' && (
                                       <>
                                         {totalDayTasks === 0 ? (
-                                          /* REST & RECOVERY DAY EMPTY STATE */
+                                          /* REST DAY — ULTRA-CLEAN & INTERACTIVE */
                                           <motion.div
-                                            initial={{ opacity: 0, y: 10 }}
+                                            initial={{ opacity: 0, y: 8 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             style={{
-                                              minHeight: '220px',
+                                              minHeight: '190px',
                                               display: 'flex',
                                               flexDirection: 'column',
                                               alignItems: 'center',
@@ -17173,19 +17174,28 @@ export default function Page() {
                                               textAlign: 'center',
                                               padding: '18px 14px',
                                               borderRadius: '20px',
-                                              background: `radial-gradient(circle at 50% 38%, rgba(${currentRankTier.primaryRgb}, 0.16), transparent 68%)`,
+                                              background: `radial-gradient(circle at 50% 40%, rgba(${currentRankTier.primaryRgb}, 0.16), transparent 68%)`,
                                               border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.22)`,
                                             }}
                                           >
-                                            <div
+                                            <motion.button
+                                              type="button"
+                                              whileHover={{ scale: 1.08 }}
+                                              whileTap={{ scale: 0.92 }}
+                                              transition={{ type: 'spring', stiffness: 420, damping: 22 }}
+                                              onClick={() => openAddPersonalModal()}
+                                              title="Klik untuk tambah quest baru"
                                               style={{
                                                 position: 'relative',
-                                                width: '68px',
-                                                height: '68px',
+                                                width: '66px',
+                                                height: '66px',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 marginBottom: '12px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
                                               }}
                                             >
                                               <div
@@ -17200,11 +17210,11 @@ export default function Page() {
                                               />
                                               <div
                                                 style={{
-                                                  width: '46px',
-                                                  height: '46px',
+                                                  width: '44px',
+                                                  height: '44px',
                                                   borderRadius: '14px',
                                                   transform: 'rotate(45deg)',
-                                                  background: `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.32), rgba(10, 16, 32, 0.95))`,
+                                                  background: `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.34), rgba(10, 16, 32, 0.95))`,
                                                   border: `1.5px solid ${currentRankTier.highlightColor}`,
                                                   boxShadow: `0 0 22px -4px ${currentRankTier.glowColor}`,
                                                   display: 'flex',
@@ -17212,35 +17222,21 @@ export default function Page() {
                                                   justifyContent: 'center',
                                                 }}
                                               >
-                                                <Moon size={19} color="#ffffff" style={{ transform: 'rotate(-45deg)' }} />
+                                                <Moon size={18} color="#ffffff" style={{ transform: 'rotate(-45deg)' }} />
                                               </div>
-                                            </div>
-                                            <span
-                                              style={{
-                                                fontSize: '9px',
-                                                fontWeight: 800,
-                                                letterSpacing: '0.18em',
-                                                color: currentRankTier.highlightColor,
-                                                marginBottom: '4px',
-                                              }}
-                                            >
-                                              REST &amp; RECOVERY DAY
-                                            </span>
-                                            <strong style={{ fontSize: '17px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
-                                              Jadwal {activeScheduleDayObj.isToday ? 'Hari Ini' : activeScheduleDayObj.fullName} Kosong
+                                            </motion.button>
+                                            <strong style={{ fontSize: '16px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+                                              Rest Day
                                             </strong>
-                                            <span style={{ fontSize: '11.5px', color: '#b8add1', maxWidth: '250px', lineHeight: 1.5, marginTop: '4px' }}>
-                                              Waktunya pemulihan energi Hunter — atau tambahkan quest baru jika ingin tetap produktif.
-                                            </span>
                                             <button
                                               type="button"
                                               onClick={() => openAddPersonalModal()}
                                               style={{
-                                                marginTop: '14px',
+                                                marginTop: '10px',
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
                                                 gap: '5px',
-                                                padding: '6px 13px',
+                                                padding: '6px 14px',
                                                 borderRadius: '999px',
                                                 border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.5)`,
                                                 background: `rgba(${currentRankTier.primaryRgb}, 0.16)`,
@@ -17251,132 +17247,247 @@ export default function Page() {
                                               }}
                                             >
                                               <Plus size={12} strokeWidth={2.8} />
-                                              <span>Tambah Quest Baru</span>
+                                              <span>Tambah Quest</span>
                                             </button>
                                           </motion.div>
                                         ) : activeVisibleDayTasks.length === 0 && upcomingTimedDayTasks.length > 0 ? (
-                                          /* STANDBY STATE: SEMUA QUEST SEKARANG BERES, MENUNGGU JADWAL BERIKUTNYA */
-                                          <motion.div
-                                            initial={{ opacity: 0, scale: 0.96 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            style={{
-                                              minHeight: '220px',
-                                              display: 'flex',
-                                              flexDirection: 'column',
-                                              alignItems: 'center',
-                                              justifyContent: 'center',
-                                              textAlign: 'center',
-                                              padding: '18px 14px',
-                                              borderRadius: '20px',
-                                              background: `radial-gradient(circle at 50% 38%, rgba(${currentRankTier.primaryRgb}, 0.16), transparent 68%)`,
-                                              border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.24)`,
-                                            }}
-                                          >
-                                            <div
-                                              style={{
-                                                position: 'relative',
-                                                width: '68px',
-                                                height: '68px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                marginBottom: '12px',
-                                              }}
-                                            >
-                                              <div
-                                                className="chrono-halo-ring"
+                                          /* STANDBY — MINIMAL LIVE COUNTDOWN & INTERACTIVE PEEK */
+                                          (() => {
+                                            const nextQuest = upcomingTimedDayTasks[0]
+                                            let countdownLabel = nextQuest?.targetTime || '--:--'
+                                            if (nextQuest?.targetTime && /^\d{1,2}:\d{2}$/.test(nextQuest.targetTime)) {
+                                              const [hh, mm] = nextQuest.targetTime.split(':').map(Number)
+                                              const nowDt = new Date(timeTick || Date.now())
+                                              const targetMins = hh * 60 + mm
+                                              const nowMins = nowDt.getHours() * 60 + nowDt.getMinutes()
+                                              const diff = Math.max(1, targetMins - nowMins)
+                                              const remH = Math.floor(diff / 60)
+                                              const remM = diff % 60
+                                              countdownLabel = remH > 0 ? `${remH}j ${remM}m` : `${remM}m`
+                                            }
+                                            return (
+                                              <motion.div
+                                                initial={{ opacity: 0, scale: 0.96 }}
+                                                animate={{ opacity: 1, scale: 1 }}
                                                 style={{
-                                                  position: 'absolute',
-                                                  inset: 0,
-                                                  borderRadius: '50%',
-                                                  border: `1.5px dashed rgba(${currentRankTier.primaryRgb}, 0.55)`,
-                                                  boxShadow: `0 0 28px -4px ${currentRankTier.glowColor}, inset 0 0 18px rgba(${currentRankTier.primaryRgb}, 0.24)`,
-                                                }}
-                                              />
-                                              <div
-                                                style={{
-                                                  width: '46px',
-                                                  height: '46px',
-                                                  borderRadius: '14px',
-                                                  transform: 'rotate(45deg)',
-                                                  background: `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.32), rgba(10, 16, 32, 0.95))`,
-                                                  border: `1.5px solid ${currentRankTier.highlightColor}`,
-                                                  boxShadow: `0 0 22px -4px ${currentRankTier.glowColor}`,
+                                                  minHeight: '190px',
                                                   display: 'flex',
+                                                  flexDirection: 'column',
                                                   alignItems: 'center',
                                                   justifyContent: 'center',
+                                                  textAlign: 'center',
+                                                  padding: '18px 14px',
+                                                  borderRadius: '20px',
+                                                  background: `radial-gradient(circle at 50% 36%, rgba(${currentRankTier.primaryRgb}, 0.17), transparent 68%)`,
+                                                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.24)`,
                                                 }}
                                               >
-                                                <Clock size={19} color="#ffffff" style={{ transform: 'rotate(-45deg)' }} />
-                                              </div>
-                                            </div>
-                                            <span
-                                              style={{
-                                                fontSize: '9px',
-                                                fontWeight: 800,
-                                                letterSpacing: '0.18em',
-                                                color: currentRankTier.highlightColor,
-                                                marginBottom: '4px',
-                                              }}
-                                            >
-                                              STANDBY • MENUNGGU JADWAL
-                                            </span>
-                                            <strong style={{ fontSize: '17px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
-                                              Belum Ada Quest Aktif Saat Ini
-                                            </strong>
-                                            <span style={{ fontSize: '11.5px', color: '#b8add1', maxWidth: '265px', lineHeight: 1.5, marginTop: '4px' }}>
-                                              {upcomingTimedDayTasks.length} quest terjadwal akan otomatis terbuka tepat saat waktunya tiba.
-                                            </span>
-                                            <div
-                                              style={{
-                                                display: 'flex',
-                                                gap: '7px',
-                                                marginTop: '14px',
-                                                flexWrap: 'wrap',
-                                                justifyContent: 'center',
-                                              }}
-                                            >
-                                              <span
-                                                style={{
-                                                  padding: '5px 11px',
-                                                  borderRadius: '999px',
-                                                  background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
-                                                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.42)`,
-                                                  fontSize: '10.5px',
-                                                  fontWeight: 800,
-                                                  color: currentRankTier.highlightColor,
-                                                  display: 'inline-flex',
-                                                  alignItems: 'center',
-                                                  gap: '5px',
-                                                }}
-                                              >
-                                                <Clock size={11} />
-                                                <span>Berikutnya: {upcomingTimedDayTasks[0]?.targetTime || '-'}</span>
-                                              </span>
-                                              {completedDayCount > 0 && (
-                                                <span
+                                                <motion.button
+                                                  type="button"
+                                                  whileHover={{ scale: 1.09 }}
+                                                  whileTap={{ scale: 0.91 }}
+                                                  transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+                                                  onClick={() => setPeekUpcomingInStandby((prev) => !prev)}
+                                                  title="Tap untuk intip / sembunyikan jadwal berikutnya"
                                                   style={{
-                                                    padding: '5px 11px',
-                                                    borderRadius: '999px',
-                                                    background: 'rgba(255, 255, 255, 0.05)',
-                                                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                    fontSize: '10.5px',
-                                                    fontWeight: 700,
-                                                    color: '#e2e8f0',
+                                                    position: 'relative',
+                                                    width: '66px',
+                                                    height: '66px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    marginBottom: '10px',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
                                                   }}
                                                 >
-                                                  {completedDayCount} Selesai • +{earnedDayXp} XP
+                                                  <div
+                                                    className="chrono-halo-ring"
+                                                    style={{
+                                                      position: 'absolute',
+                                                      inset: 0,
+                                                      borderRadius: '50%',
+                                                      border: `1.5px dashed rgba(${currentRankTier.primaryRgb}, 0.6)`,
+                                                      boxShadow: `0 0 28px -4px ${currentRankTier.glowColor}, inset 0 0 18px rgba(${currentRankTier.primaryRgb}, 0.26)`,
+                                                    }}
+                                                  />
+                                                  <div
+                                                    style={{
+                                                      width: '44px',
+                                                      height: '44px',
+                                                      borderRadius: '14px',
+                                                      transform: 'rotate(45deg)',
+                                                      background: `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.34), rgba(10, 16, 32, 0.95))`,
+                                                      border: `1.5px solid ${currentRankTier.highlightColor}`,
+                                                      boxShadow: `0 0 22px -4px ${currentRankTier.glowColor}`,
+                                                      display: 'flex',
+                                                      alignItems: 'center',
+                                                      justifyContent: 'center',
+                                                    }}
+                                                  >
+                                                    <Clock size={18} color="#ffffff" style={{ transform: 'rotate(-45deg)' }} />
+                                                  </div>
+                                                </motion.button>
+
+                                                <div
+                                                  style={{
+                                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                                    fontSize: '22px',
+                                                    fontWeight: 900,
+                                                    color: '#ffffff',
+                                                    letterSpacing: '-0.02em',
+                                                    fontVariantNumeric: 'tabular-nums',
+                                                  }}
+                                                >
+                                                  {countdownLabel}
+                                                </div>
+                                                <span
+                                                  style={{
+                                                    fontSize: '9.5px',
+                                                    fontWeight: 800,
+                                                    letterSpacing: '0.16em',
+                                                    color: currentRankTier.highlightColor,
+                                                    marginTop: '2px',
+                                                  }}
+                                                >
+                                                  STANDBY • {nextQuest?.targetTime || '-'}
                                                 </span>
-                                              )}
-                                            </div>
-                                          </motion.div>
+
+                                                {/* Interactive Action Pills */}
+                                                <div
+                                                  style={{
+                                                    display: 'flex',
+                                                    gap: '7px',
+                                                    marginTop: '12px',
+                                                    flexWrap: 'wrap',
+                                                    justifyContent: 'center',
+                                                  }}
+                                                >
+                                                  <motion.button
+                                                    type="button"
+                                                    whileTap={{ scale: 0.94 }}
+                                                    onClick={() => setPeekUpcomingInStandby((prev) => !prev)}
+                                                    style={{
+                                                      padding: '5px 11px',
+                                                      borderRadius: '999px',
+                                                      background: peekUpcomingInStandby
+                                                        ? currentRankTier.primaryColor
+                                                        : `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                                                      border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.45)`,
+                                                      fontSize: '10.5px',
+                                                      fontWeight: 800,
+                                                      color: peekUpcomingInStandby ? '#03050a' : currentRankTier.highlightColor,
+                                                      display: 'inline-flex',
+                                                      alignItems: 'center',
+                                                      gap: '5px',
+                                                      cursor: 'pointer',
+                                                    }}
+                                                  >
+                                                    <Eye size={11} />
+                                                    <span>
+                                                      {peekUpcomingInStandby
+                                                        ? 'Sembunyikan'
+                                                        : `Intip (${upcomingTimedDayTasks.length})`}
+                                                    </span>
+                                                  </motion.button>
+
+                                                  {completedDayCount > 0 && (
+                                                    <motion.button
+                                                      type="button"
+                                                      whileTap={{ scale: 0.94 }}
+                                                      onClick={() => setWeeklyCardSubTab('history')}
+                                                      style={{
+                                                        padding: '5px 11px',
+                                                        borderRadius: '999px',
+                                                        background: 'rgba(255, 255, 255, 0.05)',
+                                                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                        fontSize: '10.5px',
+                                                        fontWeight: 700,
+                                                        color: '#e2e8f0',
+                                                        cursor: 'pointer',
+                                                      }}
+                                                    >
+                                                      ✓ {completedDayCount} • +{earnedDayXp} XP
+                                                    </motion.button>
+                                                  )}
+
+                                                  <motion.button
+                                                    type="button"
+                                                    whileTap={{ scale: 0.94 }}
+                                                    onClick={() => openAddPersonalModal()}
+                                                    style={{
+                                                      padding: '5px 10px',
+                                                      borderRadius: '999px',
+                                                      background: 'rgba(255, 255, 255, 0.04)',
+                                                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                      fontSize: '10.5px',
+                                                      fontWeight: 700,
+                                                      color: '#cbd5e1',
+                                                      display: 'inline-flex',
+                                                      alignItems: 'center',
+                                                      gap: '3px',
+                                                      cursor: 'pointer',
+                                                    }}
+                                                  >
+                                                    <Plus size={11} />
+                                                    <span>Quest</span>
+                                                  </motion.button>
+                                                </div>
+
+                                                {/* Interactive Collapsible Peek Strip */}
+                                                <AnimatePresence>
+                                                  {peekUpcomingInStandby && (
+                                                    <motion.div
+                                                      initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                                      animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                                                      exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                                      transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                                                      style={{ width: '100%', overflow: 'hidden' }}
+                                                    >
+                                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                        {upcomingTimedDayTasks.map((ut) => (
+                                                          <div
+                                                            key={ut.id}
+                                                            style={{
+                                                              display: 'flex',
+                                                              alignItems: 'center',
+                                                              justifyContent: 'space-between',
+                                                              gap: '8px',
+                                                              padding: '7px 10px',
+                                                              borderRadius: '10px',
+                                                              background: 'rgba(255, 255, 255, 0.04)',
+                                                              border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.2)`,
+                                                              fontSize: '11px',
+                                                            }}
+                                                          >
+                                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', minWidth: 0 }}>
+                                                              <strong style={{ color: currentRankTier.highlightColor, fontFamily: 'monospace' }}>
+                                                                {ut.targetTime}
+                                                              </strong>
+                                                              <span style={{ color: '#e2e8f0', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {ut.title}
+                                                              </span>
+                                                            </span>
+                                                            <span style={{ color: '#94a3b8', fontSize: '10px', fontWeight: 800, flexShrink: 0 }}>
+                                                              +{ut.xp} XP
+                                                            </span>
+                                                          </div>
+                                                        ))}
+                                                      </div>
+                                                    </motion.div>
+                                                  )}
+                                                </AnimatePresence>
+                                              </motion.div>
+                                            )
+                                          })()
                                         ) : activeVisibleDayTasks.length === 0 ? (
-                                          /* 100% ALL OBJECTIVES CLEARED VICTORY STATE */
+                                          /* 100% ALL CLEAR — ULTRA-CLEAN & INTERACTIVE */
                                           <motion.div
                                             initial={{ opacity: 0, scale: 0.96 }}
                                             animate={{ opacity: 1, scale: 1 }}
                                             style={{
-                                              minHeight: '220px',
+                                              minHeight: '190px',
                                               display: 'flex',
                                               flexDirection: 'column',
                                               alignItems: 'center',
@@ -17388,15 +17499,24 @@ export default function Page() {
                                               border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.26)`,
                                             }}
                                           >
-                                            <div
+                                            <motion.button
+                                              type="button"
+                                              whileHover={{ scale: 1.09, rotate: 4 }}
+                                              whileTap={{ scale: 0.91 }}
+                                              transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+                                              onClick={() => setWeeklyCardSubTab('history')}
+                                              title="Klik untuk lihat riwayat selesai"
                                               style={{
                                                 position: 'relative',
-                                                width: '68px',
-                                                height: '68px',
+                                                width: '66px',
+                                                height: '66px',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                marginBottom: '12px',
+                                                marginBottom: '10px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
                                               }}
                                             >
                                               <div
@@ -17411,8 +17531,8 @@ export default function Page() {
                                               />
                                               <div
                                                 style={{
-                                                  width: '46px',
-                                                  height: '46px',
+                                                  width: '44px',
+                                                  height: '44px',
                                                   borderRadius: '14px',
                                                   transform: 'rotate(45deg)',
                                                   background: `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.35), rgba(10, 16, 32, 0.95))`,
@@ -17423,50 +17543,54 @@ export default function Page() {
                                                   justifyContent: 'center',
                                                 }}
                                               >
-                                                <Crown size={20} color="#ffffff" style={{ transform: 'rotate(-45deg)' }} />
+                                                <Crown size={19} color="#ffffff" style={{ transform: 'rotate(-45deg)' }} />
                                               </div>
-                                            </div>
+                                            </motion.button>
+                                            <strong style={{ fontSize: '18px', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em' }}>
+                                              All Clear
+                                            </strong>
                                             <span
                                               style={{
-                                                fontSize: '9px',
+                                                fontSize: '10px',
                                                 fontWeight: 800,
-                                                letterSpacing: '0.18em',
+                                                letterSpacing: '0.14em',
                                                 color: currentRankTier.highlightColor,
-                                                marginBottom: '4px',
+                                                marginTop: '2px',
                                               }}
                                             >
-                                              DAILY OBJECTIVES CLEARED
-                                            </span>
-                                            <strong style={{ fontSize: '17.5px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
-                                              Semua Quest {activeScheduleDayObj.isToday ? 'Hari Ini' : activeScheduleDayObj.fullName} Tuntas!
-                                            </strong>
-                                            <span style={{ fontSize: '11.5px', color: '#b8add1', maxWidth: '265px', lineHeight: 1.5, marginTop: '4px' }}>
-                                              Seluruh jadwal sudah dibereskan dengan bersih. Salah pencet? Buka Selesai/Skip untuk mengaktifkan lagi.
+                                              +{earnedDayXp} XP EARNED
                                             </span>
                                             <div
                                               style={{
                                                 display: 'flex',
                                                 gap: '7px',
-                                                marginTop: '14px',
+                                                marginTop: '12px',
                                                 flexWrap: 'wrap',
                                                 justifyContent: 'center',
                                               }}
                                             >
-                                              <span
+                                              <motion.button
+                                                type="button"
+                                                whileTap={{ scale: 0.94 }}
+                                                onClick={() => setWeeklyCardSubTab('history')}
                                                 style={{
-                                                  padding: '5px 11px',
+                                                  padding: '5px 12px',
                                                   borderRadius: '999px',
-                                                  background: 'rgba(255, 255, 255, 0.05)',
-                                                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.48)`,
+                                                  background: `rgba(${currentRankTier.primaryRgb}, 0.16)`,
+                                                  color: currentRankTier.highlightColor,
                                                   fontSize: '10.5px',
-                                                  fontWeight: 700,
-                                                  color: '#e2e8f0',
+                                                  fontWeight: 800,
+                                                  cursor: 'pointer',
                                                 }}
                                               >
-                                                {completedDayCount} Selesai • +{earnedDayXp} XP
-                                              </span>
+                                                ✓ {completedDayCount} Selesai
+                                              </motion.button>
                                               {skippedDayCount > 0 && (
-                                                <span
+                                                <motion.button
+                                                  type="button"
+                                                  whileTap={{ scale: 0.94 }}
+                                                  onClick={() => setWeeklyCardSubTab('history')}
                                                   style={{
                                                     padding: '5px 11px',
                                                     borderRadius: '999px',
@@ -17475,27 +17599,33 @@ export default function Page() {
                                                     fontSize: '10.5px',
                                                     fontWeight: 700,
                                                     color: '#fda4af',
+                                                    cursor: 'pointer',
                                                   }}
                                                 >
-                                                  {skippedDayCount} Dilewati
-                                                </span>
+                                                  {skippedDayCount} Skip
+                                                </motion.button>
                                               )}
-                                              <button
+                                              <motion.button
                                                 type="button"
-                                                onClick={() => setWeeklyCardSubTab('history')}
+                                                whileTap={{ scale: 0.94 }}
+                                                onClick={() => openAddPersonalModal()}
                                                 style={{
-                                                  padding: '5px 12px',
+                                                  padding: '5px 10px',
                                                   borderRadius: '999px',
-                                                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.5)`,
-                                                  background: `rgba(${currentRankTier.primaryRgb}, 0.16)`,
-                                                  color: currentRankTier.highlightColor,
+                                                  background: 'rgba(255, 255, 255, 0.05)',
+                                                  border: '1px solid rgba(255, 255, 255, 0.12)',
                                                   fontSize: '10.5px',
-                                                  fontWeight: 800,
+                                                  fontWeight: 700,
+                                                  color: '#cbd5e1',
+                                                  display: 'inline-flex',
+                                                  alignItems: 'center',
+                                                  gap: '3px',
                                                   cursor: 'pointer',
                                                 }}
                                               >
-                                                Lihat / Aktifkan Lagi
-                                              </button>
+                                                <Plus size={11} />
+                                                <span>Quest</span>
+                                              </motion.button>
                                             </div>
                                           </motion.div>
                                         ) : (
