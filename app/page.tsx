@@ -16882,6 +16882,12 @@ export default function Page() {
                                 )
                               }
 
+                              const isTaskUpcomingTimeOnDay = (t: PersonalTask) => {
+                                if (t.category.toLowerCase() === 'keuangan') return false
+                                if (isPastDay || isFutureDay || isTaskDoneOnDay(t) || isTaskSkippedOnDay(t)) return false
+                                return isQuestTimeUpcoming(t.targetTime, false, t.schedule)
+                              }
+
                               const nonFinanceDayTasks = activeScheduleDayObj.scheduledTasks
                                 .filter((t) => t.category.toLowerCase() !== 'keuangan')
                                 .slice()
@@ -16892,10 +16898,17 @@ export default function Page() {
                               const completedDayCount = completedDayTasks.length
                               const earnedDayXp = completedDayTasks.reduce((sum, t) => sum + t.xp, 0)
 
+                              const upcomingTimedDayTasks = isFutureDay
+                                ? []
+                                : nonFinanceDayTasks.filter((t) => isTaskUpcomingTimeOnDay(t))
+
                               const activeVisibleDayTasks = isFutureDay
                                 ? nonFinanceDayTasks
                                 : nonFinanceDayTasks.filter(
-                                    (t) => !isTaskDoneOnDay(t) && !isTaskSkippedOnDay(t)
+                                    (t) =>
+                                      !isTaskDoneOnDay(t) &&
+                                      !isTaskSkippedOnDay(t) &&
+                                      !isTaskUpcomingTimeOnDay(t)
                                   )
 
                               const historyDayTasks = isFutureDay
@@ -17240,6 +17253,122 @@ export default function Page() {
                                               <Plus size={12} strokeWidth={2.8} />
                                               <span>Tambah Quest Baru</span>
                                             </button>
+                                          </motion.div>
+                                        ) : activeVisibleDayTasks.length === 0 && upcomingTimedDayTasks.length > 0 ? (
+                                          /* STANDBY STATE: SEMUA QUEST SEKARANG BERES, MENUNGGU JADWAL BERIKUTNYA */
+                                          <motion.div
+                                            initial={{ opacity: 0, scale: 0.96 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            style={{
+                                              minHeight: '220px',
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              textAlign: 'center',
+                                              padding: '18px 14px',
+                                              borderRadius: '20px',
+                                              background: `radial-gradient(circle at 50% 38%, rgba(${currentRankTier.primaryRgb}, 0.16), transparent 68%)`,
+                                              border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.24)`,
+                                            }}
+                                          >
+                                            <div
+                                              style={{
+                                                position: 'relative',
+                                                width: '68px',
+                                                height: '68px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                marginBottom: '12px',
+                                              }}
+                                            >
+                                              <div
+                                                className="chrono-halo-ring"
+                                                style={{
+                                                  position: 'absolute',
+                                                  inset: 0,
+                                                  borderRadius: '50%',
+                                                  border: `1.5px dashed rgba(${currentRankTier.primaryRgb}, 0.55)`,
+                                                  boxShadow: `0 0 28px -4px ${currentRankTier.glowColor}, inset 0 0 18px rgba(${currentRankTier.primaryRgb}, 0.24)`,
+                                                }}
+                                              />
+                                              <div
+                                                style={{
+                                                  width: '46px',
+                                                  height: '46px',
+                                                  borderRadius: '14px',
+                                                  transform: 'rotate(45deg)',
+                                                  background: `linear-gradient(135deg, rgba(${currentRankTier.primaryRgb}, 0.32), rgba(10, 16, 32, 0.95))`,
+                                                  border: `1.5px solid ${currentRankTier.highlightColor}`,
+                                                  boxShadow: `0 0 22px -4px ${currentRankTier.glowColor}`,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                }}
+                                              >
+                                                <Clock size={19} color="#ffffff" style={{ transform: 'rotate(-45deg)' }} />
+                                              </div>
+                                            </div>
+                                            <span
+                                              style={{
+                                                fontSize: '9px',
+                                                fontWeight: 800,
+                                                letterSpacing: '0.18em',
+                                                color: currentRankTier.highlightColor,
+                                                marginBottom: '4px',
+                                              }}
+                                            >
+                                              STANDBY • MENUNGGU JADWAL
+                                            </span>
+                                            <strong style={{ fontSize: '17px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+                                              Belum Ada Quest Aktif Saat Ini
+                                            </strong>
+                                            <span style={{ fontSize: '11.5px', color: '#b8add1', maxWidth: '265px', lineHeight: 1.5, marginTop: '4px' }}>
+                                              {upcomingTimedDayTasks.length} quest terjadwal akan otomatis terbuka tepat saat waktunya tiba.
+                                            </span>
+                                            <div
+                                              style={{
+                                                display: 'flex',
+                                                gap: '7px',
+                                                marginTop: '14px',
+                                                flexWrap: 'wrap',
+                                                justifyContent: 'center',
+                                              }}
+                                            >
+                                              <span
+                                                style={{
+                                                  padding: '5px 11px',
+                                                  borderRadius: '999px',
+                                                  background: `rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                                                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.42)`,
+                                                  fontSize: '10.5px',
+                                                  fontWeight: 800,
+                                                  color: currentRankTier.highlightColor,
+                                                  display: 'inline-flex',
+                                                  alignItems: 'center',
+                                                  gap: '5px',
+                                                }}
+                                              >
+                                                <Clock size={11} />
+                                                <span>Berikutnya: {upcomingTimedDayTasks[0]?.targetTime || '-'}</span>
+                                              </span>
+                                              {completedDayCount > 0 && (
+                                                <span
+                                                  style={{
+                                                    padding: '5px 11px',
+                                                    borderRadius: '999px',
+                                                    background: 'rgba(255, 255, 255, 0.05)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                    fontSize: '10.5px',
+                                                    fontWeight: 700,
+                                                    color: '#e2e8f0',
+                                                  }}
+                                                >
+                                                  {completedDayCount} Selesai • +{earnedDayXp} XP
+                                                </span>
+                                              )}
+                                            </div>
                                           </motion.div>
                                         ) : activeVisibleDayTasks.length === 0 ? (
                                           /* 100% ALL OBJECTIVES CLEARED VICTORY STATE */
