@@ -672,25 +672,6 @@ button { font: inherit; color: inherit; }
 }
 
 /* WEEKLY SCHEDULE & CONSISTENCY STRIP */
-.dashboard-monolith {
-  position: relative;
-  border-radius: 26px;
-  margin-bottom: 22px;
-  overflow: visible;
-}
-.dashboard-monolith .hero-card-unified {
-  margin-bottom: 0;
-  padding: 12px 14px 10px;
-}
-.dashboard-monolith .weekly-strip-card {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  margin-bottom: 0 !important;
-  padding: 16px 16px;
-  border-top: 1px solid rgba(var(--rank-rgb, 56, 189, 248), 0.14);
-}
 .weekly-strip-card {
   padding: 18px 16px;
   border-radius: 20px;

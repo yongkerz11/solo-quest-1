@@ -16089,17 +16089,10 @@ export default function Page() {
               </div>
             ) : (
               /* ================================================================
-                 BERANDA UTAMA: 1-CARD UNIFIED MONOLITH (HERO + FLIP QUEST/VAULT + TREN + RADAR)
-                 (Warna mengikuti currentRankTier, Rank Emblem dipertahankan 100% asli)
+                 BERANDA UTAMA: UNIFIED HERO BENTO CARD + JADWAL MINGGU INI + HISTORY QUEST
+                 (Dirancang umum untuk semua jenis Quest: Belajar, Produktivitas, Kesehatan, Gym, dll.)
                  ================================================================ */
-              <div
-                className="dashboard-monolith"
-                style={{
-                  background: `linear-gradient(172deg, rgba(${currentRankTier.primaryRgb}, 0.11) 0%, rgba(10, 15, 30, 0.96) 24%, rgba(6, 10, 21, 0.98) 100%)`,
-                  border: `1px solid rgba(${currentRankTier.primaryRgb}, 0.34)`,
-                  boxShadow: `0 24px 60px -16px rgba(0, 0, 0, 0.92), 0 0 32px -16px ${currentRankTier.glowColor}, inset 0 1px 0 rgba(255, 255, 255, 0.10)`,
-                }}
-              >
+              <>
                 <section
                   id="hero-card"
                   className="hero-card-unified"
@@ -17000,7 +16993,10 @@ export default function Page() {
                       return (
                         <div
                           style={{
-                            padding: '6px 2px 2px',
+                            padding: '13px 12px',
+                            borderRadius: '14px',
+                            background: 'rgba(7, 5, 17, 0.85)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
                           }}
                         >
                           <div
@@ -17112,8 +17108,6 @@ export default function Page() {
                                         dateIso: activeScheduleDayObj.isoDate,
                                         viewOnly: isFutureDay,
                                       })
-                                    } else if (!isFutureDay) {
-                                      handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
                                     }
                                   }}
                                   style={{
@@ -17121,30 +17115,29 @@ export default function Page() {
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     gap: '8px',
-                                    padding: '10px 8px',
+                                    padding: '8px 10px',
                                     borderRadius: '11px',
                                     opacity: isFutureDay ? 0.8 : 1,
-                                    cursor: isFutureDay ? 'default' : 'pointer',
+                                    cursor: isFinance ? 'pointer' : 'default',
                                     background:
                                       isSkipped && !isDoneOnDay
-                                        ? 'rgba(69, 10, 26, 0.35)'
+                                        ? 'rgba(69, 10, 26, 0.45)'
                                         : isFinance
-                                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(18, 14, 33, 0.45))'
-                                        : 'rgba(255, 255, 255, 0.025)',
+                                        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(18, 14, 33, 0.95))'
+                                        : 'rgba(18, 14, 33, 0.92)',
                                     border:
                                       isSkipped && !isDoneOnDay
-                                        ? '1px solid rgba(244, 63, 94, 0.28)'
+                                        ? '1px solid rgba(244, 63, 94, 0.35)'
                                         : isFinance
-                                        ? '1px solid rgba(52, 211, 153, 0.28)'
-                                        : `1px solid rgba(${currentRankTier.primaryRgb}, 0.14)`,
+                                        ? '1px solid rgba(52, 211, 153, 0.32)'
+                                        : '1px solid rgba(255, 255, 255, 0.1)',
                                   }}
                                 >
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
                                     {!isFinance && (
                                       <span
                                         className={`task-checkbox ${isDoneOnDay ? 'checked' : ''} ${isSkipped ? 'skipped' : ''}`}
-                                        onClick={(e) => {
-                                          e.stopPropagation()
+                                        onClick={() => {
                                           if (!isFutureDay) {
                                             handleTogglePersonal(task.id, activeScheduleDayObj.isoDate)
                                           }
@@ -17158,10 +17151,10 @@ export default function Page() {
                                           border: isFutureDay
                                             ? '1px solid rgba(148, 163, 184, 0.3)'
                                             : isDoneOnDay
-                                              ? `1px solid ${currentRankTier.primaryColor}`
+                                              ? '1px solid #38bdf8'
                                               : isSkipped
                                                 ? '1px solid #ef4444'
-                                                : `1px solid rgba(${currentRankTier.primaryRgb}, 0.55)`,
+                                                : '1px solid rgba(168, 85, 247, 0.5)',
                                           background: isFutureDay
                                             ? 'rgba(15, 11, 26, 0.75)'
                                             : isDoneOnDay
@@ -17359,10 +17352,7 @@ export default function Page() {
                                     </div>
                                   </div>
 
-                                  <div
-                                    onClick={(e) => e.stopPropagation()}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
-                                  >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                                     {isFutureDay ? (
                                       isGym ? (
                                         <button
@@ -18289,7 +18279,7 @@ export default function Page() {
                     })()}
                   </section>
                 </motion.div>
-              </div>
+              </>
             )}
           </>
         )}
